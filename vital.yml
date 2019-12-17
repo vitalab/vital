@@ -1,0 +1,12 @@
+name: vital
+channels:
+  - defaults
+  - conda-forge
+  - pytorch
+dependencies:
+  - python
+  - pip
+  - scipy
+  - pytorch
+  - pip:
+      - keras # Used by `utils/image/register.py` for its image processing utilities (w/o backend)
