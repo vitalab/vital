@@ -35,7 +35,8 @@ class Autoencoder(nn.Module):
 
     def forward(self, x):
         z = self.encoder(x)
-        return self.decoder(z)
+        return self.decoder(z), z
+
 
 
 class VariationalAutoencoder(nn.Module):
@@ -74,4 +75,6 @@ class VariationalAutoencoder(nn.Module):
 
     def forward(self, x):
         mu, logvar = self.encoder(x)
-        return self.decoder(self.reparameterize(mu, logvar))
+        z = self.reparameterize(mu, logvar)
+        return self.decoder(z), z, mu, logvar
+
