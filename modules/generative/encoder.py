@@ -1,24 +1,28 @@
-import torch
-from torch import nn as nn
+from typing import Union
 
-from vital.modules.generative.layers import conv3x3
+import torch
+from torch import Tensor
+from torch import nn
+
+from vital.modules.layers import conv3x3
 
 
 class Encoder(nn.Module):
+    """Module making up the encoder half of a convolutional autoencoder."""
 
     def __init__(self, image_size: (int, int),
                  channels: int,
                  blocks: int,
-                 feature_maps: int,
+                 init_channels: int,
                  code_length: int,
                  output_distribution: bool = False):
-        """ Module making up the encoder half of a convolutional autoencoder.
-
+        """
         Args:
             image_size: size of the input segmentation groundtruth for each axis.
             channels: number of channels of the image to reconstruct.
             blocks: number of downsampling convolution blocks to use.
-            feature_maps: factor used to compute the number of feature maps for the convolution layers.
+            init_channels: number of output feature maps from the first layer, used to compute the number of feature
+                           maps in following layers.
             code_length: number of dimensions in the latent space.
             output_distribution: whether to add a second head at the end to output ``logvar`` along with the default
                                  ``mu`` head.
@@ -30,7 +34,7 @@ class Encoder(nn.Module):
         self.features = nn.Sequential()
         block_in_channels = channels
         for block_idx in range(blocks):
-            block_out_channels = feature_maps * 2 ** block_idx
+            block_out_channels = init_channels * 2 ** block_idx
 
             self.features.add_module(f'strided_conv{block_idx}', conv3x3(in_channels=block_in_channels,
                                                                          out_channels=block_out_channels,
@@ -44,21 +48,34 @@ class Encoder(nn.Module):
 
         # Bottleneck block
         self.features.add_module('bottleneck_strided_conv', conv3x3(in_channels=block_in_channels,
-                                                                    out_channels=feature_maps,
+                                                                    out_channels=init_channels,
                                                                     stride=2))
         self.features.add_module('bottleneck_elu', nn.ELU(inplace=True))
 
         # Fully-connected mapping to encoding
         bottleneck_size = (image_size[0] // 2 ** (blocks + 1),
                            image_size[1] // 2 ** (blocks + 1))
-        self.mu_head = nn.Linear(bottleneck_size[0] * bottleneck_size[1] * feature_maps,
+        self.mu_head = nn.Linear(bottleneck_size[0] * bottleneck_size[1] * init_channels,
                                  code_length)
         if self.output_distribution:
-            self.logvar_head = nn.Linear(bottleneck_size[0] * bottleneck_size[1] * feature_maps,
+            self.logvar_head = nn.Linear(bottleneck_size[0] * bottleneck_size[1] * init_channels,
                                          code_length)
 
-    def forward(self, x):
-        features = self.features(x)
+    def forward(self, y: Tensor) -> Union[Tensor, (Tensor, Tensor)]:
+        """ Defines the computation performed at every call.
+
+        Args:
+            y: (N, ``channels``, H, W), input to reconstruct.
+
+        Returns:
+            if not ``output_distribution``:
+                z: (N, ``code_length``), encoding of the input in the latent space.
+            if ``output_distribution``:
+                mu: (N, ``code_length``), mean of the predicted distribution of the input in the latent space.
+                logvar: (N, ``code_length``), log variance of the predicted distribution of the input in the latent
+                        space.
+        """
+        features = self.features(y)
         features = torch.flatten(features, 1)
         out = self.mu_head(features)
         if self.output_distribution:
