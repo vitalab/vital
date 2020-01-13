@@ -4,8 +4,9 @@ channels:
   - conda-forge
   - pytorch
 dependencies:
-  - python
+  - python>=3.7
   - pip
+  - pillow
   - scipy
   - pytorch
   - pip:
