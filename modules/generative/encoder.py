@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Tuple
 
 import torch
 from torch import Tensor
@@ -61,7 +61,7 @@ class Encoder(nn.Module):
             self.logvar_head = nn.Linear(bottleneck_size[0] * bottleneck_size[1] * init_channels,
                                          code_length)
 
-    def forward(self, y: Tensor) -> Union[Tensor, (Tensor, Tensor)]:
+    def forward(self, y: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """ Defines the computation performed at every call.
 
         Args:
