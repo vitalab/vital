@@ -11,3 +11,4 @@ dependencies:
   - pytorch
   - pip:
       - keras # Used by `utils/image/register.py` for its image processing utilities (w/o backend)
+      - git+https://github.com/longcw/RoIAlign.pytorch

@@ -1,20 +1,26 @@
+from typing import Union, List
+
 import numpy as np
 
 
-def bbox(segmentation, labels, bbox_margin=0.05):
+def bbox(segmentation,
+         labels: Union[int, List[int]],
+         bbox_margin: float = 0.05,
+         channel_axis: int = -1) -> np.ndarray:
     """ Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 
     Args:
-        segmentation: ndarray, segmentation in which to identify the coordinates of the bbox.
-        labels: int or list, labels of the classes that are part of the ROI.
-        bbox_margin: float, ratio by which to enlarge the bbox from the closest possible fit, so as to leave a
-                     slight margin at the edges of the bbox.
+        segmentation: arraylike, segmentation in which to identify the coordinates of the bbox.
+        labels: labels of the classes that are part of the ROI.
+        bbox_margin: ratio by which to enlarge the bbox from the closest possible fit, so as to leave a slight margin
+                     at the edges of the bbox.
+        channel_axis: axis of the channel dimension.
 
     Returns:
-        ndarray, coordinates of the bbox, in the following order: row_min, col_min, row_max, col_max.
+        coordinates of the bbox, in the following order: row_min, col_min, row_max, col_max.
     """
     # Only keep ROI from the groundtruth
-    roi_mask = np.isin(np.argmax(segmentation, axis=-1), labels)
+    roi_mask = np.isin(np.argmax(segmentation, axis=channel_axis), labels)
 
     # Find the coordinates of the bounding box around the ROI
     rows = np.any(roi_mask, axis=1)
