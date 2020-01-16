@@ -10,10 +10,6 @@ class ConfigurationLabel(Enum):
         return str(self)
 
     @classmethod
-    def list(cls):
-        return [e for e in cls]
-
-    @classmethod
     def values(cls):
         return [e.value for e in cls]
 
