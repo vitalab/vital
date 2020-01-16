@@ -76,7 +76,7 @@ class LocalizationNet(nn.Module):
             ('bbox_', nn.Linear(32, 4))
         ]))
 
-    def forward(self, x: Tensor) -> (Tensor, Tensor, Tensor):
+    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         """ Defines the computation performed at every call.
 
         Args:

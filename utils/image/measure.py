@@ -1,16 +1,17 @@
 from typing import Union, List
 
 import numpy as np
+from torch import Tensor
 
 
-def bbox(segmentation,
+def bbox(segmentation: Union[np.ndarray, Tensor],
          labels: Union[int, List[int]],
          bbox_margin: float = 0.05,
          channel_axis: int = -1) -> np.ndarray:
     """ Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 
     Args:
-        segmentation: arraylike, segmentation in which to identify the coordinates of the bbox.
+        segmentation: segmentation in which to identify the coordinates of the bbox.
         labels: labels of the classes that are part of the ROI.
         bbox_margin: ratio by which to enlarge the bbox from the closest possible fit, so as to leave a slight margin
                      at the edges of the bbox.

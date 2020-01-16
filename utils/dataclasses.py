@@ -12,8 +12,8 @@ class DataParameters:
 
 @parameters
 class DataShape:
-    in_shape: Tuple[int]
-    out_shape: Tuple[int]
+    in_shape: Tuple[int, ...]
+    out_shape: Tuple[int, ...]
 
 
 @parameters

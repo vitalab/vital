@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch
 from torch import Tensor
 from torch import nn
@@ -9,7 +11,7 @@ from vital.modules.generative.encoder import Encoder
 class Autoencoder(nn.Module):
     """Module making up a fully convolutional autoencoder."""
 
-    def __init__(self, image_size: (int, int),
+    def __init__(self, image_size: Tuple[int, int],
                  channels: int,
                  blocks: int,
                  init_channels: int,
@@ -25,17 +27,17 @@ class Autoencoder(nn.Module):
         """
         super().__init__()
         self.encoder = Encoder(image_size=image_size,
-                               channels=channels,
+                               in_channels=channels,
                                blocks=blocks,
                                init_channels=init_channels,
                                code_length=code_length)
         self.decoder = Decoder(image_size=image_size,
-                               channels=channels,
+                               out_channels=channels,
                                blocks=blocks,
                                init_channels=init_channels,
                                code_length=code_length)
 
-    def forward(self, y: Tensor) -> (Tensor, Tensor):
+    def forward(self, y: Tensor) -> Tuple[Tensor, Tensor]:
         """ Defines the computation performed at every call.
 
         Args:
@@ -48,7 +50,7 @@ class Autoencoder(nn.Module):
         z = self.encoder(y)
         return self.decoder(z), z
 
-    def predict(self, y: Tensor) -> (Tensor, Tensor):
+    def predict(self, y: Tensor) -> Tuple[Tensor, Tensor]:
         """ Performs test-time inference on the input.
 
         Args:
@@ -64,7 +66,7 @@ class Autoencoder(nn.Module):
 class VariationalAutoencoder(nn.Module):
     """Module making up a fully convolutional variational autoencoder."""
 
-    def __init__(self, image_size: (int, int),
+    def __init__(self, image_size: Tuple[int, int],
                  channels: int,
                  blocks: int,
                  init_channels: int,
@@ -80,13 +82,13 @@ class VariationalAutoencoder(nn.Module):
         """
         super().__init__()
         self.encoder = Encoder(image_size=image_size,
-                               channels=channels,
+                               in_channels=channels,
                                blocks=blocks,
                                init_channels=init_channels,
                                code_length=code_length,
                                output_distribution=True)
         self.decoder = Decoder(image_size=image_size,
-                               channels=channels,
+                               out_channels=channels,
                                blocks=blocks,
                                init_channels=init_channels,
                                code_length=code_length)
@@ -105,7 +107,7 @@ class VariationalAutoencoder(nn.Module):
         eps = torch.randn_like(std)
         return mu + eps * std
 
-    def forward(self, y: Tensor) -> (Tensor, Tensor, Tensor, Tensor):
+    def forward(self, y: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         """ Defines the computation performed at every call.
 
         Args:
@@ -123,7 +125,7 @@ class VariationalAutoencoder(nn.Module):
         z = self.reparameterize(mu, logvar)
         return self.decoder(z), z, mu, logvar
 
-    def predict(self, y: Tensor) -> (Tensor, Tensor):
+    def predict(self, y: Tensor) -> Tuple[Tensor, Tensor]:
         """ Performs test-time inference on the input.
 
         Args:

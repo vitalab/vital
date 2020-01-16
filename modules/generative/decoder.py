@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import Tuple
 
 import torch
 from torch import Tensor
@@ -10,15 +11,15 @@ from vital.modules.layers import conv3x3, conv_transpose3x3
 class Decoder(nn.Module):
     """Module making up the decoder half of a convolutional autoencoder."""
 
-    def __init__(self, image_size: (int, int),
-                 channels: int,
+    def __init__(self, image_size: Tuple[int, int],
+                 out_channels: int,
                  blocks: int,
                  init_channels: int,
                  code_length: int):
         """
         Args:
             image_size: size of the output segmentation groundtruth for each axis.
-            channels: number of channels of the image to reconstruct.
+            out_channels: number of channels of the image to reconstruct.
             blocks: number of upsampling transposed convolution blocks to use.
             init_channels: number of output feature maps from the last layer before the classifier, used to compute the
                            number of feature maps in preceding layers.
@@ -53,7 +54,7 @@ class Decoder(nn.Module):
             block_in_channels = block_out_channels
 
         # Classifier
-        self.classifier = conv_transpose3x3(in_channels=block_in_channels, out_channels=channels,
+        self.classifier = conv_transpose3x3(in_channels=block_in_channels, out_channels=out_channels,
                                             stride=2, output_padding=1)
 
     def forward(self, z: Tensor) -> Tensor:

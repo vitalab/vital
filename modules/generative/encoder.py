@@ -10,8 +10,8 @@ from vital.modules.layers import conv3x3
 class Encoder(nn.Module):
     """Module making up the encoder half of a convolutional autoencoder."""
 
-    def __init__(self, image_size: (int, int),
-                 channels: int,
+    def __init__(self, image_size: Tuple[int, int],
+                 in_channels: int,
                  blocks: int,
                  init_channels: int,
                  code_length: int,
@@ -19,7 +19,7 @@ class Encoder(nn.Module):
         """
         Args:
             image_size: size of the input segmentation groundtruth for each axis.
-            channels: number of channels of the image to reconstruct.
+            in_channels: number of channels of the image to reconstruct.
             blocks: number of downsampling convolution blocks to use.
             init_channels: number of output feature maps from the first layer, used to compute the number of feature
                            maps in following layers.
@@ -32,7 +32,7 @@ class Encoder(nn.Module):
 
         # Downsampling convolution blocks
         self.features = nn.Sequential()
-        block_in_channels = channels
+        block_in_channels = in_channels
         for block_idx in range(blocks):
             block_out_channels = init_channels * 2 ** block_idx
 
