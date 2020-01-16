@@ -4,7 +4,7 @@ Derived from Keras' numpy utility: https://github.com/keras-team/keras/blob/mast
 import numpy as np
 
 
-def to_categorical(y, channel_axis=-1, num_classes=None, dtype='float32'):
+def to_categorical(y, num_classes=None, channel_axis=-1, dtype='float32'):
     """Converts a class vector (integers) to binary class matrix.
 
     E.g. for use with categorical_crossentropy.
@@ -12,8 +12,8 @@ def to_categorical(y, channel_axis=-1, num_classes=None, dtype='float32'):
     Args:
         y: class vector to be converted into a matrix
             (integers from 0 to num_classes).
-        channel_axis: index of the channel axis to expand.
         num_classes: total number of classes.
+        channel_axis: index of the channel axis to expand.
         dtype: The data type expected by the input, as a string
             (`float32`, `float64`, `int32`...)
 

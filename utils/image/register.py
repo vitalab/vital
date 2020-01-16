@@ -205,7 +205,7 @@ class AffineRegisteringTransformer:
         is_labelled_3d = not is_labelled_2d and segmentation.shape[2] == 1
 
         if is_labelled_2d or is_labelled_3d:  # If the image is not already in categorical format
-            segmentation = to_categorical(segmentation, self.num_classes)
+            segmentation = to_categorical(segmentation, num_classes=self.num_classes)
 
         return segmentation.astype(np.uint8), (is_labelled_2d, is_labelled_3d)
 
