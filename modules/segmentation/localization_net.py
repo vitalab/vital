@@ -11,7 +11,7 @@ from torch import Tensor
 from torch import nn
 from torchvision.transforms.functional import to_tensor, to_pil_image
 
-from vital.utils.dataclasses import DataShape
+from vital.utils.parameters import DataShape
 
 
 class LocalizationNet(nn.Module):

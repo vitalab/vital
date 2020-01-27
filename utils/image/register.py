@@ -6,7 +6,7 @@ from PIL.Image import LINEAR
 from keras_preprocessing.image import ImageDataGenerator
 from scipy import ndimage
 
-from vital.utils.format import to_categorical
+from vital.utils.format import one_hot
 from vital.utils.image.transform import resize_segmentation, resize_image
 
 Shift = Tuple[int, int]
@@ -208,7 +208,7 @@ class AffineRegisteringTransformer:
         is_labelled_3d = not is_labelled_2d and segmentation.shape[2] == 1
 
         if is_labelled_2d or is_labelled_3d:  # If the image is not already in categorical format
-            segmentation = to_categorical(segmentation, num_classes=self.num_classes)
+            segmentation = one_hot(segmentation, num_classes=self.num_classes)
 
         return segmentation.astype(np.uint8), (is_labelled_2d, is_labelled_3d)
 
@@ -426,7 +426,7 @@ class AffineRegisteringTransformer:
 
         # Crop the segmentation around the bbox and resize to target shape
         segmentation = _crop(np.argmax(segmentation, axis=-1), crop_parameters[2:])
-        segmentation = to_categorical(resize_segmentation(segmentation, self.crop_shape[::-1]))
+        segmentation = one_hot(resize_segmentation(segmentation, self.crop_shape[::-1]))
 
         if image is not None:
             # Crop the image around the bbox and resize to target shape
@@ -452,8 +452,8 @@ class AffineRegisteringTransformer:
 
         # Resize the resized cropped segmentation to the original shape of the bbox
         bbox_shape = (row_max - row_min, col_max - col_min)
-        segmentation = to_categorical(resize_segmentation(segmentation.argmax(axis=-1), bbox_shape[::-1]),
-                                      num_classes=segmentation.shape[-1])
+        segmentation = one_hot(resize_segmentation(segmentation.argmax(axis=-1), bbox_shape[::-1]),
+                               num_classes=segmentation.shape[-1])
 
         # Place the cropped segmentation at its original location, inside an empty segmentation
         og_segmentation = np.zeros(og_shape, dtype=np.uint8)
