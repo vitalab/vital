@@ -18,7 +18,7 @@ training (see [train](metrics/train)) or scores to evaluate the systems' perform
 [generative](modules/generative), etc.).
 
 - [utils](utils): a wide range of common utilities that may be used in multiple other packages
-(e.g. [image processing](utils/image), [parameter groups](utils/dataclasses.py), etc.).
+(e.g. [image processing](utils/image), [parameter groups](utils/parameters.py), etc.).
 
 ## Requirements
 The [vital.yml](vital.yml) file lists the dependencies required by the whole repository. In case you include the repository inside
