@@ -11,6 +11,8 @@ inside the project from which you want to use it.
 ## Description
 To help you follow along with the organization of the repository, here is a summary of each major package's purpose:
 
+- [logs](logs): generic utilities for logging results during the evaluation phase.
+
 - [metrics](metrics): common metrics that are not part of the traditional libraries, whether those metrics are losses for
 training (see [train](metrics/train)) or scores to evaluate the systems' performance (see [evaluate](metrics/evaluate)).
 
