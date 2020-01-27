@@ -17,7 +17,7 @@ training (see [train](metrics/train)) or scores to evaluate the systems' perform
 - [modules](modules): generic models, organized by task (e.g. [classification](modules/segmentation),
 [generative](modules/generative), etc.).
 
-- [utils](utils): a wide range of common utilities that may be used by several models
+- [utils](utils): a wide range of common utilities that may be used in multiple other packages
 (e.g. [image processing](utils/image), [parameter groups](utils/dataclasses.py), etc.).
 
 ## Requirements
