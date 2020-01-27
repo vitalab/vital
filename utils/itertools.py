@@ -5,10 +5,14 @@ from typing import Iterable
 
 
 class IterableResult(Iterable, ABC):
-    unit: str
-    index_name: str
+    """Interface to implement for iterables over systems' results to work with generic logs."""
+    desc: str  # Description of the iterable unit. Used in e.g. progress bar, metrics' index header, etc.
 
     def __init__(self, results_path: Path):
+        """
+        Args:
+            results_path: root path of the results over which to iterate.
+        """
         self.results_path = results_path
 
     def __len__(self):
@@ -16,4 +20,5 @@ class IterableResult(Iterable, ABC):
 
     @classmethod
     def add_args(cls, parser: ArgumentParser):
+        """Adds arguments required to configure the iterable results to logger's CLI."""
         pass

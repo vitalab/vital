@@ -10,14 +10,15 @@ from vital.logs.logger import Logger
 class MetricsLogger(Logger):
     """Abstract class that computes metrics on the results and saves them to csv."""
     log_type = Dict[str, Union[int, float]]
-    data_choices: List[str]
+    data_choices: List[str]  # tags of the data on which to compute metrics.
 
-    def __init__(self, data: str, **kwargs):
+    def __init__(self, data: str, **iterable_result_params):
         """
         Args:
-            data: name to the data on which to compute metrics.
+            data: tag of the data on which to compute metrics.
+            iterable_result_params: parameters to configure the iterable over the results.
         """
-        super().__init__(**kwargs, output_name_template=f'{{}}_{data}_{self.name}.csv')
+        super().__init__(output_name_template=f'{{}}_{data}_{self.name}.csv', **iterable_result_params)
         self.data = data
 
     @classmethod
@@ -33,30 +34,30 @@ class MetricsLogger(Logger):
         # Build a dataframe with the aggregated metrics at the top and relevant index names
         aggregated_metrics = cls._aggregate_metrics(df_metrics)
         df_full_metrics = pd.concat([aggregated_metrics, df_metrics])
-        df_full_metrics.index.name = cls.iterable_result_cls.index_name
+        df_full_metrics.index.name = cls.iterable_result_cls.desc
 
         # Save the combination of aggregated and detailed metrics to the csv file
         pd.DataFrame(df_full_metrics).to_csv(output_name, na_rep='Nan')
 
     @classmethod
     def _aggregate_metrics(cls, metrics: pd.DataFrame) -> pd.DataFrame:
-        """
+        """ Computes global statistics on the metrics computed over each result.
 
         Args:
-            metrics:
+            metrics: metrics computed over each result.
 
         Returns:
-
+            global statistics on the metrics computed over each result.
         """
         return metrics.agg(['mean', 'std'])
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
-        """ Adds support for generic metrics logger arguments to a parser.
+        """ Creates parser with support for generic metrics and iterable logger arguments.
 
-        Args:
-           parser: parser object for which to add generic metrics arguments.
+        Returns:
+          parser object with support for generic metrics and iterable logger arguments.
         """
         parser = super().build_parser()
-        super().add_data_selection_args(parser, default=cls.data_choices[0], choices=cls.data_choices)
+        super().add_data_selection_args(parser, choices=cls.data_choices)
         return parser

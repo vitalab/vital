@@ -8,22 +8,22 @@ from vital.utils.config import ResultTags
 
 
 class AnatomicalMetricsLogger(MetricsLogger):
-    """Class that computes anatomical metrics on the results and saves them to csv."""
+    """Abstract class that computes anatomical metrics on the results and saves them to csv."""
     name = 'anatomical_metrics'
     data_choices = [ResultTags.post_pred, ResultTags.pred, ResultTags.gt]
-    thresholds: Dict[str, Dict[str, Union[int, float]]]
+    thresholds: Dict[str, Dict[str, Union[int, float]]]  # anatomical metrics' threshold values
 
     @classmethod
     def _aggregate_metrics(cls, metrics: pd.DataFrame) -> pd.DataFrame:
-        """
+        """ Computes the number of results that were anatomically invalid for each anatomical metric.
 
         Args:
-            metrics:
+            metrics: metrics computed over each result.
 
         Returns:
-
+            the number of results that were anatomically invalid for each anatomical metric.
         """
-        # Aggregate the metrics
+
         def count_metric_errors(metric_name):
             return lambda series: sum(not check_metric_validity(metric_value, cls.thresholds.get(metric_name),
                                                                 optional_structure=False)
