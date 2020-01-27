@@ -5,7 +5,7 @@ from typing import List, Type, Any, Tuple, Optional, Dict
 from pathos.multiprocessing import Pool
 from tqdm import tqdm
 
-from vital.utils.itertools import IterableResult
+from vital.logs.utils.itertools import IterableResult
 
 
 class Logger:
