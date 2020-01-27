@@ -9,7 +9,7 @@ from vital.utils.config import ResultTags
 
 class AnatomicalMetricsLogger(MetricsLogger):
     """Abstract class that computes anatomical metrics on the results and saves them to csv."""
-    name = 'anatomical_metrics'
+    desc = 'anatomical_metrics'
     data_choices = [ResultTags.post_pred, ResultTags.pred, ResultTags.gt]
     thresholds: Dict[str, Dict[str, Union[int, float]]]  # anatomical metrics' threshold values
 

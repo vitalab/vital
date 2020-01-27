@@ -9,7 +9,7 @@ from vital.logs.logger import Logger
 
 class MetricsLogger(Logger):
     """Abstract class that computes metrics on the results and saves them to csv."""
-    log_type = Dict[str, Union[int, float]]
+    Log = Dict[str, Union[int, float]]
     data_choices: List[str]  # tags of the data on which to compute metrics.
 
     def __init__(self, data: str, **iterable_result_params):
@@ -18,7 +18,7 @@ class MetricsLogger(Logger):
             data: tag of the data on which to compute metrics.
             iterable_result_params: parameters to configure the iterable over the results.
         """
-        super().__init__(output_name_template=f'{{}}_{data}_{self.name}.csv', **iterable_result_params)
+        super().__init__(output_name_template=f'{{}}_{data}_{self.desc}.csv', **iterable_result_params)
         self.data = data
 
     @classmethod
@@ -34,7 +34,7 @@ class MetricsLogger(Logger):
         # Build a dataframe with the aggregated metrics at the top and relevant index names
         aggregated_metrics = cls._aggregate_metrics(df_metrics)
         df_full_metrics = pd.concat([aggregated_metrics, df_metrics])
-        df_full_metrics.index.name = cls.iterable_result_cls.desc
+        df_full_metrics.index.name = cls.IterableResultT.desc
 
         # Save the combination of aggregated and detailed metrics to the csv file
         pd.DataFrame(df_full_metrics).to_csv(output_name, na_rep='Nan')
