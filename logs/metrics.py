@@ -12,13 +12,12 @@ class MetricsLogger(Logger):
     Log = Dict[str, Union[int, float]]
     data_choices: List[str]  # tags of the data on which to compute metrics.
 
-    def __init__(self, data: str, **iterable_result_params):
+    def __init__(self, data: str, **kwargs):
         """
         Args:
             data: tag of the data on which to compute metrics.
-            iterable_result_params: parameters to configure the iterable over the results.
         """
-        super().__init__(output_name_template=f'{{}}_{data}_{self.desc}.csv', **iterable_result_params)
+        super().__init__(output_name_template=f'{{}}_{data}_{self.desc}.csv', **kwargs)
         self.data = data
 
     @classmethod
