@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import List, Type, Tuple, Optional, Dict, TypeVar
+from typing import Type, Tuple, Optional, Dict, TypeVar, Sequence
 
 from pathos.multiprocessing import Pool
 from tqdm import tqdm
@@ -93,7 +93,7 @@ class Logger:
         return parser
 
     @classmethod
-    def add_data_selection_args(cls, parser: ArgumentParser, choices: List[str]):
+    def add_data_selection_args(cls, parser: ArgumentParser, choices: Sequence[str]):
         """ Adds data selection arguments to a parser.
 
         Args:

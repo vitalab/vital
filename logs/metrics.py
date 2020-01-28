@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
+from numbers import Real
 from pathlib import Path
-from typing import Dict, Union, List
+from typing import Dict, List
 
 import pandas as pd
 
@@ -9,7 +10,7 @@ from vital.logs.logger import Logger
 
 class MetricsLogger(Logger):
     """Abstract class that computes metrics on the results and saves them to csv."""
-    Log = Dict[str, Union[int, float]]
+    Log = Dict[str, Real]
     data_choices: List[str]  # tags of the data on which to compute metrics.
 
     def __init__(self, data: str, **kwargs):
@@ -21,7 +22,7 @@ class MetricsLogger(Logger):
         self.data = data
 
     @classmethod
-    def write_logs(cls, logs: Dict[str, Dict[str, Union[int, float]]], output_name: Path):
+    def write_logs(cls, logs: Dict[str, Log], output_name: Path):
         """ Writes the computed metrics, with the aggregated results at the top, to csv format.
 
         Args:
