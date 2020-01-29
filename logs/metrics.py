@@ -6,8 +6,10 @@ from typing import Dict, List
 import pandas as pd
 
 from vital.logs.logger import Logger
+from vital.utils.delegate import delegate_inheritance
 
 
+@delegate_inheritance()
 class MetricsLogger(Logger):
     """Abstract class that computes metrics on the results and saves them to csv."""
     Log = Dict[str, Real]
