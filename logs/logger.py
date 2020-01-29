@@ -101,3 +101,14 @@ class Logger:
            choices: tags of the data the logger can be called on. The first tag in the list is the default choice.
         """
         parser.add_argument("--data", type=str, default=choices[0], choices=choices, help="Results data to log.")
+
+    @classmethod
+    def main(cls):
+        """Generic main that handles CLI and logger calling for use in loggers that could be executable scripts"""
+        parser = cls.build_parser()
+        kwargs = vars(parser.parse_args())
+
+        results_path = kwargs.pop('results_path')
+        output_folder = kwargs.pop('output_folder')
+        logger = cls(**kwargs)
+        logger(results_path=results_path, output_folder=output_folder)
