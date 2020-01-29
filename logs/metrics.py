@@ -24,12 +24,12 @@ class MetricsLogger(Logger):
         self.data = data
 
     @classmethod
-    def write_logs(cls, logs: Dict[str, Log], output_name: Path):
+    def aggregate_logs(cls, logs: Dict[str, Log], output_path: Path):
         """ Writes the computed metrics, with the aggregated results at the top, to csv format.
 
         Args:
             logs: mapping between each result in the iterable results and their metrics' values.
-            output_name: the name of the metrics' csv file to be produced as output.
+            output_path: the name of the metrics' csv file to be produced as output.
         """
         df_metrics = pd.DataFrame.from_dict(logs, orient='index')
 
@@ -39,7 +39,7 @@ class MetricsLogger(Logger):
         df_full_metrics.index.name = cls.IterableResultT.desc
 
         # Save the combination of aggregated and detailed metrics to the csv file
-        pd.DataFrame(df_full_metrics).to_csv(output_name, na_rep='Nan')
+        pd.DataFrame(df_full_metrics).to_csv(output_path, na_rep='Nan')
 
     @classmethod
     def _aggregate_metrics(cls, metrics: pd.DataFrame) -> pd.DataFrame:

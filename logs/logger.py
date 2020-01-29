@@ -20,7 +20,8 @@ class Logger:
         """
         Args:
             output_name_template: name template for the aggregated log, if the logger produces an aggregated log.
-            iterable_result_params: parameters to configure the iterable over the results.
+            iterable_result_params: parameters to configure the iterable over the results. Can be None if the logger
+                                    will only be used to write logs (and not called).
         """
         self.iterable_result_params = iterable_result_params
         self.output_name_template = output_name_template
@@ -42,16 +43,17 @@ class Logger:
             with Pool() as pool:
                 logs = dict(tqdm(pool.imap(self._log_result, results),
                                  total=len(results), unit=results.desc,
-                                 desc=f"Collecting {self.desc} logs for {results_path.stem}"))
-            tqdm.write(f"Saving {self.desc} logs to {output_folder}")
-            self.write_logs(logs, output_folder.joinpath(self.output_name_template.format(results_path.stem)))
+                                 desc=f"Collecting {results_path.stem} data for {self.desc}"))
+            output_path = output_folder.joinpath(self.output_name_template.format(results_path.stem))
+            tqdm.write(f"Aggregating {results_path.stem} {self.desc} in {output_path} ...")
+            self.aggregate_logs(logs, output_path)
         else:  # If the logger writes the log as side-effects as it iterates over the results
             with Pool() as pool:
                 list(tqdm(pool.imap(self._log_result, results),
                           total=len(results), unit=results.desc,
                           desc=f"Logging {results_path.stem} {self.desc} to {output_folder}"))
 
-    def _log_result(self, result: Result) -> Optional[Tuple[str, Log]]:
+    def _log_result(self, result: Result) -> Optional[Tuple[str, "Log"]]:
         """ Generates a log (either writing to a file or computing a result to aggregate) for a single result.
 
         Args:
@@ -64,15 +66,14 @@ class Logger:
         """
         raise NotImplementedError
 
-    @classmethod
-    def write_logs(cls, logs: Dict[str, Log], output_name: Path):
-        """ Writes the logs aggregated from all the results, with the aggregated results at the top.
+    def aggregate_logs(self, logs: Dict[str, "Log"], output_path: Path):
+        """ Collects the logs aggregated from all the results, and performs operations on the aggregated logs.
 
         Args:
             logs: mapping between each result in the iterable results and their log.
-            output_name: path where to write the aggregated log file.
+            output_path: path where to write the results of the operations on the aggregated logs..
         """
-        if cls.Log is None:
+        if self.Log is None:
             pass
         else:
             raise NotImplementedError
