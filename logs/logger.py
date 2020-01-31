@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Type, Tuple, Optional, Dict, TypeVar, Sequence
+from typing import Type, Tuple, Optional, TypeVar, Sequence, Mapping
 
 from pathos.multiprocessing import Pool
 from tqdm import tqdm
@@ -66,7 +66,7 @@ class Logger:
         """
         raise NotImplementedError
 
-    def aggregate_logs(self, logs: Dict[str, "Log"], output_path: Path):
+    def aggregate_logs(self, logs: Mapping[str, "Log"], output_path: Path):
         """ Collects the logs aggregated from all the results, and performs operations on the aggregated logs.
 
         Args:

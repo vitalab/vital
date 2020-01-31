@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from numbers import Real
 from pathlib import Path
-from typing import Dict, List
+from typing import Sequence, Mapping
 
 import pandas as pd
 
@@ -12,8 +12,8 @@ from vital.utils.delegate import delegate_inheritance
 @delegate_inheritance()
 class MetricsLogger(Logger):
     """Abstract class that computes metrics on the results and saves them to csv."""
-    Log = Dict[str, Real]
-    data_choices: List[str]  # tags of the data on which to compute metrics.
+    Log = Mapping[str, Real]
+    data_choices: Sequence[str]  # tags of the data on which to compute metrics.
 
     def __init__(self, data: str, **kwargs):
         """
@@ -24,7 +24,7 @@ class MetricsLogger(Logger):
         self.data = data
 
     @classmethod
-    def aggregate_logs(cls, logs: Dict[str, Log], output_path: Path):
+    def aggregate_logs(cls, logs: Mapping[str, Log], output_path: Path):
         """ Writes the computed metrics, with the aggregated results at the top, to csv format.
 
         Args:

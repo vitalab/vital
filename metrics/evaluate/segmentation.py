@@ -1,17 +1,20 @@
-from typing import Union, List, Tuple, Dict
+from numbers import Real
+from typing import Tuple, Sequence, Mapping
 
 import numpy as np
 from scipy.ndimage import distance_transform_edt, binary_fill_holes, measurements
 from skimage import measure, morphology
 from skimage.morphology import convex_hull_image
 
+from vital.utils.config import SemanticStructureId
+
 
 class Segmentation2DMetrics:
     """ Class that implements algorithms to compute metrics on segmentations.
     """
 
-    def __init__(self, segmentation: np.ndarray, struct_labels: Union[int, List[int]],
-                 voxelspacing: Tuple[int, int] = (1, 1)):
+    def __init__(self, segmentation: np.ndarray, struct_labels: Sequence[SemanticStructureId],
+                 voxelspacing: Tuple[Real, Real] = (1, 1)):
         """
         Args:
             segmentation: (H, W), a 2D array where the value of each entry in the array is the label of the
@@ -36,7 +39,7 @@ class Segmentation2DMetrics:
         # they would otherwise skew the metrics' values.
         self.small_objects_size = segmentation.shape[0] * segmentation.shape[1] / 2 ** 14
 
-    def count_holes(self, struct_label: Union[int, List[int]]) -> int:
+    def count_holes(self, struct_label: SemanticStructureId) -> int:
         """ Counts the pixels that form holes in a supposedly contiguous segmented area.
 
         Args:
@@ -61,7 +64,7 @@ class Segmentation2DMetrics:
 
         return hole_pixel_count
 
-    def count_disconnectivity(self, struct_label: Union[int, List[int]]) -> int:
+    def count_disconnectivity(self, struct_label: SemanticStructureId) -> int:
         """ Counts the pixels that are disconnected from a supposedly contiguous segmented area.
 
         Args:
@@ -85,8 +88,8 @@ class Segmentation2DMetrics:
         else:  # If there was only a single contiguous region making up the segmented area
             return 0
 
-    def count_holes_between_regions(self, struct1_label: Union[int, List[int]],
-                                    struct2_label: Union[int, List[int]]) -> int:
+    def count_holes_between_regions(self, struct1_label: SemanticStructureId,
+                                    struct2_label: SemanticStructureId) -> int:
         """ Counts the pixels in the gap between two supposedly connected segmented areas.
 
         NOTE: As this method iterates over holes (directly in Python) in supposedly filled-in segmented areas, its
@@ -135,8 +138,8 @@ class Segmentation2DMetrics:
 
         return pixels_in_holes if pixels_in_holes > self.small_objects_size else 0
 
-    def count_frontier_between_regions(self, struct1_label: Union[int, List[int]],
-                                       struct2_label: Union[int, List[int]]) -> int:
+    def count_frontier_between_regions(self, struct1_label: SemanticStructureId,
+                                       struct2_label: SemanticStructureId) -> int:
         """ Counts the pixels touching between two supposedly disconnected segmented areas.
 
         Args:
@@ -154,7 +157,7 @@ class Segmentation2DMetrics:
         pixels_on_frontier = frontier.sum()
         return pixels_on_frontier if pixels_on_frontier > 1 else 0
 
-    def measure_concavity(self, struct_label: Union[int, List[int]], no_structure_flag: float = float('nan')) -> float:
+    def measure_concavity(self, struct_label: SemanticStructureId, no_structure_flag: float = float('nan')) -> float:
         """ Measures the depth of a concavity in a supposedly convex segmented area.
 
         Args:
@@ -192,8 +195,7 @@ class Segmentation2DMetrics:
         else:  # If the structure is not in the image
             return no_structure_flag
 
-    def measure_circularity(self, struct_label: Union[int, List[int]],
-                            no_structure_flag: float = float('nan')) -> float:
+    def measure_circularity(self, struct_label: SemanticStructureId, no_structure_flag: float = float('nan')) -> float:
         """ Measures the isoperimetric ratio of a segmented area, assuming the area is contiguous.
 
         Args:
@@ -225,8 +227,8 @@ class Segmentation2DMetrics:
         else:  # If the structure is not in the image
             return no_structure_flag
 
-    def measure_frontier_ratio_between_regions(self, struct1_label: Union[int, List[int]],
-                                               struct2_label: Union[int, List[int]]) -> float:
+    def measure_frontier_ratio_between_regions(self, struct1_label: SemanticStructureId,
+                                               struct2_label: SemanticStructureId) -> float:
         """ Measures the ratio between the largest continuous segment of the frontier between the two segmented areas
         and the width of the first segmented area.
         Note that because of this behavior, `struct1_label` and `struct2_label` are note interchangeable.
@@ -255,8 +257,8 @@ class Segmentation2DMetrics:
         else:  # If the structure is not in the image
             return 0.
 
-    def measure_width_ratio_between_regions(self, struct1_label: Union[int, List[int]],
-                                            struct2_label: Union[int, List[int]],
+    def measure_width_ratio_between_regions(self, struct1_label: SemanticStructureId,
+                                            struct2_label: SemanticStructureId,
                                             no_structure_flag: float = float('nan')) -> float:
         """ Measures the ratio between the width (not necessarily contiguous) of two structures at the center of mass
         of the regions.
@@ -282,7 +284,7 @@ class Segmentation2DMetrics:
         struct2_width = np.sum(self.binary_structs[struct2_label][center_of_mass_row])
         return struct1_width / struct2_width if (struct1_width and struct2_width) else no_structure_flag
 
-    def measure_erosion_ratio_before_split(self, struct_label: Union[int, List[int]],
+    def measure_erosion_ratio_before_split(self, struct_label: SemanticStructureId,
                                            no_structure_flag: float = float('nan')) -> float:
         """ Measures the ratio between the depth of erosion necessary to divide a continuous structure in at least two
         fragments and the maximum thickness (in pixels) of the structure.
@@ -315,7 +317,7 @@ class Segmentation2DMetrics:
         else:  # If the structure is not in the image
             return no_structure_flag
 
-    def measure_convexity(self, struct_label: Union[int, List[int]], no_structure_flag: float = float('nan')) -> float:
+    def measure_convexity(self, struct_label: SemanticStructureId, no_structure_flag: float = float('nan')) -> float:
         """ Measures the shape convexity of a segmented area.
 
         Args:
@@ -335,7 +337,9 @@ class Segmentation2DMetrics:
             return no_structure_flag
 
 
-def check_metric_validity(metric_value: float, thresholds: Dict[str, float], optional_structure: bool) -> bool:
+def check_metric_validity(metric_value: Real,
+                          thresholds: Mapping[str, Real] = None,
+                          optional_structure: bool = False) -> bool:
     """ Checks whether the value of the metric is within the range of values meaning the segmentation is correct.
 
     Args:

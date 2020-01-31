@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Mapping
 
 import numpy as np
 import pandas as pd
@@ -16,7 +16,7 @@ class GroupsEmbeddingLogger(Logger):
     desc = 'groups_embedding'
     Log = np.ndarray
 
-    def __init__(self, embedding_params: Dict[str, Any] = None, interactive: bool = False, **kwargs):
+    def __init__(self, embedding_params: Mapping[str, Any] = None, interactive: bool = False, **kwargs):
         """
         Args:
             embedding_params: parameters to initialize the UMAP object.
@@ -28,7 +28,7 @@ class GroupsEmbeddingLogger(Logger):
         self.umap = umap.UMAP(**embedding_params)
         self.interactive = interactive
 
-    def aggregate_logs(self, logs: Dict[str, Log], output_path: Path):
+    def aggregate_logs(self, logs: Mapping[str, Log], output_path: Path):
         """ Embeds the high-dimensional gathered from the results using UMAP and plots the generated embedding.
 
         Args:

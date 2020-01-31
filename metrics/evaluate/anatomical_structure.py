@@ -1,6 +1,5 @@
-from typing import Union, List
-
 from vital.metrics.evaluate.segmentation import Segmentation2DMetrics
+from vital.utils.config import SemanticStructureId
 
 
 class Anatomical2DStructureMetrics:
@@ -8,7 +7,7 @@ class Anatomical2DStructureMetrics:
     segmentation.
     """
 
-    def __init__(self, segmentation_metrics: Segmentation2DMetrics, struct_label: Union[int, List[int]]):
+    def __init__(self, segmentation_metrics: Segmentation2DMetrics, struct_label: SemanticStructureId):
         """
         Args:
             segmentation_metrics: an instance, based on the segmentation for which to compute anatomical metrics, of

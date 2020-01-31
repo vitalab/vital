@@ -1,4 +1,5 @@
-from typing import Union, Dict
+from numbers import Real
+from typing import Mapping
 
 import pandas as pd
 
@@ -11,7 +12,7 @@ class AnatomicalMetricsLogger(MetricsLogger):
     """Abstract class that computes anatomical metrics on the results and saves them to csv."""
     desc = 'anatomical_metrics'
     data_choices = [ResultTags.post_pred, ResultTags.pred, ResultTags.gt]
-    thresholds: Dict[str, Dict[str, Union[int, float]]]  # anatomical metrics' threshold values
+    thresholds: Mapping[str, Mapping[str, Real]]  # anatomical metrics' threshold values
 
     @classmethod
     def _aggregate_metrics(cls, metrics: pd.DataFrame) -> pd.DataFrame:
@@ -25,7 +26,8 @@ class AnatomicalMetricsLogger(MetricsLogger):
         """
 
         def count_metric_errors(metric_name):
-            return lambda series: sum(not check_metric_validity(metric_value, cls.thresholds.get(metric_name),
+            return lambda series: sum(not check_metric_validity(metric_value,
+                                                                thresholds=cls.thresholds.get(metric_name),
                                                                 optional_structure=False)
                                       for metric_value in series)
 

@@ -14,19 +14,20 @@ Metric
 """
 from numbers import Real
 from statistics import mean
-from typing import Callable, Sequence, Union
+from typing import Callable, Sequence
 
 import numpy as np
 from medpy.metric import hd, assd, precision, recall, dc, jc
 from sklearn.metrics import accuracy_score
 
+from vital.utils.config import SemanticStructureId
 from vital.utils.delegate import delegate_inheritance
 
 
 class Metric:
     """Abstract class for metrics to compute on the results of a model."""
 
-    def __init__(self, metric_fn: Callable, desc: str, struct_labels: Sequence[Union[int, Sequence[int]]]):
+    def __init__(self, metric_fn: Callable, desc: str, struct_labels: Sequence[SemanticStructureId]):
         """
         Args:
             desc: name of the metric.
