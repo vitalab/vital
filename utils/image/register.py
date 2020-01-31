@@ -1,11 +1,12 @@
 import itertools
-from typing import Union, Tuple, Optional
+from typing import Tuple, Optional
 
 import numpy as np
 from PIL.Image import LINEAR
 from keras_preprocessing.image import ImageDataGenerator
 from scipy import ndimage
 
+from vital.utils.config import SemanticStructureId
 from vital.utils.format import one_hot
 from vital.utils.image.transform import resize_segmentation, resize_image
 
@@ -267,7 +268,7 @@ class AffineRegisteringTransformer:
         return image
 
     @staticmethod
-    def _find_structure_center(segmentation: np.ndarray, struct_label: Union[int, list],
+    def _find_structure_center(segmentation: np.ndarray, struct_label: SemanticStructureId,
                                default_center: Tuple[int, int] = None) -> Tuple[int, int]:
         """ Extract the center of mass of a structure in a segmentation.
 

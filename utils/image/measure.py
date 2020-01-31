@@ -1,12 +1,15 @@
-from typing import Union, List
+from numbers import Real
+from typing import Union
 
 import numpy as np
 from torch import Tensor
 
+from vital.utils.config import SemanticStructureId
+
 
 def bbox(segmentation: Union[np.ndarray, Tensor],
-         labels: Union[int, List[int]],
-         bbox_margin: float = 0.05,
+         labels: SemanticStructureId,
+         bbox_margin: Real = 0.05,
          channel_axis: int = -1) -> np.ndarray:
     """ Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 

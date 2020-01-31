@@ -1,6 +1,9 @@
 from enum import Enum
+from typing import Union, Sequence
 
 from vital.utils.parameters import parameters
+
+SemanticStructureId = Union[int, Sequence[int]]
 
 
 class ConfigurationLabel(Enum):

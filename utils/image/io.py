@@ -5,19 +5,19 @@ import SimpleITK
 import numpy as np
 
 
-def load_and_process_mhd_data(filename: str) -> Tuple[np.ndarray, Tuple[np.ndarray, ...]]:
+def load_mhd(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[int, ...]]]:
     """ This function loads a mhd image and the image and its metadata.
 
     Args:
-        filename: path to the image.
+        filepath: path to the image.
 
     Returns:
-        - ([N], H, W, C), image array
+        - ([N], H, W), image array.
         - collection of metadata.
     """
 
     # load image and save info
-    image = SimpleITK.ReadImage(filename)
+    image = SimpleITK.ReadImage(str(filepath))
     info = (image.GetSize(), image.GetOrigin(), image.GetSpacing(), image.GetDirection())
 
     # create numpy array from the .mhd file and corresponding image
