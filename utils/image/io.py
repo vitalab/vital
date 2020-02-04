@@ -31,7 +31,7 @@ def save_as_mhd(im_array: np.ndarray, output_filepath: Path, origin=(0, 0, 0), s
     """ Saves an array to mhd format.
 
     Args:
-        im_array: the 2d or 3d image.
+        im_array: ([N], H, W), image array.
         output_filepath: the output filename. Must end in ".mhd".
         origin: center of the image.
         spacing: size of the voxels along each dimension.
