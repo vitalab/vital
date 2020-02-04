@@ -1,3 +1,4 @@
+from numbers import Number
 from pathlib import Path
 from typing import Tuple
 
@@ -5,8 +6,8 @@ import SimpleITK
 import numpy as np
 
 
-def load_mhd(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[int, ...]]]:
-    """ This function loads a mhd image and the image and its metadata.
+def load_mhd(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[Number, ...], ...]]:
+    """ This function loads a mhd image and returns the image and its metadata.
 
     Args:
         filepath: path to the image.
