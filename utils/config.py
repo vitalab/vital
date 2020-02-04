@@ -30,6 +30,18 @@ class ConfigurationLabel(Enum):
             return name
 
 
+class Subset(ConfigurationLabel):
+    """
+    Args:
+        train: id of the training subset.
+        valid: id of the validation subset.
+        test: id of the testing subset.
+    """
+    TRAIN = 'train'
+    VALID = 'valid'
+    TEST = 'test'
+
+
 @parameters
 class ResultTags:
     """ Class to gather the tags referring to the generic results stored in the HDF5 result files.
