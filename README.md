@@ -17,6 +17,9 @@ training (see [train](metrics/train)) or scores to evaluate the systems' perform
 - [modules](modules): generic models, organized by task (e.g. [classification](modules/segmentation),
 [generative](modules/generative), etc.).
 
+- [systems](systems): common boilerplate Lightning module and trainer code, from which concrete projects' systems and
+trainers should inherit.
+
 - [utils](utils): a wide range of common utilities that may be used in multiple other packages
 (e.g. [image processing](utils/image), [parameter groups](utils/parameters.py), etc.).
 

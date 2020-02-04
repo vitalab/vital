@@ -1,7 +1,14 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Tuple, Sequence, Union
 
 parameters = dataclass(frozen=True)
+
+
+@parameters
+class SystemParameters:
+    save_to: Path
+    pretrained: Path = None
 
 
 @parameters
