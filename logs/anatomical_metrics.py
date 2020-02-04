@@ -32,6 +32,6 @@ class AnatomicalMetricsLogger(MetricsLogger):
                                       for metric_value in series)
 
         aggregation_dict = {metric_name: count_metric_errors(metric_name) for metric_name in metrics.keys()}
-        aggregated_metrics = pd.DataFrame(metrics.agg(aggregation_dict)).T
+        aggregated_metrics = metrics.agg(aggregation_dict)
         aggregated_metrics.name = 'anatomical_errors_count'  # The series' name will be its index in the dataframe
-        return aggregated_metrics
+        return pd.DataFrame(aggregated_metrics).T
