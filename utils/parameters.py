@@ -1,19 +1,21 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Sequence, Union
 
 parameters = dataclass(frozen=True)
-
-
-@parameters
-class DataParameters:
-    batch_size: int
-    use_da: bool
 
 
 @parameters
 class DataShape:
     in_shape: Tuple[int, ...]
     out_shape: Tuple[int, ...]
+
+
+@parameters
+class DataParameters:
+    shape: DataShape
+    use_da: bool
+    batch_size: int
+    workers: int
 
 
 @parameters
