@@ -26,5 +26,5 @@ class TrainerParameters:
     default_save_path: str
     fast_dev_run: bool
     max_nb_epochs: int
-    gpus: int
+    gpus: Union[int, Sequence[int]]
     nb_gpu_nodes: int
