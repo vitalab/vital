@@ -5,8 +5,8 @@ from typing import Dict, Type
 
 from pytorch_lightning import Trainer
 
-from vital.utils.parameters import TrainerParameters
 from vital.systems.vital_system import VitalSystem
+from vital.utils.parameters import TrainerParameters
 
 
 class VitalTrainer(ABC):
@@ -57,9 +57,8 @@ class VitalTrainer(ABC):
             # TODO load system from checkpoints
             model: system_cls
             trainer.model = model
-            pass
+            trainer.test(model)  # test system
         else:
             model = system_cls(**system_params)  # init system
             trainer.fit(model)  # train system
-
-        trainer.run_evaluation(test=True)  # test system
+            trainer.test()  # test system
