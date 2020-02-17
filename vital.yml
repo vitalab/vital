@@ -1,8 +1,8 @@
 name: vital
 channels:
+  - pytorch
   - defaults
   - conda-forge
-  - pytorch
 dependencies:
   - python>=3.7
   - pip
@@ -16,8 +16,10 @@ dependencies:
   - tqdm
   - pytorch
   - torchvision
-  - cudatoolkit
+  - cudatoolkit=10.1
   - pip:
+      - pytorch-lightning
+      - torchsummary
       - keras # Used by `utils/image/register.py` for its image processing utilities (w/o backend)
       - git+https://github.com/longcw/RoIAlign.pytorch
       - git+https://github.com/lmcinnes/umap

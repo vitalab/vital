@@ -34,6 +34,8 @@ class OptimizerParameters:
 class TrainerParameters:
     default_save_path: str
     fast_dev_run: bool
-    max_nb_epochs: int
+    weights_summary: str
+    min_epochs: int
+    max_epochs: int
     gpus: Union[int, Sequence[int]]
-    nb_gpu_nodes: int
+    num_nodes: int
