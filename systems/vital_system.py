@@ -109,7 +109,7 @@ class VitalSystem(pl.LightningModule, ABC):
         Generic arguments with model specific values:
             - lr
             - batch_size
-            - max_nb_epochs
+            - max_epochs
 
         Returns:
             parser object that supports generic CL arguments used by ``VitalSystem``s.
@@ -129,8 +129,9 @@ class VitalSystem(pl.LightningModule, ABC):
         parser.add_argument("--predict", action='store_true', help="Skip training and do test phase")
 
         # training configuration parameters
-        parser.add_argument('--gpus', type=Union[int, List[int]], default=None)
-        parser.add_argument('--nb_gpu_nodes', type=int, default=1)
+        parser.add_argument('--weights_summary', type=str, default='full', choices=['full', 'top'])
+        parser.add_argument('--gpus', type=Union[int, List[int]], default=1)
+        parser.add_argument('--num_nodes', type=int, default=1)
         parser.add_argument('--workers', type=int, default=0)
 
         # Lightning configuration parameters
@@ -154,9 +155,11 @@ class VitalSystem(pl.LightningModule, ABC):
         """
         trainer_params = TrainerParameters(default_save_path=args.save_to,
                                            fast_dev_run=args.fast_dev_run,
+                                           weights_summary=args.weights_summary,
                                            gpus=args.gpus,
-                                           nb_gpu_nodes=args.nb_gpu_nodes,
-                                           max_nb_epochs=args.max_nb_epochs)
+                                           num_nodes=args.num_nodes,
+                                           min_epochs=args.min_epochs if 'min_epochs' in args else 1,
+                                           max_epochs=args.max_epochs)
         optim_params = OptimizerParameters(lr=args.lr)
         system_params = SystemParameters(
             save_to=args.save_to,
