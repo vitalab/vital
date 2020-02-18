@@ -33,7 +33,7 @@ def dice(input: Tensor, target: Tensor, label: int, reduction: Literal['mean', '
     target = torch.flatten(target, start_dim=1)
 
     # Compute dice score
-    intersect = input + target
+    intersect = torch.sum(input * target, 1, keepdim=True)
     sum_input = torch.sum(input, 1, keepdim=True)
     sum_target = torch.sum(target, 1, keepdim=True)
     dice = torch.mean((2 * intersect + 1) / (sum_input + sum_target + 1), dim=reduce_axis)
