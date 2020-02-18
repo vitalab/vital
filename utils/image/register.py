@@ -1,5 +1,6 @@
 import itertools
-from typing import Tuple, Optional
+from numbers import Real
+from typing import Tuple, Optional, Mapping, Dict, MutableMapping, Any, Sequence, Union
 
 import numpy as np
 from PIL.Image import LINEAR
@@ -14,7 +15,7 @@ Shift = Tuple[int, int]
 Rotation = float
 Zoom = Tuple[int, int]
 Crop = Tuple[int, int, int, int]
-
+RegisteringParameter = Union[Shift, Rotation, Zoom, Crop]
 
 class AffineRegisteringTransformer:
     """ Class that uses Keras' ImageDataGenerator to register image/segmentation pairs based on the structures in the
@@ -119,7 +120,8 @@ class AffineRegisteringTransformer:
 
         return registering_parameters, segmentation, image
 
-    def undo_batch_registering(self, segmentations: np.ndarray, registering_parameters: dict) -> np.ndarray:
+    def undo_batch_registering(self, segmentations: np.ndarray, registering_parameters: Mapping[str, np.ndarray]) \
+            -> np.ndarray:
         """ Undoes the registering on the segmentations using the parameters saved during the registration.
 
         Args:
@@ -151,7 +153,8 @@ class AffineRegisteringTransformer:
             unregistered_segmentations[idx] = self.undo_registering(segmentation, seg_registering_parameters)
         return unregistered_segmentations
 
-    def undo_registering(self, segmentation: np.ndarray, registering_parameters: dict) -> np.ndarray:
+    def undo_registering(self, segmentation: np.ndarray, registering_parameters: Mapping[str, RegisteringParameter]) \
+            -> np.ndarray:
         """ Undoes the registering on the segmentation using the parameters saved during the registration.
 
         Args:
@@ -163,6 +166,7 @@ class AffineRegisteringTransformer:
             categorical un-registered segmentation.
         """
         # Get default registering parameters for steps that were not provided
+        registering_parameters = dict(registering_parameters)
         registering_parameters.update({registering_step: self._get_default_parameters(segmentation)[registering_step]
                                        for registering_step in AffineRegisteringTransformer.registering_steps
                                        if registering_step not in registering_parameters.keys()})
@@ -467,7 +471,8 @@ class AffineRegisteringTransformer:
 
         return og_segmentation
 
-    def _transform_image(self, image: np.ndarray, transform_parameters: dict) -> np.ndarray:
+    def _transform_image(self, image: np.ndarray, transform_parameters: Mapping[str, RegisteringParameter]) \
+            -> np.ndarray:
         """ Applies transformations on an image.
 
         Args:
@@ -481,7 +486,8 @@ class AffineRegisteringTransformer:
         """
         return self.transformer.apply_transform(image, transform_parameters)
 
-    def _transform_segmentation(self, segmentation: np.ndarray, transform_parameters: dict) -> np.ndarray:
+    def _transform_segmentation(self, segmentation: np.ndarray,
+                                transform_parameters: Mapping[str, RegisteringParameter]) -> np.ndarray:
         """ Applies transformations on a segmentation.
 
         Args:
