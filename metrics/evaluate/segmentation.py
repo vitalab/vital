@@ -1,5 +1,5 @@
 from numbers import Real
-from typing import Tuple, Sequence, Mapping
+from typing import Tuple, Sequence, Mapping, Literal
 
 import numpy as np
 from scipy.ndimage import distance_transform_edt, binary_fill_holes, measurements
@@ -338,7 +338,7 @@ class Segmentation2DMetrics:
 
 
 def check_metric_validity(metric_value: Real,
-                          thresholds: Mapping[str, Real] = None,
+                          thresholds: Mapping[Literal['min', 'max'], Real] = None,
                           optional_structure: bool = False) -> bool:
     """ Checks whether the value of the metric is within the range of values meaning the segmentation is correct.
 
@@ -357,7 +357,7 @@ def check_metric_validity(metric_value: Real,
     if np.isnan(metric_value):  # If the structure on which to compute the metric was not present in the segmentation
         validity = optional_structure
     elif thresholds:  # If the metric has a range of value within which segmentations are considered valid
-        validity = thresholds.get('min', 0) <= metric_value <= thresholds.get('max', np.inf)
+        validity = thresholds.get('min', 0.) <= metric_value <= thresholds.get('max', np.inf)
     else:  # If no range of valid values are provided, a value of '0' is considered to mean no error, and any other
         # value means an error
         validity = not bool(metric_value)

@@ -1,5 +1,5 @@
 from numbers import Real
-from typing import Mapping
+from typing import Mapping, Literal
 
 import pandas as pd
 
@@ -12,7 +12,7 @@ class AnatomicalMetricsLogger(MetricsLogger):
     """Abstract class that computes anatomical metrics on the results and saves them to csv."""
     desc = 'anatomical_metrics'
     data_choices = [ResultTags.post_pred, ResultTags.pred, ResultTags.gt]
-    thresholds: Mapping[str, Mapping[str, Real]]  # anatomical metrics' threshold values
+    thresholds: Mapping[str, Mapping[Literal['min', 'max'], Real]]  # anatomical metrics' threshold values
 
     @classmethod
     def _aggregate_metrics(cls, metrics: pd.DataFrame) -> pd.DataFrame:
