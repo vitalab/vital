@@ -1,16 +1,15 @@
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Type, Tuple, Optional, TypeVar, Sequence, Mapping
+from typing import Type, Tuple, Optional, Sequence, Mapping
 
 from pathos.multiprocessing import Pool
 from tqdm import tqdm
 
-from vital.logs.utils.itertools import IterableResult
+from vital.logs.utils.itertools import IterableResult, Result
 
 
 class Logger:
     """Abstract class used for logging results during the evaluation phase."""
-    Result = TypeVar('Result')  # Type of results iterated over
     IterableResultT: Type[IterableResult[Result]]  # Iterable over which the logs are generated.
     Log: Type = None  # Type of the data returned by logging a single result, if any.
     desc: str  # Description of the logger. Used in e.g. progress bar, logs file name, etc.

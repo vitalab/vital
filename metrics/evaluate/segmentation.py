@@ -14,7 +14,7 @@ class Segmentation2DMetrics:
     """
 
     def __init__(self, segmentation: np.ndarray, struct_labels: Sequence[SemanticStructureId],
-                 voxelspacing: Tuple[Real, Real] = (1, 1)):
+                 voxelspacing: Tuple[Real, Real] = (1., 1.)):
         """
         Args:
             segmentation: (H, W), a 2D array where the value of each entry in the array is the label of the
@@ -22,11 +22,6 @@ class Segmentation2DMetrics:
             struct_labels: the label(s) of the class(es) present in the segmentation for which to compute metrics.
             voxelspacing: the size of the voxels along each (height, width) dimension (in mm).
         """
-        try:
-            iter(struct_labels)
-        except TypeError:
-            struct_labels = [struct_labels]  # Make struct_labels into an iterable if it isn't already
-
         self.segmentation = segmentation
         self.voxelspacing = voxelspacing
         self.binary_structs = {struct_label: np.isin(segmentation, struct_label).astype(dtype=np.uint8)
