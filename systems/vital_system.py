@@ -114,6 +114,7 @@ class VitalSystem(pl.LightningModule, ABC):
         Returns:
             parser object that supports generic CL arguments used by ``VitalSystem``s.
         """
+        import os
         parser = ArgumentParser(add_help=False)
 
         if cls.use_da:
@@ -132,7 +133,7 @@ class VitalSystem(pl.LightningModule, ABC):
         parser.add_argument('--weights_summary', type=str, default='full', choices=['full', 'top'])
         parser.add_argument('--gpus', type=Union[int, List[int]], default=1)
         parser.add_argument('--num_nodes', type=int, default=1)
-        parser.add_argument('--workers', type=int, default=0)
+        parser.add_argument('--workers', type=int, default=os.cpu_count() // 2)
 
         # Lightning configuration parameters
         parser.add_argument('--fast_dev_run', action='store_true',
