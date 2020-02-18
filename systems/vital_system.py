@@ -3,7 +3,7 @@ from argparse import ArgumentParser, Namespace
 from contextlib import redirect_stdout
 from dataclasses import asdict
 from pathlib import Path
-from typing import Dict, List, Union, Tuple, Mapping
+from typing import Dict, List, Union, Tuple, Mapping, Literal
 
 import pytorch_lightning as pl
 import torch
@@ -71,7 +71,7 @@ class VitalSystem(pl.LightningModule, ABC):
     def test_dataloader(self):
         return DataLoader(self.dataset[Subset.TEST], batch_size=None, num_workers=self.data_params.workers)
 
-    def trainval_step(self, batch, batch_idx, metric_prefix: str = ''):
+    def trainval_step(self, batch, batch_idx, metric_prefix: Literal['', 'val_'] = ''):
         """Must be implemented if either ``training_step`` or ``validation_step`` are not overridden.
 
         As the name indicates, handles steps for both training and validation loops, assuming the behavior should be

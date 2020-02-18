@@ -1,9 +1,11 @@
+from typing import Literal
+
 import torch
 from torch import Tensor
 from torch.nn import functional as F
 
 
-def dice(input: Tensor, target: Tensor, label: int, reduction: str = 'mean') -> Tensor:
+def dice(input: Tensor, target: Tensor, label: int, reduction: Literal['mean', 'none'] = 'mean') -> Tensor:
     """ Computes the dice score for a specific class.
 
     Args:
@@ -20,7 +22,7 @@ def dice(input: Tensor, target: Tensor, label: int, reduction: str = 'mean') -> 
     label = torch.tensor(label)
     if reduction == 'mean':
         reduce_axis = (0, 1)
-    else:   # reduction == 'none'
+    else:  # reduction == 'none'
         reduce_axis = 1
 
     input = F.softmax(input, dim=1)[:, label, ...]  # For the input, extract the probabilities of the requested label
@@ -38,7 +40,7 @@ def dice(input: Tensor, target: Tensor, label: int, reduction: str = 'mean') -> 
     return dice
 
 
-def mean_dice(input: Tensor, target: Tensor, reduction: str = 'mean') -> Tensor:
+def mean_dice(input: Tensor, target: Tensor, reduction: Literal['mean', 'none'] = 'mean') -> Tensor:
     """ Computes the mean dice score for all classes present in the target.
 
     Args:
@@ -51,11 +53,11 @@ def mean_dice(input: Tensor, target: Tensor, reduction: str = 'mean') -> Tensor:
     Returns:
         (1,) or (N,), the mean dice score for the classes in the target, reduced or for each sample.
     """
-    labels = torch.unique(target[target.nonzero(as_tuple=True)])   # Identify classes (that are not background)
+    labels = torch.unique(target[target.nonzero(as_tuple=True)])  # Identify classes (that are not background)
 
     # Compute the dice score for each individual class
     dices = torch.stack([dice(input, target, label, reduction=reduction)
                          for label in labels])
 
-    mean_dice = torch.mean(dices, dim=0)    # Compute the mean dice over all classes
+    mean_dice = torch.mean(dices, dim=0)  # Compute the mean dice over all classes
     return mean_dice
