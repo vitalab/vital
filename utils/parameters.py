@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple, Sequence, Union
+from typing import Tuple, Sequence, Union, Literal
 
 parameters = dataclass(frozen=True)
 
@@ -34,7 +34,7 @@ class OptimizerParameters:
 class TrainerParameters:
     default_save_path: str
     fast_dev_run: bool
-    weights_summary: str
+    weights_summary: Literal['full', 'top', None]
     min_epochs: int
     max_epochs: int
     gpus: Union[int, Sequence[int]]
