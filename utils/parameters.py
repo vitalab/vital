@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple, Sequence, Union, Literal
+from typing import Tuple, Sequence, Union, Literal, Optional
 
 parameters = dataclass(frozen=True)
 
@@ -8,7 +8,7 @@ parameters = dataclass(frozen=True)
 @parameters
 class SystemParameters:
     save_to: Path
-    pretrained: Path = None
+    pretrained: Optional[Path] = None
 
 
 @parameters
