@@ -5,7 +5,7 @@ import torch
 from torch import Tensor
 from torch import nn
 
-from vital.modules.layers import conv3x3, conv_transpose3x3
+from vital.modules.layers import conv3x3_activation, conv_transpose2x2_activation
 
 
 class Decoder(nn.Module):
@@ -42,20 +42,23 @@ class Decoder(nn.Module):
         block_in_channels = init_channels
         for idx, block_idx in enumerate(reversed(range(blocks))):
             block_out_channels = init_channels * 2 ** block_idx
-
-            self.features.add_module(f'conv_transpose{idx}', conv_transpose3x3(in_channels=block_in_channels,
-                                                                               out_channels=block_out_channels,
-                                                                               stride=2, output_padding=1))
-            self.features.add_module(f'elu{idx}_0', nn.ELU(inplace=True))
-            self.features.add_module(f'conv{idx}', conv3x3(in_channels=block_out_channels,
-                                                           out_channels=block_out_channels))
-            self.features.add_module(f'elu{idx}_1', nn.ELU(inplace=True))
-
+            self.features.add_module(f'conv_transpose_elu{idx}',
+                                     conv_transpose2x2_activation(in_channels=block_in_channels,
+                                                                  out_channels=block_out_channels,
+                                                                  activation='ELU'))
+            self.features.add_module(f'conv_elu{idx}',
+                                     conv3x3_activation(in_channels=block_out_channels,
+                                                        out_channels=block_out_channels,
+                                                        activation='ELU'))
             block_in_channels = block_out_channels
 
+        self.features.add_module(f'conv_transpose_elu{blocks}',
+                                 conv_transpose2x2_activation(in_channels=block_in_channels,
+                                                              out_channels=block_in_channels,
+                                                              activation='ELU'))
+
         # Classifier
-        self.classifier = conv_transpose3x3(in_channels=block_in_channels, out_channels=out_channels,
-                                            stride=2, output_padding=1)
+        self.classifier = nn.Conv2d(block_in_channels, out_channels, kernel_size=3, padding=1)
 
     def forward(self, z: Tensor) -> Tensor:
         """ Defines the computation performed at every call.
