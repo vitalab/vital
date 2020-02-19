@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 from torch import nn
 
-from vital.modules.layers import conv3x3
+from vital.modules.layers import conv3x3_activation
 
 
 class Encoder(nn.Module):
@@ -36,21 +36,22 @@ class Encoder(nn.Module):
         for block_idx in range(blocks):
             block_out_channels = init_channels * 2 ** block_idx
 
-            self.features.add_module(f'strided_conv{block_idx}', conv3x3(in_channels=block_in_channels,
-                                                                         out_channels=block_out_channels,
-                                                                         stride=2))
-            self.features.add_module(f'elu{block_idx}_0', nn.ELU(inplace=True))
-            self.features.add_module(f'conv{block_idx}', conv3x3(in_channels=block_out_channels,
-                                                                 out_channels=block_out_channels))
-            self.features.add_module(f'elu{block_idx}_1', nn.ELU(inplace=True))
+            self.features.add_module(f'strided_conv_elu{block_idx}',
+                                     conv3x3_activation(in_channels=block_in_channels,
+                                                        out_channels=block_out_channels,
+                                                        stride=2, activation='ELU'))
+            self.features.add_module(f'conv_elu{block_idx}',
+                                     conv3x3_activation(in_channels=block_out_channels,
+                                                        out_channels=block_out_channels,
+                                                        activation='ELU'))
 
             block_in_channels = block_out_channels
 
         # Bottleneck block
-        self.features.add_module('bottleneck_strided_conv', conv3x3(in_channels=block_in_channels,
-                                                                    out_channels=init_channels,
-                                                                    stride=2))
-        self.features.add_module('bottleneck_elu', nn.ELU(inplace=True))
+        self.features.add_module('bottleneck_strided_conv_elu',
+                                 conv3x3_activation(in_channels=block_in_channels,
+                                                    out_channels=init_channels,
+                                                    stride=2, activation='ELU'))
 
         # Fully-connected mapping to encoding
         bottleneck_size = (image_size[0] // 2 ** (blocks + 1),

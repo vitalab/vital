@@ -1,35 +1,64 @@
 from collections import OrderedDict
 
-from torch import nn
+import torch
+from torch import nn, Tensor
 
 
-def conv3x3(in_channels: int, out_channels: int,
-            stride: int = 1, padding: int = 1):
-    """3x3 convolution with padding"""
-    return nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding)
+def _get_module(module: str, **module_params) -> nn.Module:
+    """Instantiates an ``nn.Module`` with the requested parameters.
+
+    Args:
+        module: name of the ``nn.Module`` to instantiate.
+        **module_params: parameters to pass to the ``nn.Module``'s constructor.
+
+    Returns:
+        instance of the ``nn.Module``.
+    """
+    return getattr(nn, module)(**module_params)
 
 
-def conv_transpose3x3(in_channels: int, out_channels: int,
-                      stride: int = 1, padding: int = 1, output_padding: int = 0):
-    """2x2 transpose convolution with padding"""
-    return nn.ConvTranspose2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding,
-                              output_padding=output_padding)
-
-
-def conv3x3_relu(in_channels: int, out_channels: int,
-                 stride: int = 1, padding: int = 1):
-    """3x3 convolution with padding followed by ReLU activation"""
+def conv_transpose2x2_activation(in_channels: int, out_channels: int,
+                                 stride: int = 2, padding: int = 0,
+                                 activation: str = 'ReLU', **activation_params) -> nn.Sequential:
+    """2x2 transpose convolution with padding followed by activation"""
     return nn.Sequential(OrderedDict([
-        ('conv', conv3x3(in_channels, out_channels, stride=stride, padding=padding)),
-        ('relu', nn.ReLU(inplace=True))
+        ('conv_transpose', nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=stride,
+                                              padding=padding)),
+        (activation, _get_module(activation, **activation_params))
     ]))
 
 
-def conv3x3_bn_relu(in_channels: int, out_channels: int,
-                    stride: int = 1, padding: int = 1):
-    """3x3 convolution with padding followed by batch normalization and ReLU activation"""
+def conv3x3_activation(in_channels: int, out_channels: int,
+                       stride: int = 1, padding: int = 1,
+                       activation: str = 'ReLU', **activation_params) -> nn.Sequential:
+    """3x3 convolution with padding followed by activation"""
     return nn.Sequential(OrderedDict([
-        ('conv', conv3x3(in_channels, out_channels, stride=stride, padding=padding)),
+        ('conv', nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding)),
+        (activation, _get_module(activation, **activation_params))
+    ]))
+
+
+def conv3x3_bn_activation(in_channels: int, out_channels: int,
+                          stride: int = 1, padding: int = 1,
+                          activation: str = 'ReLU', **activation_params) -> nn.Sequential:
+    """3x3 convolution with padding followed by batch normalization and activation"""
+    return nn.Sequential(OrderedDict([
+        ('conv', nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding)),
         ('bn', nn.BatchNorm2d(out_channels)),
-        ('relu', nn.ReLU(inplace=True))
+        (activation, _get_module(activation, **activation_params))
     ]))
+
+
+def reparameterize(mu: Tensor, logvar: Tensor) -> Tensor:
+    """Samples item from a distribution in a way that allows backpropagation to flow through.
+
+    Args:
+        mu: (N, M), mean of the distribution.
+        logvar: (N, M), log variance of the distribution.
+
+    Returns:
+        z: (N, M), item sampled from the distribution.
+    """
+    std = torch.exp(0.5 * logvar)
+    eps = torch.randn_like(std)
+    return mu + eps * std

@@ -1,11 +1,11 @@
 from typing import Tuple
 
-import torch
 from torch import Tensor
 from torch import nn
 
 from vital.modules.generative.decoder import Decoder
 from vital.modules.generative.encoder import Encoder
+from vital.modules.layers import reparameterize
 
 
 class Autoencoder(nn.Module):
@@ -93,20 +93,6 @@ class VariationalAutoencoder(nn.Module):
                                init_channels=init_channels,
                                code_length=code_length)
 
-    def reparameterize(self, mu: Tensor, logvar: Tensor) -> Tensor:
-        """
-
-        Args:
-            mu: (N, ``code_length``), mean of the predicted distribution of the input in the latent space.
-            logvar: (N, ``code_length``), log variance of the predicted distribution of the input in the latent space.
-
-        Returns:
-            z: (N, ``code_length``), sampled encoding of the input in the latent space.
-        """
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + eps * std
-
     def forward(self, y: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         """ Defines the computation performed at every call.
 
@@ -122,7 +108,7 @@ class VariationalAutoencoder(nn.Module):
                 used to sample ``z``.
         """
         mu, logvar = self.encoder(y)
-        z = self.reparameterize(mu, logvar)
+        z = reparameterize(mu, logvar)
         return self.decoder(z), z, mu, logvar
 
     def predict(self, y: Tensor) -> Tuple[Tensor, Tensor]:
