@@ -5,7 +5,7 @@ from torch import Tensor
 
 
 def kl_div_zmuv(mu: Tensor, logvar: Tensor, reduction: Literal['mean', 'none'] = 'mean') -> Tensor:
-    """ Computes the KL divergence between the distribution described by parameters ``mu`` and ``logvar``
+    """Computes the KL divergence between the distribution described by parameters ``mu`` and ``logvar``
     and a Zero Mean, Unit Variance (ZMUV) Gaussian distribution i.e. N(0,1).
 
     It is the standard loss to use for the reparametrization trick when training a variational autoencoder.

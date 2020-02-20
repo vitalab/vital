@@ -7,7 +7,7 @@ import numpy as np
 
 
 def load_mhd(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[Number, ...], ...]]:
-    """ This function loads a mhd image and returns the image and its metadata.
+    """This function loads a mhd image and returns the image and its metadata.
 
     Args:
         filepath: path to the image.

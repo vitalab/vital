@@ -4,14 +4,14 @@ from typing import Union
 import numpy as np
 from torch import Tensor
 
-from vital.utils.config import SemanticStructureId
+from vital.data.config import SemanticStructureId
 
 
 def bbox(segmentation: Union[np.ndarray, Tensor],
          labels: SemanticStructureId,
          bbox_margin: Real = 0.05,
          channel_axis: int = -1) -> np.ndarray:
-    """ Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
+    """Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 
     Args:
         segmentation: segmentation in which to identify the coordinates of the bbox.

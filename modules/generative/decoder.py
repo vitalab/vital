@@ -61,7 +61,7 @@ class Decoder(nn.Module):
         self.classifier = nn.Conv2d(block_in_channels, out_channels, kernel_size=3, padding=1)
 
     def forward(self, z: Tensor) -> Tensor:
-        """ Defines the computation performed at every call.
+        """Defines the computation performed at every call.
 
         Args:
             z: (N, ``code_length``), encoding of the input in the latent space.

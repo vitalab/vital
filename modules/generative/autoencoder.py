@@ -38,7 +38,7 @@ class Autoencoder(nn.Module):
                                code_length=code_length)
 
     def forward(self, y: Tensor) -> Tuple[Tensor, Tensor]:
-        """ Defines the computation performed at every call.
+        """Defines the computation performed at every call.
 
         Args:
             y: (N, ``channels``, H, W), input to reconstruct.
@@ -51,7 +51,7 @@ class Autoencoder(nn.Module):
         return self.decoder(z), z
 
     def predict(self, y: Tensor) -> Tuple[Tensor, Tensor]:
-        """ Performs test-time inference on the input.
+        """Performs test-time inference on the input.
 
         Args:
             y: (N, ``channels``, H, W), input to reconstruct.
@@ -94,7 +94,7 @@ class VariationalAutoencoder(nn.Module):
                                code_length=code_length)
 
     def forward(self, y: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-        """ Defines the computation performed at every call.
+        """Defines the computation performed at every call.
 
         Args:
             y: (N, ``channels``, H, W), input to reconstruct.
@@ -112,7 +112,7 @@ class VariationalAutoencoder(nn.Module):
         return self.decoder(z), z, mu, logvar
 
     def predict(self, y: Tensor) -> Tuple[Tensor, Tensor]:
-        """ Performs test-time inference on the input.
+        """Performs test-time inference on the input.
 
         Args:
             y: (N, ``channels``, H, W), input to reconstruct.

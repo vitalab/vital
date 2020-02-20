@@ -12,11 +12,10 @@ from torch import nn
 from torchvision.transforms.functional import to_tensor, to_pil_image
 
 from vital.utils.device import get_device
-from vital.utils.parameters import DataShape
 
 
 class LocalizationNet(nn.Module):
-    """ Generalization of the LU-Net model initially implemented for the CAMUS dataset.
+    """Generalization of the LU-Net model initially implemented for the CAMUS dataset.
 
     # TODO Add reference to paper describing the network
 
@@ -35,7 +34,7 @@ class LocalizationNet(nn.Module):
     """
 
     def __init__(self, segmentation_cls: Type[nn.Module],
-                 data_shape: DataShape,
+                 in_shape: Tuple[int, ...], out_shape: Tuple[int, ...],
                  **kwargs):
         """
         Args:
@@ -44,24 +43,25 @@ class LocalizationNet(nn.Module):
             **kwargs: arguments to initialize an instance of ``segmentation_cls``.
         """
         super().__init__()
-        self.data_shape = data_shape
-        self.global_segmentation_module = segmentation_cls(in_channels=data_shape.in_shape[-1],
-                                                           out_channels=data_shape.out_shape[-1],
+        self.in_shape = in_shape
+        self.out_shape = out_shape
+        self.global_segmentation_module = segmentation_cls(in_channels=in_shape[-1],
+                                                           out_channels=out_shape[-1],
                                                            **kwargs)
-        self.localized_segmentation_module = segmentation_cls(in_channels=data_shape.in_shape[-1],
-                                                              out_channels=data_shape.out_shape[-1],
+        self.localized_segmentation_module = segmentation_cls(in_channels=in_shape[-1],
+                                                              out_channels=out_shape[-1],
                                                               **kwargs)
-        segmentation_module = segmentation_cls(in_channels=data_shape.out_shape[-1],
-                                               out_channels=data_shape.out_shape[-1],
+        segmentation_module = segmentation_cls(in_channels=out_shape[-1],
+                                               out_channels=out_shape[-1],
                                                **kwargs)
         self.segmentation_encoder = segmentation_module.encoder
         self.segmentation_bottleneck = segmentation_module.bottleneck
 
-        self.crop_resize = CropAndResize(*data_shape.in_shape[:2])
+        self.crop_resize = CropAndResize(*in_shape[:2])
 
         # Compute forward pass with dummy data to compute the output shape of the feature extractor module
         # used by the ROI bbox module (batch_size of 2 for batchnorm)
-        input_size = (data_shape.out_shape[-1], *data_shape.out_shape[:2])
+        input_size = (out_shape[-1], *out_shape[:2])
         x = torch.rand(2, *input_size).type(torch.float)
         features = self.segmentation_encoder(x)
         if isinstance(features, Tuple):  # In case of multiple tensors returned by the encoder
@@ -78,7 +78,7 @@ class LocalizationNet(nn.Module):
         ]))
 
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
-        """ Defines the computation performed at every call.
+        """Defines the computation performed at every call.
 
         Args:
             x: (N, ``in_channels``, H, W), input image to segment.
@@ -117,7 +117,7 @@ class LocalizationNet(nn.Module):
         return global_y_hat, roi_bbox_hat, localized_y_hat
 
     def predict(self, x: Tensor) -> Tensor:
-        """ Performs test-time inference on the input.
+        """Performs test-time inference on the input.
 
         Args:
             x: (N, ``in_channels``, H, W), input image to segment.
@@ -127,10 +127,10 @@ class LocalizationNet(nn.Module):
         """
         _, roi_bbox_hat, localized_y_hat = self(x)
         return F.one_hot(self._revert_crop(localized_y_hat.argmax(dim=1), roi_bbox_hat),
-                         num_classes=self.data_shape.out_shape[-1])
+                         num_classes=self.out_shape[-1])
 
     def _revert_crop(self, localized_segmentation: Tensor, roi_bbox: Tensor) -> Tensor:
-        """ Fits the localized segmentation back to its original position the image.
+        """Fits the localized segmentation back to its original position the image.
 
         Args:
             localized_segmentation: (N, H, W), segmentation of the content of the bbox around the ROI.
@@ -143,8 +143,8 @@ class LocalizationNet(nn.Module):
         roi_bbox = roi_bbox.clamp(0, 1)
 
         # Change ROI bbox from normalized between 0 and 1 to absolute pixel coordinates
-        roi_bbox[:, (0, 2)] = torch.round(roi_bbox[:, (0, 2)] * self.data_shape.in_shape[0])  # Height
-        roi_bbox[:, (1, 3)] = torch.round(roi_bbox[:, (1, 3)] * self.data_shape.in_shape[1])  # Width
+        roi_bbox[:, (0, 2)] = torch.round(roi_bbox[:, (0, 2)] * self.in_shape[0])  # Height
+        roi_bbox[:, (1, 3)] = torch.round(roi_bbox[:, (1, 3)] * self.in_shape[1])  # Width
         roi_bbox = roi_bbox.int()
 
         # Fit the localized segmentation at its original location in the image, one item at a time
@@ -161,6 +161,6 @@ class LocalizationNet(nn.Module):
             # Place the resized localised segmentation inside an empty segmentation
             segmentation.append(torch.zeros_like(localized_item_seg))
             segmentation[-1][item_roi_bbox[0]:bbox_size[1] + item_roi_bbox[0],
-                             item_roi_bbox[1]:bbox_size[0] + item_roi_bbox[1]] = resized_item_seg
+            item_roi_bbox[1]:bbox_size[0] + item_roi_bbox[1]] = resized_item_seg
 
         return torch.stack(segmentation)

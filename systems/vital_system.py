@@ -1,172 +1,149 @@
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from contextlib import redirect_stdout
-from dataclasses import asdict
-from pathlib import Path
-from typing import Dict, List, Union, Tuple, Mapping, Literal
+from typing import Tuple, Mapping
 
 import pytorch_lightning as pl
 import torch
 from torch import nn
-from torch.utils.data import Dataset, DataLoader
 from torchsummary import summary
+from torchvision.datasets import VisionDataset
 
-from vital.utils.config import Subset
-from vital.utils.parameters import parameters, OptimizerParameters, TrainerParameters, DataParameters, SystemParameters
+from vital.data.config import Subset
+from vital.utils.parameters import DataParameters
 
 
 class VitalSystem(pl.LightningModule, ABC):
-    """Abstract system from which project's base systems should inherit.
+    """Top-level abstract system from which to inherit.
+
+    Implementations of behaviors related to each phase of training (e.g. data preparation, training, evaluation) are
+    made through mixins for this class.
 
     Implements useful generic utilities and boilerplate Lighting code:
         - CLI for generic arguments
-        - Interface between the Datasets and DataLoaders
-        - Handling of train/val step results (metrics logging and printing)
     """
-    use_da: bool = False  # whether the system applies Data Augmentation (DA) by default.
 
-    def __init__(self, system_params: SystemParameters,
-                 data_params: DataParameters,
-                 optim_params: OptimizerParameters,
-                 *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.data_params = data_params
-        self.optim_params = optim_params
-        self.system_params = system_params
-        self.dataset: Mapping[Subset, Dataset]  # subsets of the dataset used to configure train/val/test DataLoaders
+    def __init__(self, hparams: Namespace):
+        super().__init__()
+        self.hparams = hparams
         self.module: nn.Module  # field in which to assign the network used by the implementation of ``System``
 
-        system_params.save_to.mkdir(parents=True, exist_ok=True)
+        # To initialize in ``DataManagerMixin``
+        self.data_params: DataParameters
+        self.dataset: Mapping[Subset, VisionDataset]
+
+        self.prepare_save_dir()
 
     def save_model_summary(self, system_input_shape: Tuple[int, ...]):
-        """ Saves a summary of the model in a format similar to Keras' summary.
+        """Saves a summary of the model in a format similar to Keras' summary.
 
         Args:
             system_input_shape: shape of the input data the system should expect when using the dataset.
         """
-        with open(str(self.system_params.save_to.joinpath('summary.txt')), 'w') as f:
+        with open(str(self.hparams.save_dir.joinpath('summary.txt')), 'w') as f:
             with redirect_stdout(f):
                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                 summary(self.module.to(device), system_input_shape)
 
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, amsgrad=True)
+
     def forward(self, *args, **kwargs):
         return self.module.predict(*args, **kwargs)
 
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), **asdict(self.optim_params))
-
-    @pl.data_loader
-    def train_dataloader(self):
-        return DataLoader(self.dataset[Subset.TRAIN],
-                          batch_size=self.data_params.batch_size, shuffle=True,
-                          num_workers=self.data_params.workers, pin_memory=True)
-
-    @pl.data_loader
-    def val_dataloader(self):
-        return DataLoader(self.dataset[Subset.VALID],
-                          batch_size=self.data_params.batch_size, shuffle=True,
-                          num_workers=self.data_params.workers, pin_memory=True)
-
-    @pl.data_loader
-    def test_dataloader(self):
-        return DataLoader(self.dataset[Subset.TEST], batch_size=None, num_workers=self.data_params.workers)
-
-    def trainval_step(self, batch, batch_idx, metric_prefix: Literal['', 'val_'] = ''):
-        """Must be implemented if either ``training_step`` or ``validation_step`` are not overridden.
-
-        As the name indicates, handles steps for both training and validation loops, assuming the behavior should be
-        the same. For models where the behavior in training and validation is different, than override
-        ``training_step`` and ``validation_step`` directly."""
-        raise NotImplementedError
-
-    def training_step(self, batch, batch_idx):
-        """Returns loss and metrics for callbacks, assuming ``training_end`` is not overridden."""
-        metrics = self.trainval_step(batch, batch_idx)
-        loss = metrics['loss']
-        return {'loss': loss,
-                'progress_bar': metrics,
-                'log': metrics}
-
-    def validation_step(self, batch, batch_idx):
-        """Returns metrics to be reduced ànd made accessible for display and callbacks in ``validation_end`."""
-        return self.trainval_step(batch, batch_idx, metric_prefix='val_')
-
-    def validation_end(self, outputs):
-        """By default, mark all metrics for ``progress_bar`` and ``log``."""
-        metric_names = outputs[0].keys()
-        reduced_metrics = {metric_name: torch.stack([output[metric_name]
-                                                     for output in outputs]).mean()
-                           for metric_name in metric_names}
-        return {'progress_bar': reduced_metrics,
-                'log': reduced_metrics}
-
     @classmethod
     def build_parser(cls) -> ArgumentParser:
-        """ Builds a parser object that supports generic CL arguments used by ``VitalSystem``s.
+        """Builds a parser object that supports generic CL arguments.
 
-        Must be overridden to add generic arguments whose default values are model specific (listed below).
-        Also where new system specific arguments should be added (and parsed in the same class' ``parse_args``).
-        Generic arguments with model specific values:
+        Must be overridden to add generic arguments whose default values are implementation specific (listed below).
             - lr
             - batch_size
             - max_epochs
 
+        Also where new system specific arguments should be added (and parsed in the same class' ``parse_args``).
+        Generic arguments with model specific values:
+
         Returns:
-            parser object that supports generic CL arguments used by ``VitalSystem``s.
+            parser object that supports generic CL arguments.
         """
-        import os
         parser = ArgumentParser(add_help=False)
-
-        if cls.use_da:
-            parser.add_argument("no_da", dest="use_da", action='store_false', help="Disable dataset augmentation")
-        else:
-            parser.add_argument("--use_da", dest="use_da", action='store_true', help="Enable dataset augmentation")
-
-        # save/load parameters
-        parser.add_argument("--save_to", type=Path, help="Path for logs+weights+results")
-        parser.add_argument("--pretrained", type=Path, help="Path to Lightning module checkpoints to restore system")
-
-        # evaluation parameters
-        parser.add_argument("--predict", action='store_true', help="Skip training and do test phase")
-
-        # training configuration parameters
-        parser.add_argument('--weights_summary', type=str, default='full', choices=['full', 'top'])
-        parser.add_argument('--gpus', type=Union[int, List[int]], default=1)
-        parser.add_argument('--num_nodes', type=int, default=1)
-        parser.add_argument('--workers', type=int, default=os.cpu_count() // 2)
-
-        # Lightning configuration parameters
-        parser.add_argument('--fast_dev_run', action='store_true',
-                            help="Runs full iteration over everything to find bugs")
+        cls.add_data_manager_args(parser)
+        cls.add_train_eval_loop_args(parser)
+        cls.add_evaluation_args(parser)
         return parser
 
-    @classmethod
-    def parse_args(cls, args: Namespace) -> Dict[str, parameters]:
-        """ Bundles CL arguments into collections of related parameters.
 
-        Must be overridden to parse ``DataParameters``, since no generic ``DataShape`` can be inferred to provide a
-        sane default value.
-        Also where to parse any system specific arguments (added in the same class' ``build_parser``).
+class SystemDataManagerMixin(VitalSystem, ABC):
+    """``VitalSystem`` mixin for handling the interface between the Datasets and DataLoaders."""
+    data_params: DataParameters
+    dataset: Mapping[Subset, VisionDataset]
+
+    def train_dataloader(self):
+        raise NotImplementedError
+
+    def val_dataloader(self):
+        pass
+
+    def test_dataloader(self):
+        pass
+
+    @classmethod
+    def add_data_manager_args(cls, parser: ArgumentParser):
+        """Adds data related arguments to a parser object.
 
         Args:
-            args: arguments parsed from the system trainer's CLI.
-
-        Returns:
-            collections of related parameters.
+            parser:  parser object to which to add data loop related arguments.
         """
-        trainer_params = TrainerParameters(default_save_path=args.save_to,
-                                           fast_dev_run=args.fast_dev_run,
-                                           weights_summary=args.weights_summary,
-                                           gpus=args.gpus,
-                                           num_nodes=args.num_nodes,
-                                           min_epochs=args.min_epochs if 'min_epochs' in args else 1,
-                                           max_epochs=args.max_epochs)
-        optim_params = OptimizerParameters(lr=args.lr)
-        system_params = SystemParameters(
-            save_to=args.save_to,
-            pretrained=args.pretrained,
-        )
-        return {'trainer_params': trainer_params,
-                'optim_params': optim_params,
-                'system_params': system_params,
-                'predict': args.predict}
+        pass
+
+
+class SystemTrainEvalLoopMixin(VitalSystem, ABC):
+    """``VitalSystem`` mixin for handling the training/validation/testing phases."""
+
+    def training_step(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def validation_step(self, *args, **kwargs):
+        pass
+
+    def test_step(self, *args, **kwargs):
+        """Expects the system to make test-time predictions for the batch, coordinating with ``save_test_step_results``
+        from the ``SystemEvaluationMixin`` to save the results."""
+        pass
+
+    @classmethod
+    def add_train_eval_loop_args(cls, parser: ArgumentParser):
+        """Adds train-eval loop related arguments to a parser object.
+
+        Args:
+            parser:  parser object to which to add train-eval loop related arguments.
+        """
+        pass
+
+
+class SystemEvaluationMixin(VitalSystem, ABC):
+    """``VitalSystem`` mixin for handling the evaluation phase."""
+
+    def prepare_save_dir(self):
+        """Handles setting up the directories where to save the results, done once at the very beginning."""
+        pass
+
+    def save_test_step_results(self, batch_idx: int, **kwargs):
+        """Saves predictions made by ``test_step`` from the ``SystemTrainEvalLoopMixin`` and additional relevant
+        information the downstream evaluation."""
+        pass
+
+    def test_epoch_end(self, outputs):
+        """By default, exports results using custom loggers and returns no metrics to display in the progress bar
+        (as Lightning normally expects).
+        """
+        pass
+
+    @classmethod
+    def add_evaluation_args(cls, parser: ArgumentParser) -> ArgumentParser:
+        """Adds evaluation related arguments to a parser object.
+
+        Args:
+            parser:  parser object to which to add evaluation related arguments.
+        """
+        pass

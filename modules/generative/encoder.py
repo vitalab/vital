@@ -63,7 +63,7 @@ class Encoder(nn.Module):
                                          code_length)
 
     def forward(self, y: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
-        """ Defines the computation performed at every call.
+        """Defines the computation performed at every call.
 
         Args:
             y: (N, ``channels``, H, W), input to reconstruct.
