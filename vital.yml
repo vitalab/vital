@@ -10,6 +10,9 @@ dependencies:
   - pillow
   - scipy
   - simpleitk
+  - umap-learn
+  - matplotlib
+  - seaborn
   - datashader
   - holoviews
   - bokeh
@@ -22,5 +25,4 @@ dependencies:
       - torchsummary
       - keras # Used by `utils/image/register.py` for its image processing utilities (w/o backend)
       - git+https://github.com/longcw/RoIAlign.pytorch
-      - git+https://github.com/lmcinnes/umap
       - medpy
