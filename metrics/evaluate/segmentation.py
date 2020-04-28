@@ -6,7 +6,7 @@ from scipy.ndimage import distance_transform_edt, binary_fill_holes, measurement
 from skimage import measure, morphology
 from skimage.morphology import convex_hull_image
 
-from vital.utils.config import SemanticStructureId
+from vital.data.config import SemanticStructureId
 
 
 class Segmentation2DMetrics:

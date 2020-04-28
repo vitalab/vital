@@ -20,7 +20,7 @@ import numpy as np
 from medpy.metric import hd, assd, precision, recall, dc, jc
 from sklearn.metrics import accuracy_score
 
-from vital.utils.config import SemanticStructureId
+from vital.data.config import SemanticStructureId
 from vital.utils.delegate import delegate_inheritance
 
 

@@ -5,7 +5,7 @@ import pandas as pd
 
 from vital.logs.metrics import MetricsLogger
 from vital.metrics.evaluate.segmentation import check_metric_validity
-from vital.utils.config import ResultTags
+from vital.data.config import ResultTags
 
 
 class AnatomicalMetricsLogger(MetricsLogger):
