@@ -7,7 +7,7 @@ from PIL.Image import NEAREST
 
 
 def resize_image(image: np.ndarray, size: Tuple[int, int], resample: PIL.Image = NEAREST) -> np.ndarray:
-    """ Resizes the image to the specified dimensions.
+    """Resizes the image to the specified dimensions.
 
     Args:
         image: input image to process.
@@ -22,7 +22,7 @@ def resize_image(image: np.ndarray, size: Tuple[int, int], resample: PIL.Image =
 
 
 def resize_segmentation(segmentation: np.ndarray, size: Tuple[int, int], resample: PIL.Image = NEAREST) -> np.ndarray:
-    """ Resizes the segmentation map to the specified dimensions.
+    """Resizes the segmentation map to the specified dimensions.
 
     Args:
         segmentation: segmentation map to process.
@@ -40,7 +40,7 @@ def resize_segmentation(segmentation: np.ndarray, size: Tuple[int, int], resampl
 
 
 def one_hot_remove_labels(segmentation: np.ndarray, labels_to_remove: Iterable[int], fill_label: int = 0) -> np.ndarray:
-    """ Removes labels from the categorical segmentation map, reassigning the affected pixels to `fill_label`.
+    """Removes labels from the categorical segmentation map, reassigning the affected pixels to `fill_label`.
 
     Args:
         segmentation: ([N], H, W, C), categorical segmentation map from which to remove labels.
@@ -57,7 +57,7 @@ def one_hot_remove_labels(segmentation: np.ndarray, labels_to_remove: Iterable[i
 
 
 def remove_labels(segmentation: np.ndarray, labels_to_remove: Iterable[int], fill_label: int = 0) -> np.ndarray:
-    """ Removes labels from the labelled segmentation map, reassigning the affected pixels to `fill_label`.
+    """Removes labels from the labelled segmentation map, reassigning the affected pixels to `fill_label`.
 
     Args:
         segmentation: ([N], H, W, 1), labelled segmentation map from which to remove labels.

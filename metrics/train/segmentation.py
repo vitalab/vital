@@ -6,7 +6,7 @@ from torch.nn import functional as F
 
 
 def dice(input: Tensor, target: Tensor, label: int, reduction: Literal['mean', 'none'] = 'mean') -> Tensor:
-    """ Computes the dice score for a specific class.
+    """Computes the dice score for a specific class.
 
     Args:
         input: (N, C, H, W), raw, unnormalized scores for each class.
@@ -41,7 +41,7 @@ def dice(input: Tensor, target: Tensor, label: int, reduction: Literal['mean', '
 
 
 def mean_dice(input: Tensor, target: Tensor, reduction: Literal['mean', 'none'] = 'mean') -> Tensor:
-    """ Computes the mean dice score for all classes present in the target.
+    """Computes the mean dice score for all classes present in the target.
 
     Args:
         input: (N, C, H, W), raw, unnormalized scores for each class.

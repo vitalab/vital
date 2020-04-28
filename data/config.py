@@ -6,7 +6,7 @@ from vital.utils.parameters import parameters
 SemanticStructureId = Union[int, Sequence[int]]
 
 
-class ConfigurationLabel(Enum):
+class DataTag(Enum):
 
     def __str__(self):
         return self.name.lower()
@@ -30,7 +30,7 @@ class ConfigurationLabel(Enum):
             return name
 
 
-class Subset(ConfigurationLabel):
+class Subset(DataTag):
     """
     Args:
         train: id of the training subset.
@@ -44,7 +44,7 @@ class Subset(ConfigurationLabel):
 
 @parameters
 class ResultTags:
-    """ Class to gather the tags referring to the generic results stored in the HDF5 result files.
+    """Class to gather the tags referring to the generic results stored in the HDF5 result files.
 
     Args:
         img: name of the tag referring to images.
