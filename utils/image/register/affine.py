@@ -1,6 +1,5 @@
 import itertools
-from numbers import Real
-from typing import Tuple, Optional, Mapping, Dict, MutableMapping, Any, Sequence, Union
+from typing import Tuple, Optional, Mapping, Union
 
 import numpy as np
 from PIL.Image import LINEAR
@@ -16,6 +15,7 @@ Rotation = float
 Zoom = Tuple[int, int]
 Crop = Tuple[int, int, int, int]
 RegisteringParameter = Union[Shift, Rotation, Zoom, Crop]
+
 
 class AffineRegisteringTransformer:
     """Class that uses Keras' ImageDataGenerator to register image/segmentation pairs based on the structures in the
