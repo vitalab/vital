@@ -32,8 +32,6 @@ class VitalSystem(pl.LightningModule, ABC):
         self.data_params: DataParameters
         self.dataset: Mapping[Subset, VisionDataset]
 
-        self.prepare_save_dir()
-
     def save_model_summary(self, system_input_shape: Tuple[int, ...]):
         """Saves a summary of the model in a format similar to Keras' summary.
 
@@ -123,10 +121,6 @@ class SystemTrainEvalLoopMixin(VitalSystem, ABC):
 
 class SystemEvaluationMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the evaluation phase."""
-
-    def prepare_save_dir(self):
-        """Handles setting up the directories where to save the results, done once at the very beginning."""
-        pass
 
     def save_test_step_results(self, batch_idx: int, **kwargs):
         """Saves predictions made by ``test_step`` from the ``SystemTrainEvalLoopMixin`` and additional relevant
