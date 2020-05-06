@@ -1,7 +1,7 @@
-import math
 from numbers import Real
 from typing import Mapping, Tuple, Sequence
 
+import math
 import numpy as np
 from skimage.measure import find_contours
 

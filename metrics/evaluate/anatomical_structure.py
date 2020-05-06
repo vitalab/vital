@@ -1,5 +1,5 @@
-from vital.metrics.evaluate.segmentation import Segmentation2DMetrics
 from vital.data.config import SemanticStructureId
+from vital.metrics.evaluate.segmentation import Segmentation2DMetrics
 
 
 class Anatomical2DStructureMetrics:
