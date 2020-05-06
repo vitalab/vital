@@ -11,7 +11,8 @@ inside the project from which you want to use it.
 ## Description
 To help you follow along with the organization of the repository, here is a summary of each major package's purpose:
 
-- [data](data): generic utilities for helping manage data (e.g. collections of labels to use, etc.)
+- [data](data): utilities to process and interface with common medical image datasets, from processing raw image files
+(e.g. `.mhd` or `nii.gz`) to implementations of torchvision's `VisionDataset`.
 
 - [metrics](metrics): common metrics that are not part of the traditional libraries, whether those metrics are losses for
 training (see [train](metrics/train)) or scores to evaluate the systems' performance (see [evaluate](metrics/evaluate)).
