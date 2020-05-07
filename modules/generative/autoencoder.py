@@ -15,7 +15,7 @@ class Autoencoder(nn.Module):
                  channels: int,
                  blocks: int,
                  init_channels: int,
-                 code_length: int):
+                 latent_dim: int):
         """
         Args:
             image_size: size of the output segmentation groundtruth for each axis.
@@ -23,19 +23,19 @@ class Autoencoder(nn.Module):
             blocks: number of upsampling transposed convolution blocks to use.
             init_channels: number of output feature maps from the first layer, used to compute the number of feature
                            maps in following layers.
-            code_length: number of dimensions in the latent space.
+            latent_dim: number of dimensions in the latent space.
         """
         super().__init__()
         self.encoder = Encoder(image_size=image_size,
                                in_channels=channels,
                                blocks=blocks,
                                init_channels=init_channels,
-                               code_length=code_length)
+                               latent_dim=latent_dim)
         self.decoder = Decoder(image_size=image_size,
                                out_channels=channels,
                                blocks=blocks,
                                init_channels=init_channels,
-                               code_length=code_length)
+                               latent_dim=latent_dim)
 
     def forward(self, y: Tensor) -> Tuple[Tensor, Tensor]:
         """Defines the computation performed at every call.
@@ -45,7 +45,7 @@ class Autoencoder(nn.Module):
 
         Returns:
             y_hat: (N, ``channels``, H, W), raw, unnormalized scores for each class in the input's reconstruction.
-            z: (N, ``code_length``), encoding of the input in the latent space.
+            z: (N, ``latent_dim``), encoding of the input in the latent space.
         """
         z = self.encoder(y)
         return self.decoder(z), z
@@ -58,7 +58,7 @@ class Autoencoder(nn.Module):
 
         Returns:
             y_hat: (N, ``channels``, H, W), raw, unnormalized scores for each class in the input's reconstruction.
-            z: (N, ``code_length``), encoding of the input in the latent space.
+            z: (N, ``latent_dim``), encoding of the input in the latent space.
         """
         return self(y)
 
@@ -70,7 +70,7 @@ class VariationalAutoencoder(nn.Module):
                  channels: int,
                  blocks: int,
                  init_channels: int,
-                 code_length: int):
+                 latent_dim: int):
         """
         Args:
             image_size: size of the output segmentation groundtruth for each axis.
@@ -78,20 +78,20 @@ class VariationalAutoencoder(nn.Module):
             blocks: number of upsampling transposed convolution blocks to use.
             init_channels: number of output feature maps from the first layer, used to compute the number of feature
                            maps in following layers.
-            code_length: number of dimensions in the latent space.
+            latent_dim: number of dimensions in the latent space.
         """
         super().__init__()
         self.encoder = Encoder(image_size=image_size,
                                in_channels=channels,
                                blocks=blocks,
                                init_channels=init_channels,
-                               code_length=code_length,
+                               latent_dim=latent_dim,
                                output_distribution=True)
         self.decoder = Decoder(image_size=image_size,
                                out_channels=channels,
                                blocks=blocks,
                                init_channels=init_channels,
-                               code_length=code_length)
+                               latent_dim=latent_dim)
 
     def forward(self, y: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         """Defines the computation performed at every call.
@@ -101,10 +101,10 @@ class VariationalAutoencoder(nn.Module):
 
         Returns:
             y_hat: (N, ``channels``, H, W), raw, unnormalized scores for each class in the input's reconstruction.
-            z: (N, ``code_length``), sampled encoding of the input in the latent space.
-            mu: (N, ``code_length``), mean of the predicted distribution of the input in the latent space,
+            z: (N, ``latent_dim``), sampled encoding of the input in the latent space.
+            mu: (N, ``latent_dim``), mean of the predicted distribution of the input in the latent space,
                 used to sample ``z``.
-            logvar: (N, ``code_length``), log variance of the predicted distribution of the input in the latent space,
+            logvar: (N, ``latent_dim``), log variance of the predicted distribution of the input in the latent space,
                 used to sample ``z``.
         """
         mu, logvar = self.encoder(y)
@@ -119,7 +119,7 @@ class VariationalAutoencoder(nn.Module):
 
         Returns:
             y_hat: (N, ``channels``, H, W), raw, unnormalized scores for each class in the input's reconstruction.
-            z: (N, ``code_length``), deterministic encoding of the input in the latent space.
+            z: (N, ``latent_dim``), deterministic encoding of the input in the latent space.
         """
         z, _ = self.encoder(y)
         return self.decoder(z), z
