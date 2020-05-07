@@ -7,7 +7,7 @@ class Label(DataTag):
     BG = 0
     ENDO = 1
     EPI = 2
-    ATRIUMm = 3
+    ATRIUM = 3
 
 
 class View(DataTag):
