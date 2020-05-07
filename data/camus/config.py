@@ -1,5 +1,4 @@
-import vital.data.config
-from vital.data.config import DataTag
+from vital.data.config import DataTag, Tags
 from vital.utils.parameters import parameters
 
 
@@ -37,15 +36,15 @@ class DataTags:
     full_sequence: str = 'sequence'
 
     img_proc: str = 'img_proc'
-    img: str = 'img'
+    img: str = Tags.img
     gt_proc: str = 'gt_proc'
-    gt: str = 'gt'
+    gt: str = Tags.gt
     info: str = 'info'
     sequence_idx: str = 'seq_idx'
 
 
 @parameters
-class ResultTags(vital.data.config.ResultTags):
+class ResultTags(Tags):
     """Class to gather the tags referring to CAMUS specific result data stored in the HDF5 result files.
 
     Args:
