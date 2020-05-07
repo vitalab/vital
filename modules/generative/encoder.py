@@ -14,7 +14,7 @@ class Encoder(nn.Module):
                  in_channels: int,
                  blocks: int,
                  init_channels: int,
-                 code_length: int,
+                 latent_dim: int,
                  output_distribution: bool = False):
         """
         Args:
@@ -23,7 +23,7 @@ class Encoder(nn.Module):
             blocks: number of downsampling convolution blocks to use.
             init_channels: number of output feature maps from the first layer, used to compute the number of feature
                            maps in following layers.
-            code_length: number of dimensions in the latent space.
+            latent_dim: number of dimensions in the latent space.
             output_distribution: whether to add a second head at the end to output ``logvar`` along with the default
                                  ``mu`` head.
         """
@@ -57,10 +57,10 @@ class Encoder(nn.Module):
         bottleneck_size = (image_size[0] // 2 ** (blocks + 1),
                            image_size[1] // 2 ** (blocks + 1))
         self.mu_head = nn.Linear(bottleneck_size[0] * bottleneck_size[1] * init_channels,
-                                 code_length)
+                                 latent_dim)
         if self.output_distribution:
             self.logvar_head = nn.Linear(bottleneck_size[0] * bottleneck_size[1] * init_channels,
-                                         code_length)
+                                         latent_dim)
 
     def forward(self, y: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """Defines the computation performed at every call.
@@ -70,10 +70,10 @@ class Encoder(nn.Module):
 
         Returns:
             if not ``output_distribution``:
-                z: (N, ``code_length``), encoding of the input in the latent space.
+                z: (N, ``latent_dim``), encoding of the input in the latent space.
             if ``output_distribution``:
-                mu: (N, ``code_length``), mean of the predicted distribution of the input in the latent space.
-                logvar: (N, ``code_length``), log variance of the predicted distribution of the input in the latent
+                mu: (N, ``latent_dim``), mean of the predicted distribution of the input in the latent space.
+                logvar: (N, ``latent_dim``), log variance of the predicted distribution of the input in the latent
                         space.
         """
         features = self.features(y)

@@ -15,7 +15,7 @@ class Decoder(nn.Module):
                  out_channels: int,
                  blocks: int,
                  init_channels: int,
-                 code_length: int):
+                 latent_dim: int):
         """
         Args:
             image_size: size of the output segmentation groundtruth for each axis.
@@ -23,7 +23,7 @@ class Decoder(nn.Module):
             blocks: number of upsampling transposed convolution blocks to use.
             init_channels: number of output feature maps from the last layer before the classifier, used to compute the
                            number of feature maps in preceding layers.
-            code_length: number of dimensions in the latent space.
+            latent_dim: number of dimensions in the latent space.
         """
         super().__init__()
 
@@ -32,7 +32,7 @@ class Decoder(nn.Module):
         self.bottleneck_size = (image_size[0] // 2 ** (blocks + 1),
                                 image_size[1] // 2 ** (blocks + 1))
         self.bottleneck_fc = nn.Sequential(OrderedDict([
-            ('bottleneck_fc', nn.Linear(code_length,
+            ('bottleneck_fc', nn.Linear(latent_dim,
                                         self.bottleneck_size[0] * self.bottleneck_size[1] * init_channels)),
             ('bottleneck_elu', nn.ELU(inplace=True))
         ]))
@@ -64,7 +64,7 @@ class Decoder(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            z: (N, ``code_length``), encoding of the input in the latent space.
+            z: (N, ``latent_dim``), encoding of the input in the latent space.
 
         Returns:
             y_hat: (N, ``channels``, H, W), raw, unnormalized scores for each class in the input's reconstruction.

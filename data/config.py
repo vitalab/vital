@@ -43,8 +43,8 @@ class Subset(DataTag):
 
 
 @parameters
-class ResultTags:
-    """Class to gather the tags referring to the generic results stored in the HDF5 result files.
+class Tags:
+    """Class to gather the tags referring to the different type of data stored.
 
     Args:
         img: name of the tag referring to images.
