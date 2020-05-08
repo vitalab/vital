@@ -21,7 +21,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
                                           use_sequence_index=self.use_sequence_index)
 
     def prepare_data(self):
-        common_args = {'path': self.hparams.dataset,
+        common_args = {'path': self.hparams.dataset_path,
                        'labels': self.hparams.labels,
                        'use_sequence': self.hparams.use_sequence,
                        'use_sequence_index': self.data_params.use_sequence_index}
@@ -46,7 +46,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
 
     @classmethod
     def add_data_manager_args(cls, parser: ArgumentParser):
-        parser.add_argument("dataset", type=Path, help="Path to the HDF5 dataset")
+        parser.add_argument("dataset_path", type=Path, help="Path to the HDF5 dataset")
         parser.add_argument("--labels", type=Label.from_name, default=list(Label), nargs='+', choices=list(Label),
                             help="Labels of the segmentation classes to take into account (including background). "
                                  "If None, target all labels included in the data")
