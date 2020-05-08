@@ -2,7 +2,7 @@ import os
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from typing import Dict, Type, Union, List
+from typing import Type, Union, List
 
 from pytorch_lightning import Trainer
 
@@ -13,11 +13,26 @@ class VitalTrainer(ABC):
     """Abstract trainer that runs the main training/val loop, etc... using Lightning Trainer."""
 
     @classmethod
-    def get_trainable_systems(cls) -> Dict[str, Type[VitalSystem]]:
-        """Maps Lightning modules trainable through this trainer to short, descriptive acronyms.
+    def get_selected_system(cls, hparams: Namespace) -> Type[VitalSystem]:
+        """Identify, through the parameters specified in the CLI, the type of the Lightning module chosen by the user.
+
+        Args:
+            hparams: arguments parsed from the CLI.
 
         Returns:
-            mapping between Lightning modules trainable through this trainer and their short, descriptive acronyms..
+            type of the Lightning module selected by the user to be run.
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def add_non_trainer_args(cls, parser: ArgumentParser):
+        """Adds datasets/systems specific subparsers/arguments to a parser object.
+
+        The hierarchy of the added arguments can be arbitrarily complex, as long as ``get_selected_system`` can pinpoint
+        a single ``VitalSystem`` to run.
+
+        Args:
+            parser: parser object to which non-trainer arguments will be added.
         """
         raise NotImplementedError
 
@@ -26,30 +41,22 @@ class VitalTrainer(ABC):
         """Sets-up the CLI for the Lightning modules trainable through this trainer and calls the main training/val
         loop.
         """
-        trainable_systems = cls.get_trainable_systems()
-
         # Initialize the parser with generic trainer arguments
         parser = ArgumentParser()
         cls.add_trainer_args(parser)
 
         # Add subparsers for all systems available through the trainer
-        system_subparsers = parser.add_subparsers(title='system', dest='system', description="System to train")
-        for system_opt, system_cls in trainable_systems.items():
-            system_subparsers.add_parser(system_opt, help=f'{system_opt} system',
-                                         parents=[system_cls.build_parser()])
+        cls.add_non_trainer_args(parser)
 
         # Parse args and run the target system
-        args = parser.parse_args()
-        system_cls = trainable_systems[args.system]
-        VitalTrainer.run_system(system_cls, args)
+        cls.run_system(parser.parse_args())
 
-    @staticmethod
-    def run_system(system_cls: Type[VitalSystem], hparams: Namespace):
+    @classmethod
+    def run_system(cls, hparams: Namespace):
         """Handles the training/validation loop.
 
         Args:
-            system_cls: Lightning module to train/test.
-            hparams: namespace of arguments parsed from the CLI.
+            hparams: arguments parsed from the CLI.
         """
         trainer = Trainer(
             default_save_path=hparams.save_dir,
@@ -62,6 +69,7 @@ class VitalTrainer(ABC):
             max_epochs=hparams.max_epochs
         )
 
+        system_cls = cls.get_selected_system(hparams)
         if hparams.predict:  # If we want to skip training and go straight to testing
             model = system_cls.load_from_checkpoint(hparams.pretrained)
             trainer.model = model
