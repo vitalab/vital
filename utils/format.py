@@ -33,3 +33,19 @@ def one_hot(y: np.ndarray, num_classes: int = None, channel_axis: int = -1, dtyp
     output_shape.insert(categorical_axis, num_classes)
     categorical = np.reshape(categorical, output_shape)
     return categorical
+
+
+def labelled(y: np.ndarray, channel_axis: int = -1, dtype: str = 'uint8') -> np.ndarray:
+    """Converts a binary class matrix to class vector (integers).
+
+    Args:
+        y: matrix to be converted into a class vector
+            (pixel-wise binary vectors of length num_classes).
+        channel_axis: index of the channel axis to expand.
+        dtype: The data type expected by the input, as a string
+            (`float32`, `float64`, `int32`...)
+
+    Returns:
+        A class vector representation of the input.
+    """
+    return y.argmax(axis=channel_axis).astype(dtype)
