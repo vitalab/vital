@@ -5,7 +5,7 @@ import math
 import numpy as np
 from skimage.measure import find_contours
 
-from vital.utils.image.transform import resize_segmentation
+from vital.utils.image.transform import resize_image
 
 
 def compute_left_ventricle_volumes(segmentations: Mapping[str, np.ndarray],
@@ -93,7 +93,7 @@ def _reshape_image_to_isotropic(image: np.ndarray, spacing: Tuple[Real, Real]) -
     current_aspect = (image.shape[0]) / (image.shape[1])
     new_height = int(image.shape[0] * (real_aspect / current_aspect))
     new_width = image.shape[1]
-    return resize_segmentation(image, (new_width, new_height)), spacing[1]
+    return resize_image(image, (new_width, new_height)), spacing[1]
 
 
 def _compute_diameters(segmentation: np.ndarray, voxelspacing: Tuple[Real, Real]) -> Tuple[Sequence[Real], Real]:
