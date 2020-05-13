@@ -4,10 +4,8 @@ Derived from Keras' numpy utility: https://github.com/keras-team/keras/blob/mast
 import numpy as np
 
 
-def one_hot(y: np.ndarray, num_classes: int = None, channel_axis: int = -1, dtype='float32') -> np.ndarray:
+def one_hot(y: np.ndarray, num_classes: int = None, channel_axis: int = -1, dtype: str = 'uint8') -> np.ndarray:
     """Converts a class vector (integers) to binary class matrix.
-
-    E.g. for use with categorical_crossentropy.
 
     Args:
         y: class vector to be converted into a matrix
@@ -18,8 +16,7 @@ def one_hot(y: np.ndarray, num_classes: int = None, channel_axis: int = -1, dtyp
             (`float32`, `float64`, `int32`...)
 
     Returns:
-        A binary matrix representation of the input. The classes axis
-        is placed last.
+        A binary matrix representation of the input.
     """
     y = np.array(y, dtype='int')
     input_shape = list(y.shape)
