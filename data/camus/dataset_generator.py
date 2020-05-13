@@ -14,7 +14,7 @@ from vital.data.camus.config import image_size, View, Instant, DataTags, Label
 from vital.data.config import Subset
 from vital.utils.image.io import load_mhd
 from vital.utils.image.register.camus import CamusRegisteringTransformer
-from vital.utils.image.transform import resize_image, resize_segmentation, remove_labels
+from vital.utils.image.transform import resize_image, resize_image, remove_labels
 
 
 class CrossValidationDatasetGenerator:
@@ -116,7 +116,7 @@ class CrossValidationDatasetGenerator:
                 else:
                     data_x_proc = np.array([resize_image(x, (image_size, image_size), resample=LINEAR)
                                             for x in data_x])
-                    data_y_proc = np.array([resize_segmentation(y, (image_size, image_size))
+                    data_y_proc = np.array([resize_image(y, (image_size, image_size))
                                             for y in data_y])
 
                 # Write image and groundtruth data

@@ -7,8 +7,8 @@ from keras_preprocessing.image import ImageDataGenerator
 from scipy import ndimage
 
 from vital.data.config import SemanticStructureId
-from vital.utils.format import one_hot
-from vital.utils.image.transform import resize_segmentation, resize_image
+from vital.utils.format import one_hot, labelled
+from vital.utils.image.transform import resize_image
 
 Shift = Tuple[int, int]
 Rotation = float
@@ -250,7 +250,7 @@ class AffineRegisteringTransformer:
         is_labelled_2d, is_labelled_3d = format  # Unpack original shape info
 
         if is_labelled_2d or is_labelled_3d:  # If the segmentation was originally labelled
-            segmentation = segmentation.argmax(axis=-1)
+            segmentation = labelled(segmentation)
             if is_labelled_3d:  # If the segmentation had an empty dim of size 1
                 segmentation = segmentation[..., np.newaxis]
         return segmentation
@@ -284,7 +284,7 @@ class AffineRegisteringTransformer:
         Returns:
             center of mass of the structure in the segmentation.
         """
-        center = ndimage.measurements.center_of_mass(np.isin(segmentation.argmax(axis=-1), struct_label))
+        center = ndimage.measurements.center_of_mass(np.isin(labelled(segmentation), struct_label))
         if any(np.isnan(center)):
             center = default_center if default_center else (segmentation.shape[0] // 2, segmentation.shape[1] // 2)
         return center
@@ -430,8 +430,8 @@ class AffineRegisteringTransformer:
         crop_parameters = self._compute_crop_parameters(segmentation)
 
         # Crop the segmentation around the bbox and resize to target shape
-        segmentation = _crop(np.argmax(segmentation, axis=-1), crop_parameters[2:])
-        segmentation = one_hot(resize_segmentation(segmentation, self.crop_shape[::-1]))
+        segmentation = _crop(labelled(segmentation), crop_parameters[2:])
+        segmentation = one_hot(resize_image(segmentation, self.crop_shape[::-1]))
 
         if image is not None:
             # Crop the image around the bbox and resize to target shape
@@ -457,7 +457,7 @@ class AffineRegisteringTransformer:
 
         # Resize the resized cropped segmentation to the original shape of the bbox
         bbox_shape = (row_max - row_min, col_max - col_min)
-        segmentation = one_hot(resize_segmentation(segmentation.argmax(axis=-1), bbox_shape[::-1]),
+        segmentation = one_hot(resize_image(labelled(segmentation), bbox_shape[::-1]),
                                num_classes=segmentation.shape[-1])
 
         # Place the cropped segmentation at its original location, inside an empty segmentation
