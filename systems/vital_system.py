@@ -1,11 +1,14 @@
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from contextlib import redirect_stdout
-from typing import Tuple, Mapping
+from typing import Tuple, Mapping, Union, List, Dict
 
 import pytorch_lightning as pl
 import torch
+from torch import Tensor
 from torch import nn
+from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
 from torchsummary import summary
 from torchvision.datasets import VisionDataset
 
@@ -43,7 +46,7 @@ class VitalSystem(pl.LightningModule, ABC):
                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                 summary(self.module.to(device), system_input_shape)
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> Optimizer:
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, amsgrad=True)
 
     def forward(self, *args, **kwargs):
@@ -76,13 +79,13 @@ class SystemDataManagerMixin(VitalSystem, ABC):
     data_params: DataParameters
     dataset: Mapping[Subset, VisionDataset]
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> DataLoader:
         raise NotImplementedError
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
         pass
 
-    def test_dataloader(self):
+    def test_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
         pass
 
     @classmethod
@@ -98,15 +101,18 @@ class SystemDataManagerMixin(VitalSystem, ABC):
 class SystemTrainEvalLoopMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the training/validation/testing phases."""
 
-    def training_step(self, *args, **kwargs):
+    def training_step(self, *args, **kwargs) -> Union[int, Dict[str, Union[Tensor, Dict[str, Tensor]]]]:
         raise NotImplementedError
 
-    def validation_step(self, *args, **kwargs):
+    def validation_step(self, *args, **kwargs) -> Dict[str, Tensor]:
         pass
 
-    def test_step(self, *args, **kwargs):
+    def test_step(self, *args, **kwargs) -> Dict[str, Tensor]:
         """Expects the system to make test-time predictions for the batch, coordinating with ``save_test_step_results``
-        from the ``SystemEvaluationMixin`` to save the results."""
+        from the ``SystemEvaluationMixin`` to save the results.
+
+        It doesn't have to output any metric for downstream tasks, like Lightning normally expects.
+        """
         pass
 
     @classmethod
@@ -127,9 +133,10 @@ class SystemEvaluationMixin(VitalSystem, ABC):
         information the downstream evaluation."""
         pass
 
-    def test_epoch_end(self, outputs):
-        """By default, exports results using custom loggers and returns no metrics to display in the progress bar
-        (as Lightning normally expects).
+    def test_epoch_end(self, outputs: Union[List[Dict[str, Tensor]], List[List[Dict[str, Tensor]]]]) \
+            -> Dict[str, Dict[str, Tensor]]:
+        """Called at the end of the testing epoch. Can be used to export results using custom loggers, while not
+        returning any metrics to display in the progress bar (as Lightning normally expects).
         """
         pass
 

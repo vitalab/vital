@@ -31,17 +31,17 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             Subset.TEST: Camus(image_set=Subset.TEST, predict=True, **common_args)
         }
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> DataLoader:
         return DataLoader(self.dataset[Subset.TRAIN],
                           batch_size=self.hparams.batch_size, shuffle=True,
                           num_workers=self.hparams.workers, pin_memory=True)
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> DataLoader:
         return DataLoader(self.dataset[Subset.VALID],
                           batch_size=self.hparams.batch_size,
                           num_workers=self.hparams.workers, pin_memory=True)
 
-    def test_dataloader(self):
+    def test_dataloader(self) -> DataLoader:
         return DataLoader(self.dataset[Subset.TEST], batch_size=None, num_workers=self.hparams.workers)
 
     @classmethod
