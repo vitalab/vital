@@ -46,6 +46,11 @@ class SupervisedTrainEvalLoopMixin(SystemTrainEvalLoopMixin, ABC):
                 'log': reduced_metrics}
 
     def training_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:
+        # Remove loss from outputs passed to generic epoch end so that it doesn't conflict with Lightning's automatic
+        # logging of the loss
+        for output in outputs:
+            del output['loss']
+
         return self.trainval_epoch_end(outputs)
 
     def validation_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:
