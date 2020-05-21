@@ -65,6 +65,8 @@ class VitalTrainer(ABC):
             weights_summary=hparams.weights_summary,
             gpus=hparams.gpus,
             num_nodes=hparams.num_nodes,
+            auto_lr_find=hparams.auto_lr_find,
+            auto_scale_batch_size=hparams.auto_scale_batch_size,
             min_epochs=hparams.min_epochs if 'min_epochs' in hparams else 1,
             max_epochs=hparams.max_epochs
         )
@@ -94,10 +96,14 @@ class VitalTrainer(ABC):
         parser.add_argument("--predict", action='store_true', help="Skip training and do test phase")
 
         # training configuration parameters
-        parser.add_argument('--weights_summary', type=str, default='full', choices=['full', 'top', None])
+        parser.add_argument('--weights_summary', type=str, default=None, choices=['full', 'top'])
         parser.add_argument('--gpus', type=Union[int, List[int]], default=1)
         parser.add_argument('--num_nodes', type=int, default=1)
         parser.add_argument('--workers', type=int, default=os.cpu_count() // 2)
+
+        # Parameters auto-finder
+        parser.add_argument('--auto_lr_find', action='store_true')
+        parser.add_argument('--auto_scale_batch_size', action='store_true')
 
         # Lightning configuration parameters
         parser.add_argument('--fast_dev_run', action='store_true',
