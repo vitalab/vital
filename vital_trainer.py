@@ -72,14 +72,19 @@ class VitalTrainer(ABC):
         )
 
         system_cls = cls.get_selected_system(hparams)
-        if hparams.predict:  # If we want to skip training and go straight to testing
+
+        if hparams.pretrained:  # Load pretrained model if checkpoint is provided
             model = system_cls.load_from_checkpoint(hparams.pretrained)
-            trainer.model = model
-            trainer.test(model)
-        else:  # If we want to train and then test the system
-            model = system_cls(hparams)
-            trainer.fit(model)
-            trainer.test()
+        else:
+            if hparams.predict:  # If we try to skip training and go straight to testing
+                raise ValueError("Trainer set to skip training (`--predict` flag) without a pretrained model provided. "
+                                 "Please allow model to train (remove `--predict` flag) or "
+                                 "provide a pretrained model (through `--pretrained` parameter).")
+            else:  # If we have to train and then test the system
+                model = system_cls(hparams)
+                trainer.fit(model)
+
+        trainer.test(model)
 
     @classmethod
     def add_trainer_args(cls, parser: ArgumentParser):
