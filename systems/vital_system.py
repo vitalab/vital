@@ -47,7 +47,7 @@ class VitalSystem(pl.LightningModule, ABC):
                 summary(self.module.to(device), system_input_shape)
 
     def configure_optimizers(self) -> Optimizer:
-        return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, amsgrad=True)
+        return torch.optim.AdamW(self.parameters(), lr=self.hparams.lr)
 
     def forward(self, *args, **kwargs):
         return self.module.predict(*args, **kwargs)
