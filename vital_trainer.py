@@ -104,7 +104,7 @@ class VitalTrainer(ABC):
         parser.add_argument('--weights_summary', type=str, default=None, choices=['full', 'top'])
         parser.add_argument('--gpus', type=Union[int, List[int]], default=1)
         parser.add_argument('--num_nodes', type=int, default=1)
-        parser.add_argument('--workers', type=int, default=os.cpu_count() // 2)
+        parser.add_argument('--workers', type=int, default=os.cpu_count() - 1)
 
         # Parameters auto-finder
         parser.add_argument('--auto_lr_find', action='store_true')
