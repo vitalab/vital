@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Type, Union, List
 
 from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import EarlyStopping
 
 from vital.systems.vital_system import VitalSystem
 
@@ -58,6 +59,8 @@ class VitalTrainer(ABC):
         Args:
             hparams: arguments parsed from the CLI.
         """
+        early_stop_callback = EarlyStopping(patience=max(1, hparams.max_epochs // 5)) \
+            if hparams.early_stop_callback else False
         trainer = Trainer(
             default_save_path=hparams.save_dir,
             fast_dev_run=hparams.fast_dev_run,
@@ -68,7 +71,8 @@ class VitalTrainer(ABC):
             auto_lr_find=hparams.auto_lr_find,
             auto_scale_batch_size=hparams.auto_scale_batch_size,
             min_epochs=hparams.min_epochs if 'min_epochs' in hparams else 1,
-            max_epochs=hparams.max_epochs
+            max_epochs=hparams.max_epochs,
+            early_stop_callback=early_stop_callback,
         )
 
         system_cls = cls.get_selected_system(hparams)
@@ -102,6 +106,9 @@ class VitalTrainer(ABC):
 
         # training configuration parameters
         parser.add_argument('--weights_summary', type=str, default=None, choices=['full', 'top'])
+        parser.add_argument('--no_early_stopping', dest='early_stop_callback', action='store_false',
+                            help="Disable early stopping. \nBy default, early stopping monitors 'val_loss' with a "
+                                 "patience of: 'max_epochs' // 5")
         parser.add_argument('--gpus', type=Union[int, List[int]], default=1)
         parser.add_argument('--num_nodes', type=int, default=1)
         parser.add_argument('--workers', type=int, default=os.cpu_count() - 1)
