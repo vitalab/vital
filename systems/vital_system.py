@@ -47,7 +47,7 @@ class VitalSystem(pl.LightningModule, ABC):
                 summary(self.module.to(device), system_input_shape)
 
     def configure_optimizers(self) -> Optimizer:
-        return torch.optim.AdamW(self.parameters(), lr=self.hparams.lr)
+        return torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
 
     def forward(self, *args, **kwargs):
         return self.module.predict(*args, **kwargs)
@@ -57,7 +57,8 @@ class VitalSystem(pl.LightningModule, ABC):
         """Builds a parser object that supports generic CL arguments.
 
         Must be overridden to add generic arguments whose default values are implementation specific (listed below).
-            - lr
+            - lr (if using the default optimizer)
+            - weight_decay (if using the default optimizer)
             - batch_size
             - max_epochs
 
