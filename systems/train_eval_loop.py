@@ -42,15 +42,11 @@ class SupervisedTrainEvalLoopMixin(SystemTrainEvalLoopMixin, ABC):
         reduced_metrics = {metric_name: torch.stack([output[metric_name]
                                                      for output in outputs]).mean()
                            for metric_name in metric_names}
-        return {'progress_bar': reduced_metrics,
+        return {'progress_bar': {metric: value for metric, value in reduced_metrics.items()
+                                 if metric != 'loss'},
                 'log': reduced_metrics}
 
     def training_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:
-        # Remove loss from outputs passed to generic epoch end so that it doesn't conflict with Lightning's automatic
-        # logging of the loss
-        for output in outputs:
-            del output['loss']
-
         return self.trainval_epoch_end(outputs)
 
     def validation_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:
