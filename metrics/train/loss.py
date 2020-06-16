@@ -18,7 +18,7 @@ def kl_div_zmuv(mu: Tensor, logvar: Tensor, reduction: Literal['mean', 'none'] =
                    ``'mean'``: the sum of the output will be divided by the number of elements in the output.
 
     Returns:
-        the KL divergence term of the VAE's loss.
+        (1,) or (N,), the KL divergence term of the VAE's loss, reduced or for each sample.
     """
     kl_div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1)
     if reduction == 'mean':

@@ -5,13 +5,12 @@ from typing import Type, Tuple
 
 import torch
 import torch.nn.functional as F
-from PIL.Image import NEAREST
 from roi_align import CropAndResize
 from torch import Tensor
 from torch import nn
-from torchvision.transforms.functional import to_tensor, to_pil_image
 
 from vital.utils.device import get_device
+from vital.utils.image.transform import resize_image
 
 
 class LocalizationNet(nn.Module):
@@ -126,15 +125,16 @@ class LocalizationNet(nn.Module):
             prediction: (N, ``out_channels``, H, W), input's segmentation, in one-hot format.
         """
         _, roi_bbox_hat, localized_y_hat = self(x)
-        return F.one_hot(self._revert_crop(localized_y_hat.argmax(dim=1), roi_bbox_hat),
-                         num_classes=self.out_shape[-1])
+        y_hat = self._revert_crop(localized_y_hat.argmax(dim=1, keepdim=True), roi_bbox_hat).squeeze()  # (N, H, W)
+        y_hat = F.one_hot(y_hat.squeeze(), num_classes=self.out_shape[-1])  # (N, H, W, ``out_channels``)
+        return y_hat.permute(0, 3, 1, 2)  # (N, ``out_channels``, H, W)
 
     def _revert_crop(self, localized_segmentation: Tensor, roi_bbox: Tensor) -> Tensor:
         """Fits the localized segmentation back to its original position the image.
 
         Args:
-            localized_segmentation: (N, H, W), segmentation of the content of the bbox around the ROI.
-            roi_bbox: (N, 4), coordinates of the bbox around the ROI.
+            localized_segmentation: (N, 1, H, W), segmentation of the content of the bbox around the ROI.
+            roi_bbox: (N, 4), normalized coordinates of the bbox around the ROI.
 
         Returns:
             segmentation: (N, 1, H, W), localized segmentation fitted to its original position in the image.
@@ -149,18 +149,18 @@ class LocalizationNet(nn.Module):
 
         # Fit the localized segmentation at its original location in the image, one item at a time
         segmentation = []
-        for item_roi_bbox, localized_item_seg in zip(roi_bbox, localized_segmentation):
+        for item_roi_bbox, item_localized_seg in zip(roi_bbox, localized_segmentation):
             # Get bbox size in order (width, height)
-            bbox_size = (item_roi_bbox[3] - item_roi_bbox[1] + 1,
-                         item_roi_bbox[2] - item_roi_bbox[0] + 1)
+            bbox_size = (item_roi_bbox[3] - item_roi_bbox[1],
+                         item_roi_bbox[2] - item_roi_bbox[0])
 
-            # Convert segmentation tensor to PIL image to resize, then convert back to tensor
-            resized_item_seg = to_tensor(
-                to_pil_image(localized_item_seg.byte().cpu()).resize(bbox_size, resample=NEAREST))
+            # Convert segmentation tensor to array (compatible with PIL) to resize, then convert back to tensor
+            pil_formatted_localized_seg = item_localized_seg.byte().cpu().numpy().squeeze()
+            item_resized_seg = torch.from_numpy(resize_image(pil_formatted_localized_seg, bbox_size)).unsqueeze(0)
 
             # Place the resized localised segmentation inside an empty segmentation
-            segmentation.append(torch.zeros_like(localized_item_seg))
-            segmentation[-1][item_roi_bbox[0]:bbox_size[1] + item_roi_bbox[0],
-            item_roi_bbox[1]:bbox_size[0] + item_roi_bbox[1]] = resized_item_seg
+            segmentation.append(torch.zeros_like(item_localized_seg))
+            segmentation[-1][:, item_roi_bbox[0]:item_roi_bbox[2],
+            item_roi_bbox[1]:item_roi_bbox[3]] = item_resized_seg
 
         return torch.stack(segmentation)

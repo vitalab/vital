@@ -41,7 +41,7 @@ def bbox(segmentation: Union[np.ndarray, Tensor],
     col_min, col_max = col_min - dy, col_max + dy + 1
 
     # Check limits
-    row_min, row_max = max(0, row_min), min(row_max, segmentation.shape[0])
-    col_min, col_max = max(0, col_min), min(col_max, segmentation.shape[1])
+    row_min, row_max = max(0, row_min), min(row_max, roi_mask.shape[0])
+    col_min, col_max = max(0, col_min), min(col_max, roi_mask.shape[1])
 
     return np.array([row_min, col_min, row_max, col_max])
