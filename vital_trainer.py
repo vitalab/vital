@@ -59,7 +59,7 @@ class VitalTrainer(ABC):
         Args:
             hparams: arguments parsed from the CLI.
         """
-        early_stop_callback = EarlyStopping(patience=max(1, hparams.max_epochs // 5)) \
+        early_stop_callback = EarlyStopping(patience=max(3, hparams.max_epochs // 5)) \
             if hparams.early_stop_callback else False
         trainer = Trainer(
             default_save_path=hparams.save_dir,
