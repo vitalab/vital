@@ -252,7 +252,8 @@ class Camus(VisionDataset):
             target data arrays processed and formatted.
         """
         return [one_hot(remove_labels(target_data, [lbl.value for lbl in self.labels_to_remove],
-                                      fill_label=Label.BG.value))
+                                      fill_label=Label.BG.value),
+                        num_classes=len(self.labels))
                 for target_data in args]
 
     @staticmethod
