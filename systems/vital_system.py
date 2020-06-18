@@ -41,7 +41,7 @@ class VitalSystem(pl.LightningModule, ABC):
         Args:
             system_input_shape: shape of the input data the system should expect when using the dataset.
         """
-        with open(str(self.hparams.save_dir.joinpath('summary.txt')), 'w') as f:
+        with open(str(self.hparams.default_root_dir.joinpath('summary.txt')), 'w') as f:
             with redirect_stdout(f):
                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                 summary(self.module.to(device), system_input_shape)
@@ -54,24 +54,23 @@ class VitalSystem(pl.LightningModule, ABC):
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
-        """Builds a parser object that supports generic CL arguments.
+        """Builds a parser object that supports CL arguments specific to a system.
 
         Must be overridden to add generic arguments whose default values are implementation specific (listed below).
+            - batch_size
             - lr (if using the default optimizer)
             - weight_decay (if using the default optimizer)
-            - batch_size
-            - max_epochs
 
         Also where new system specific arguments should be added (and parsed in the same class' ``parse_args``).
         Generic arguments with model specific values:
 
         Returns:
-            parser object that supports generic CL arguments.
+            parser object that supports CL arguments specific to a system.
         """
         parser = ArgumentParser(add_help=False)
-        cls.add_data_manager_args(parser)
-        cls.add_train_eval_loop_args(parser)
-        cls.add_evaluation_args(parser)
+        parser = cls.add_data_manager_args(parser)
+        parser = cls.add_train_eval_loop_args(parser)
+        parser = cls.add_evaluation_args(parser)
         return parser
 
 
@@ -90,13 +89,16 @@ class SystemDataManagerMixin(VitalSystem, ABC):
         pass
 
     @classmethod
-    def add_data_manager_args(cls, parser: ArgumentParser):
+    def add_data_manager_args(cls, parser: ArgumentParser) -> ArgumentParser:
         """Adds data related arguments to a parser object.
 
         Args:
-            parser:  parser object to which to add data loop related arguments.
+            parser: parser object to which to add data loop related arguments.
+
+        Returns:
+            parser object to which data loop related arguments have been added.
         """
-        pass
+        return parser
 
 
 class SystemTrainEvalLoopMixin(VitalSystem, ABC):
@@ -117,13 +119,16 @@ class SystemTrainEvalLoopMixin(VitalSystem, ABC):
         pass
 
     @classmethod
-    def add_train_eval_loop_args(cls, parser: ArgumentParser):
+    def add_train_eval_loop_args(cls, parser: ArgumentParser) -> ArgumentParser:
         """Adds train-eval loop related arguments to a parser object.
 
         Args:
-            parser:  parser object to which to add train-eval loop related arguments.
+            parser: parser object to which to add train-eval loop related arguments.
+
+        Returns:
+            parser object to which train-eval loop related arguments have been added.
         """
-        pass
+        return parser
 
 
 class SystemEvaluationMixin(VitalSystem, ABC):
@@ -146,6 +151,9 @@ class SystemEvaluationMixin(VitalSystem, ABC):
         """Adds evaluation related arguments to a parser object.
 
         Args:
-            parser:  parser object to which to add evaluation related arguments.
+            parser: parser object to which to add evaluation related arguments.
+
+        Returns:
+            parser object to which evaluation related arguments have been added.
         """
-        pass
+        return parser

@@ -45,7 +45,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
         return DataLoader(self.dataset[Subset.TEST], batch_size=None, num_workers=self.hparams.workers)
 
     @classmethod
-    def add_data_manager_args(cls, parser: ArgumentParser):
+    def add_data_manager_args(cls, parser: ArgumentParser) -> ArgumentParser:
         parser.add_argument("dataset_path", type=Path, help="Path to the HDF5 dataset")
         parser.add_argument("--labels", type=Label.from_name, default=list(Label), nargs='+', choices=list(Label),
                             help="Labels of the segmentation classes to take into account (including background). "
@@ -64,3 +64,5 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
         else:
             parser.add_argument("--use_sequence", dest="use_sequence", action='store_true',
                                 help="Enable use of interpolated sequences")
+
+        return parser
