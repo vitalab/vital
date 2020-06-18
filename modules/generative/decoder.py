@@ -1,7 +1,8 @@
 from collections import OrderedDict
+from functools import reduce
+from operator import mul
 from typing import Tuple
 
-import torch
 from torch import Tensor
 from torch import nn
 
@@ -28,34 +29,33 @@ class Decoder(nn.Module):
         super().__init__()
 
         # Projection from encoding to bottleneck
-        self.feature_maps = init_channels
-        self.bottleneck_size = (image_size[0] // 2 ** (blocks + 1),
-                                image_size[1] // 2 ** (blocks + 1))
-        self.bottleneck_fc = nn.Sequential(OrderedDict([
-            ('bottleneck_fc', nn.Linear(latent_dim,
-                                        self.bottleneck_size[0] * self.bottleneck_size[1] * init_channels)),
+        self.feature_shape = (init_channels,
+                              image_size[0] // 2 ** (blocks + 1),
+                              image_size[1] // 2 ** (blocks + 1))
+        self.encoding2features = nn.Sequential(OrderedDict([
+            ('bottleneck_fc', nn.Linear(latent_dim, reduce(mul, self.feature_shape))),
             ('bottleneck_elu', nn.ELU(inplace=True))
         ]))
 
         # Upsampling transposed convolution blocks
-        self.features = nn.Sequential()
+        self.features2output = nn.Sequential()
         block_in_channels = init_channels
         for idx, block_idx in enumerate(reversed(range(blocks))):
             block_out_channels = init_channels * 2 ** block_idx
-            self.features.add_module(f'conv_transpose_elu{idx}',
-                                     conv_transpose2x2_activation(in_channels=block_in_channels,
-                                                                  out_channels=block_out_channels,
-                                                                  activation='ELU'))
-            self.features.add_module(f'conv_elu{idx}',
-                                     conv3x3_activation(in_channels=block_out_channels,
-                                                        out_channels=block_out_channels,
-                                                        activation='ELU'))
+            self.features2output.add_module(f'conv_transpose_elu{idx}',
+                                            conv_transpose2x2_activation(in_channels=block_in_channels,
+                                                                         out_channels=block_out_channels,
+                                                                         activation='ELU'))
+            self.features2output.add_module(f'conv_elu{idx}',
+                                            conv3x3_activation(in_channels=block_out_channels,
+                                                               out_channels=block_out_channels,
+                                                               activation='ELU'))
             block_in_channels = block_out_channels
 
-        self.features.add_module(f'conv_transpose_elu{blocks}',
-                                 conv_transpose2x2_activation(in_channels=block_in_channels,
-                                                              out_channels=block_in_channels,
-                                                              activation='ELU'))
+        self.features2output.add_module(f'conv_transpose_elu{blocks}',
+                                        conv_transpose2x2_activation(in_channels=block_in_channels,
+                                                                     out_channels=block_in_channels,
+                                                                     activation='ELU'))
 
         # Classifier
         self.classifier = nn.Conv2d(block_in_channels, out_channels, kernel_size=3, padding=1)
@@ -69,8 +69,7 @@ class Decoder(nn.Module):
         Returns:
             y_hat: (N, ``channels``, H, W), raw, unnormalized scores for each class in the input's reconstruction.
         """
-        features = self.bottleneck_fc(z)
-        features = torch.reshape(features, (-1, self.feature_maps, *self.bottleneck_size))
-        features = self.features(features)
+        features = self.encoding2features(z)
+        features = self.features2output(features.view((-1, *self.feature_shape)))
         out = self.classifier(features)
         return out

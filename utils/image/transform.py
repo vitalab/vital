@@ -2,8 +2,10 @@ from typing import Tuple, Sequence
 
 import PIL
 import numpy as np
+import torch
 from PIL import Image
 from PIL.Image import NEAREST
+from torch import Tensor
 
 
 def resize_image(image: np.ndarray, size: Tuple[int, int], resample: PIL.Image = NEAREST) -> np.ndarray:
@@ -43,3 +45,17 @@ def remove_labels(segmentation: np.ndarray, labels_to_remove: Sequence[int], fil
         segmentation = np.delete(segmentation, labels_to_remove, axis=-1)
 
     return segmentation
+
+
+def segmentation_to_tensor(segmentation: np.ndarray, dtype: str = 'float32') -> Tensor:
+    """Converts a segmentation map to a tensor, including reordering the dimensions.
+
+    Args:
+        segmentation: (H, W, C), segmentation map to convert to a tensor.
+        dtype: The data type expected for the converted tensor, as a string
+               (`float32`, `float64`, `int32`...)
+
+    Returns:
+        (C, H, W), segmentation map converted to a tensor.
+    """
+    return torch.from_numpy(segmentation.transpose((2, 0, 1)).astype(dtype))

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Mapping
+from typing import Mapping, MutableMapping
 
 import numpy as np
 
@@ -14,7 +14,7 @@ class PatientData:
         views: mapping between each view available for the patient and the data associated with the view.
     """
     id: str
-    views: Mapping[View, "ViewData"] = field(default_factory=dict)
+    views: MutableMapping[View, "ViewData"] = field(default_factory=dict)
 
 
 @dataclass

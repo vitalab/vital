@@ -1,3 +1,5 @@
+from functools import reduce
+from operator import mul
 from typing import Union, Tuple
 
 import torch
@@ -31,36 +33,35 @@ class Encoder(nn.Module):
         self.output_distribution = output_distribution
 
         # Downsampling convolution blocks
-        self.features = nn.Sequential()
+        self.input2features = nn.Sequential()
         block_in_channels = in_channels
         for block_idx in range(blocks):
             block_out_channels = init_channels * 2 ** block_idx
 
-            self.features.add_module(f'strided_conv_elu{block_idx}',
-                                     conv3x3_activation(in_channels=block_in_channels,
-                                                        out_channels=block_out_channels,
-                                                        stride=2, activation='ELU'))
-            self.features.add_module(f'conv_elu{block_idx}',
-                                     conv3x3_activation(in_channels=block_out_channels,
-                                                        out_channels=block_out_channels,
-                                                        activation='ELU'))
+            self.input2features.add_module(f'strided_conv_elu{block_idx}',
+                                           conv3x3_activation(in_channels=block_in_channels,
+                                                              out_channels=block_out_channels,
+                                                              stride=2, activation='ELU'))
+            self.input2features.add_module(f'conv_elu{block_idx}',
+                                           conv3x3_activation(in_channels=block_out_channels,
+                                                              out_channels=block_out_channels,
+                                                              activation='ELU'))
 
             block_in_channels = block_out_channels
 
         # Bottleneck block
-        self.features.add_module('bottleneck_strided_conv_elu',
-                                 conv3x3_activation(in_channels=block_in_channels,
-                                                    out_channels=init_channels,
-                                                    stride=2, activation='ELU'))
+        self.input2features.add_module('bottleneck_strided_conv_elu',
+                                       conv3x3_activation(in_channels=block_in_channels,
+                                                          out_channels=init_channels,
+                                                          stride=2, activation='ELU'))
 
         # Fully-connected mapping to encoding
-        bottleneck_size = (image_size[0] // 2 ** (blocks + 1),
-                           image_size[1] // 2 ** (blocks + 1))
-        self.mu_head = nn.Linear(bottleneck_size[0] * bottleneck_size[1] * init_channels,
-                                 latent_dim)
+        feature_shape = (init_channels,
+                         image_size[0] // 2 ** (blocks + 1),
+                         image_size[1] // 2 ** (blocks + 1))
+        self.mu_head = nn.Linear(reduce(mul, feature_shape), latent_dim)
         if self.output_distribution:
-            self.logvar_head = nn.Linear(bottleneck_size[0] * bottleneck_size[1] * init_channels,
-                                         latent_dim)
+            self.logvar_head = nn.Linear(reduce(mul, feature_shape), latent_dim)
 
     def forward(self, y: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """Defines the computation performed at every call.
@@ -76,7 +77,7 @@ class Encoder(nn.Module):
                 logvar: (N, ``latent_dim``), log variance of the predicted distribution of the input in the latent
                         space.
         """
-        features = self.features(y)
+        features = self.input2features(y)
         features = torch.flatten(features, 1)
         out = self.mu_head(features)
         if self.output_distribution:
