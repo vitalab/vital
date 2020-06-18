@@ -6,7 +6,6 @@ import numpy as np
 import torch
 from torch import Tensor
 from torchvision.datasets import VisionDataset
-from torchvision.transforms import transforms, ToTensor
 from torchvision.transforms.functional import to_tensor
 
 import vital
@@ -15,7 +14,7 @@ from vital.data.camus.data_struct import ViewData, PatientData
 from vital.data.config import Subset
 from vital.utils.format import one_hot
 from vital.utils.image.register.camus import CamusRegisteringTransformer
-from vital.utils.image.transform import remove_labels
+from vital.utils.image.transform import remove_labels, segmentation_to_tensor
 from vital.utils.parameters import parameters
 
 
@@ -36,8 +35,9 @@ class Camus(VisionDataset):
                  use_sequence: bool = False,
                  use_sequence_index: bool = False,
                  predict: bool = False,
-                 transform: Callable = None,
-                 target_transform: Callable = None):
+                 transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
+                 transform: Callable[[Tensor], Tensor] = None,
+                 target_transform: Callable[[Tensor], Tensor] = None):
         """
         Args:
             path: path to the HDF5 dataset.
@@ -46,13 +46,14 @@ class Camus(VisionDataset):
             use_sequence: whether to use the complete sequence between ED and ES for each view.
             use_sequence_index: whether to use instants' normalized indices in the sequence.
             predict: whether to receive the data in a format fit for inference (``True``) or training (``False``).
-            transform: a function/transform that takes in a numpy arra and returns a transformed version.
-            target_transform: a function/transform that takes in the target and transforms it.
+            transforms: a function that takes in an input/target pair and transforms them in a corresponding way
+                        (only applied when `predict` is `False`, i.e. in train/validation mode).
+            transform: a function that takes in an input and transforms it
+                       (only applied when `predict` is `False`, i.e. in train/validation mode).
+            target_transform: a function that takes in a target and transforms it
+                              (only applied when `predict` is `False`, i.e. in train/validation mode).
         """
-        transform = ToTensor() if not transform else transforms.Compose([transform, ToTensor()])
-        target_transform = ToTensor() if not target_transform else transforms.Compose([target_transform, ToTensor()])
-
-        super().__init__(path, transform=transform, target_transform=target_transform)
+        super().__init__(path, transforms=transforms, transform=transform, target_transform=target_transform)
         self.image_set = image_set.value
         self.labels = labels
         self.use_sequence = use_sequence
@@ -64,9 +65,6 @@ class Camus(VisionDataset):
         if self.use_sequence and not self.dataset_with_sequence:
             raise ValueError("Request to use complete sequences, but the dataset only contains cardiac phase end "
                              "instants. Should specify `no_sequence` flag, or generate a new dataset with sequences.")
-
-        # Add transformation to convert numpy arrays to tensors
-        self.transforms = transforms.Compose([self.transforms, ToTensor()])
 
         # Determine labels to remove based on labels to take into account
         self.labels_to_remove = [label for label in Label if label not in self.labels]
@@ -147,8 +145,9 @@ class Camus(VisionDataset):
             # that output ``FloatTensor`` by default (and not ``DoubleTensor``)
             sequence_idx = np.float32(instant / view_imgs.shape[0])
 
-        img = self.transform(img)
-        gt = self.target_transform(gt)
+        img, gt = to_tensor(img), segmentation_to_tensor(gt)
+        if self.transforms:
+            img, gt = self.transforms(img, gt)
 
         item = {DataTags.img: img,
                 DataTags.gt: gt}
@@ -189,7 +188,7 @@ class Camus(VisionDataset):
 
                 # Transform arrays to tensor
                 proc_imgs_tensor = torch.stack([to_tensor(proc_img) for proc_img in proc_imgs])
-                proc_gts_tensor = torch.stack([to_tensor(proc_gt) for proc_gt in proc_gts])
+                proc_gts_tensor = torch.stack([segmentation_to_tensor(proc_gt) for proc_gt in proc_gts])
 
                 views[view] = (proc_imgs_tensor, proc_gts_tensor)
 
