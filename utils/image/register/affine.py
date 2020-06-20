@@ -207,15 +207,15 @@ class AffineRegisteringTransformer:
             format: flags indicating the original shape of the segmentation.
         """
         # Check if image is a categorical 2D array
-        is_labelled_2d = segmentation.ndim == 2
+        is_categorical_2d = segmentation.ndim == 2
 
         # Check if image is a categorical 3D array (with last dim of size 1)
-        is_labelled_3d = not is_labelled_2d and segmentation.shape[2] == 1
+        is_categorical_3d = not is_categorical_2d and segmentation.shape[2] == 1
 
-        if is_labelled_2d or is_labelled_3d:  # If the image is not already in categorical format
+        if is_categorical_2d or is_categorical_3d:  # If the image is not already in categorical format
             segmentation = to_onehot(segmentation, num_classes=self.num_classes)
 
-        return segmentation.astype(np.uint8), (is_labelled_2d, is_labelled_3d)
+        return segmentation.astype(np.uint8), (is_categorical_2d, is_categorical_3d)
 
     @staticmethod
     def _check_image_format(image: np.ndarray) -> Tuple[np.ndarray, bool]:
@@ -247,11 +247,11 @@ class AffineRegisteringTransformer:
         Returns:
             segmentation in its original format.
         """
-        is_labelled_2d, is_labelled_3d = format  # Unpack original shape info
+        is_categorical_2d, is_categorical_3d = format  # Unpack original shape info
 
-        if is_labelled_2d or is_labelled_3d:  # If the segmentation was originally categorical
+        if is_categorical_2d or is_categorical_3d:  # If the segmentation was originally categorical
             segmentation = to_categorical(segmentation)
-            if is_labelled_3d:  # If the segmentation had an empty dim of size 1
+            if is_categorical_3d:  # If the segmentation had an empty dim of size 1
                 segmentation = segmentation[..., np.newaxis]
         return segmentation
 
