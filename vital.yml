@@ -19,9 +19,9 @@ dependencies:
   - tqdm
   - pytorch
   - torchvision
+  - pytorch-lightning>=0.8
   - cudatoolkit=10.1
   - pip:
-      - pytorch-lightning
       - torchsummary
       - keras # Used by `utils/image/register.py` for its image processing utilities (w/o backend)
       - git+https://github.com/longcw/RoIAlign.pytorch

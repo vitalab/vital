@@ -12,7 +12,7 @@ import vital
 from vital.data.camus.config import Instant, View, DataTags, Label
 from vital.data.camus.data_struct import ViewData, PatientData
 from vital.data.config import Subset
-from vital.utils.format import one_hot
+from vital.utils.format import to_onehot
 from vital.utils.image.register.camus import CamusRegisteringTransformer
 from vital.utils.image.transform import remove_labels, segmentation_to_tensor
 from vital.utils.parameters import parameters
@@ -251,9 +251,9 @@ class Camus(VisionDataset):
         Returns:
             target data arrays processed and formatted.
         """
-        return [one_hot(remove_labels(target_data, [lbl.value for lbl in self.labels_to_remove],
-                                      fill_label=Label.BG.value),
-                        num_classes=len(self.labels))
+        return [to_onehot(remove_labels(target_data, [lbl.value for lbl in self.labels_to_remove],
+                                        fill_label=Label.BG.value),
+                          num_classes=len(self.labels))
                 for target_data in args]
 
     @staticmethod

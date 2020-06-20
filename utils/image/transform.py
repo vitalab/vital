@@ -32,11 +32,11 @@ def remove_labels(segmentation: np.ndarray, labels_to_remove: Sequence[int], fil
         fill_label: label to assign to the pixels currently assigned to the labels to remove.
 
     Returns:
-        ([N], H, W, 1), labelled segmentation map with the specified labels removed.
+        ([N], H, W, 1), categorical segmentation map with the specified labels removed.
     """
     segmentation = segmentation.copy()
 
-    if segmentation.shape[-1] == 1:  # If the segmentation map is labelled
+    if segmentation.shape[-1] == 1:  # If the segmentation map is categorical
         segmentation[np.isin(segmentation, labels_to_remove)] = fill_label
 
     else:  # the segmentation map is in one-hot format
