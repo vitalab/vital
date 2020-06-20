@@ -1,18 +1,15 @@
-from typing import Any
-
-from pytorch_lightning.metrics import TensorMetric
 from torch import Tensor
+from torch import nn
 
 from vital.metrics.train.functionnal import dice_score
 
 
-class DiceCoefficient(TensorMetric):
+class DiceCoefficient(nn.Module):
     """Computes a differentiable version of the dice_score coefficient."""
 
     def __init__(self, include_background: bool = False,
                  nan_score: float = 0.0, no_fg_score: float = 0.0,
-                 reduction: str = 'elementwise_mean',
-                 reduce_group: Any = None, reduce_op: Any = None):
+                 reduction: str = 'elementwise_mean'):
         """
         Args:
             include_background: whether to also compute dice_score for the background.
@@ -24,8 +21,7 @@ class DiceCoefficient(TensorMetric):
                 - none: pass array
                 - sum: add elements
         """
-        super().__init__(name='dice', reduce_group=reduce_group, reduce_op=reduce_op)
-
+        super().__init__()
         self.include_background = include_background
         self.nan_score = nan_score
         self.no_fg_score = no_fg_score
