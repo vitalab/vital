@@ -4,11 +4,11 @@ from typing import Literal, Dict, List
 import torch
 from torch import Tensor
 
-from vital.systems.vital_system import SystemTrainEvalLoopMixin
+from vital.systems.vital_system import SystemComputationMixin
 
 
-class SupervisedTrainEvalLoopMixin(SystemTrainEvalLoopMixin, ABC):
-    """Abstract mixin for generic supervised train/eval loop.
+class SupervisedComputationMixin(SystemComputationMixin, ABC):
+    """Abstract mixin for generic supervised train/val step.
 
     Implements useful generic utilities and boilerplate Lighting code:
         - Handling of identical train/val step results (metrics logging and printing)

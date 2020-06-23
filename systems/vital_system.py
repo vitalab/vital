@@ -55,10 +55,6 @@ class VitalSystem(pl.LightningModule, ABC):
     def configure_optimizers(self) -> Optimizer:
         return torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
 
-    @auto_move_data
-    def forward(self, *args, **kwargs):
-        return self.module(*args, **kwargs)
-
     @classmethod
     def build_parser(cls) -> ArgumentParser:
         """Builds a parser object that supports CL arguments specific to a system.
@@ -76,7 +72,7 @@ class VitalSystem(pl.LightningModule, ABC):
         """
         parser = ArgumentParser(add_help=False)
         parser = cls.add_data_manager_args(parser)
-        parser = cls.add_train_eval_loop_args(parser)
+        parser = cls.add_computation_args(parser)
         parser = cls.add_evaluation_args(parser)
         return parser
 
@@ -108,8 +104,12 @@ class SystemDataManagerMixin(VitalSystem, ABC):
         return parser
 
 
-class SystemTrainEvalLoopMixin(VitalSystem, ABC):
+class SystemComputationMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the training/validation/testing phases."""
+
+    @auto_move_data
+    def forward(self, *args, **kwargs):
+        return self.module(*args, **kwargs)
 
     def training_step(self, *args, **kwargs) -> Union[int, Dict[str, Union[Tensor, Dict[str, Tensor]]]]:
         raise NotImplementedError
@@ -117,23 +117,15 @@ class SystemTrainEvalLoopMixin(VitalSystem, ABC):
     def validation_step(self, *args, **kwargs) -> Dict[str, Tensor]:
         pass
 
-    def test_step(self, *args, **kwargs) -> Dict[str, Tensor]:
-        """Expects the system to make test-time predictions for the batch, coordinating with ``save_test_step_results``
-        from the ``SystemEvaluationMixin`` to save the results.
-
-        It doesn't have to output any metric for downstream tasks, like Lightning normally expects.
-        """
-        pass
-
     @classmethod
-    def add_train_eval_loop_args(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Adds train-eval loop related arguments to a parser object.
+    def add_computation_args(cls, parser: ArgumentParser) -> ArgumentParser:
+        """Adds computation (train/val step and test-time inference) related arguments to a parser object.
 
         Args:
             parser: parser object to which to add train-eval loop related arguments.
 
         Returns:
-            parser object to which train-eval loop related arguments have been added.
+            parser object to which computation related arguments have been added.
         """
         return parser
 
@@ -141,9 +133,7 @@ class SystemTrainEvalLoopMixin(VitalSystem, ABC):
 class SystemEvaluationMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the evaluation phase."""
 
-    def save_test_step_results(self, batch_idx: int, **kwargs):
-        """Saves predictions made by ``test_step`` from the ``SystemTrainEvalLoopMixin`` and additional relevant
-        information the downstream evaluation."""
+    def test_step(self, *args, **kwargs) -> Dict[str, Tensor]:
         pass
 
     def test_epoch_end(self, outputs: Union[List[Dict[str, Tensor]], List[List[Dict[str, Tensor]]]]) \
