@@ -4,13 +4,64 @@ from torch import Tensor
 from torch.nn import functional as F
 
 
+def tversky_score(input: Tensor, target: Tensor,
+                  beta: float = 0.5, bg: bool = False,
+                  nan_score: float = 0.0, no_fg_score: float = 0.0,
+                  reduction: str = 'elementwise_mean') -> Tensor:
+    """Computes the loss definition of the Tversky index.
+
+    Inspired by Pytorch Lightning's ``dice_score`` implementation
+    and by the description of the Tversky loss available here [accessed 22/06/2020]:
+    https://lars76.github.io/neural-networks/object-detection/losses-for-segmentation/
+
+    Args:
+        input: (N, C, H, W), raw, unnormalized scores for each class.
+        target: (N, H, W), where each value is 0 <= targets[i] <= C-1.
+        beta: weight to apply to false positives, and complement of the weight to apply to false negatives.
+        bg: whether to also compute dice_score for the background.
+        nan_score: score to return, if a NaN occurs during computation (denom zero).
+        no_fg_score: score to return, if no foreground pixel was found in target.
+        reduction: a method for reducing accuracies over labels (default: takes the mean)
+            Available reduction methods:
+            - elementwise_mean: takes the mean
+            - none: pass array
+            - sum: add elements
+
+    Returns:
+        (1,) or (C,), the calculated Tversky index, average/summed or by labels.
+    """
+    n_classes = input.shape[1]
+    bg = (1 - int(bool(bg)))
+    pred = F.softmax(input, dim=1)  # Use the softmax probability of the correct label instead of a hard label
+    scores = torch.zeros(n_classes - bg, device=input.device, dtype=torch.float32)
+    for i in range(bg, n_classes):
+        if not (target == i).any():
+            # no foreground class
+            scores[i - bg] += no_fg_score
+            continue
+
+        # Derivable version of the usual TP, FP and FN stats
+        class_pred = pred[:, i, ...]
+        tp = (class_pred * (target == i)).sum()
+        fp = (class_pred * (target != i)).sum()
+        fn = ((1 - class_pred) * (target == i)).sum()
+
+        denom = (tp + (beta * fp) + ((1 - beta) * fn))
+
+        if torch.isclose(denom, torch.zeros_like(denom)).any():
+            # nan result
+            score_cls = nan_score
+        else:
+            score_cls = tp / denom
+
+        scores[i - bg] += score_cls
+    return reduce(scores, reduction=reduction)
+
+
 def dice_score(input: Tensor, target: Tensor, bg: bool = False,
                nan_score: float = 0.0, no_fg_score: float = 0.0,
                reduction: str = 'elementwise_mean') -> Tensor:
-    """Computes a differentiable version of the dice_score coefficient.
-
-    Inspired by Pytorch Lightning's ``dice_score`` implementation,
-    only the TP, FP and FN were adapted to be differentiable.
+    """Computes the loss definition of the Dice coefficient.
 
     Args:
         input: (N, C, H, W), raw, unnormalized scores for each class.
@@ -25,34 +76,11 @@ def dice_score(input: Tensor, target: Tensor, bg: bool = False,
             - sum: add elements
 
     Returns:
-        (1,) or (C,), the calculated dice_score coefficient, average/summed or by labels.
+        (1,) or (C,), the calculated Dice coefficient, average/summed or by labels.
     """
-    n_classes = input.shape[1]
-    bg = (1 - int(bool(bg)))
-    pred = F.softmax(input, dim=1)  # Use the softmax probability of the correct label instead of a hard label
-    scores = torch.zeros(n_classes - bg, device=input.device, dtype=torch.float32)
-    for i in range(bg, n_classes):
-        if not (target == i).any():
-            # no foreground class
-            scores[i - bg] += no_fg_score
-            continue
-
-        # Derivable version of the usual TP, FP and FN stats
-        tp = ((pred[:, i, ...]) * (target == i)).sum()
-        fp = ((pred[:, i, ...]) * (target != i)).sum()
-        pred_prob, pred_label = pred.max(dim=1)
-        fn = ((pred_prob * (pred_label != i)) * (target == i)).sum()
-
-        denom = (2 * tp + fp + fn)
-
-        if torch.isclose(denom, torch.zeros_like(denom)).any():
-            # nan result
-            score_cls = nan_score
-        else:
-            score_cls = (2 * tp) / denom
-
-        scores[i - bg] += score_cls
-    return reduce(scores, reduction=reduction)
+    return tversky_score(input, target, beta=0.5, bg=bg,
+                         nan_score=nan_score, no_fg_score=no_fg_score,
+                         reduction=reduction)
 
 
 def kl_div_zmuv(mu: Tensor, logvar: Tensor, reduction: str = 'elementwise_mean') -> Tensor:
