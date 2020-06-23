@@ -9,7 +9,7 @@ from torchvision.datasets import VisionDataset
 from torchvision.transforms.functional import to_tensor
 
 import vital
-from vital.data.camus.config import Instant, View, DataTags, Label
+from vital.data.camus.config import Instant, View, CamusTags, Label
 from vital.data.camus.data_struct import ViewData, PatientData
 from vital.data.config import Subset
 from vital.utils.format import to_onehot
@@ -60,8 +60,8 @@ class Camus(VisionDataset):
         self.use_sequence_index = use_sequence_index
 
         with h5py.File(path, 'r') as f:
-            self.registered_dataset = f.attrs[DataTags.registered]
-            self.dataset_with_sequence = f.attrs[DataTags.full_sequence]
+            self.registered_dataset = f.attrs[CamusTags.registered]
+            self.dataset_with_sequence = f.attrs[CamusTags.full_sequence]
         if self.use_sequence and not self.dataset_with_sequence:
             raise ValueError("Request to use complete sequences, but the dataset only contains cardiac phase end "
                              "instants. Should specify `no_sequence` flag, or generate a new dataset with sequences.")
@@ -117,7 +117,7 @@ class Camus(VisionDataset):
             for patient_path in patient_paths:
                 for view in dataset[patient_path].keys():
                     view_group = dataset[patient_path][view]
-                    for instant in range(view_group[DataTags.gt].shape[0]):
+                    for instant in range(view_group[CamusTags.gt].shape[0]):
                         if include_image(view_group, instant):
                             image_paths.append((f'{patient_path}/{view}', instant))
         return image_paths
@@ -136,7 +136,7 @@ class Camus(VisionDataset):
         with h5py.File(self.root, 'r') as dataset:
             # Collect and process data
             view_imgs, view_gts = self._get_data(dataset, set_patient_view_key,
-                                                 DataTags.img_proc, DataTags.gt_proc)
+                                                 CamusTags.img_proc, CamusTags.gt_proc)
             img = view_imgs[instant]
             gt, = self._process_target_data(view_gts[instant])
 
@@ -149,11 +149,11 @@ class Camus(VisionDataset):
         if self.transforms:
             img, gt = self.transforms(img, gt)
 
-        item = {DataTags.img: img,
-                DataTags.gt: gt}
+        item = {CamusTags.img: img,
+                CamusTags.gt: gt}
 
         if self.use_sequence_index:
-            item[DataTags.sequence_idx] = sequence_idx
+            item[CamusTags.regression] = sequence_idx
 
         return item
 
@@ -174,7 +174,7 @@ class Camus(VisionDataset):
 
                 # Collect and process data
                 proc_imgs, proc_gts = Camus._get_data(dataset, set_patient_view_key,
-                                                      DataTags.img_proc, DataTags.gt_proc)
+                                                      CamusTags.img_proc, CamusTags.gt_proc)
                 proc_gts, = self._process_target_data(proc_gts)
 
                 # Indicate indices of instants with manually annotated segmentations in view sequences
@@ -214,11 +214,11 @@ class Camus(VisionDataset):
                 view = View(view)
 
                 # Collect data
-                gts, = Camus._get_data(dataset, set_patient_view_key, DataTags.gt)
+                gts, = Camus._get_data(dataset, set_patient_view_key, CamusTags.gt)
                 gts, = self._process_target_data(gts)
 
                 # Collect metadata
-                info, = Camus._get_metadata(dataset, set_patient_view_key, DataTags.info)
+                info, = Camus._get_metadata(dataset, set_patient_view_key, CamusTags.info)
 
                 # Indicate indices of instants with manually annotated segmentations in view sequences
                 instants_with_gt = {instant: Camus._get_metadata(dataset, set_patient_view_key, instant.value)[0]

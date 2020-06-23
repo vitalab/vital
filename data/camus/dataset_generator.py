@@ -10,7 +10,7 @@ from PIL.Image import LINEAR
 from pathos.multiprocessing import Pool
 from tqdm import tqdm
 
-from vital.data.camus.config import image_size, View, Instant, DataTags, Label
+from vital.data.camus.config import image_size, View, Instant, CamusTags, Label
 from vital.data.config import Subset
 from vital.utils.image.io import load_mhd
 from vital.utils.image.register.camus import CamusRegisteringTransformer
@@ -66,8 +66,8 @@ class CrossValidationDatasetGenerator:
             self._create_subset(subfold_dataset.create_group(subset.value), subfold, group_patients)
 
         # Add additional metadata to the file
-        subfold_dataset.attrs[DataTags.full_sequence] = self.use_sequence
-        subfold_dataset.attrs[DataTags.registered] = self.register
+        subfold_dataset.attrs[CamusTags.full_sequence] = self.use_sequence
+        subfold_dataset.attrs[CamusTags.registered] = self.register
 
     def get_subgroup_from_file(self, subfold: int, subset: Literal['training', 'validation', 'testing']) -> List[str]:
         """Reads patient ids for a subset of a cross-validation configuration.
@@ -121,14 +121,14 @@ class CrossValidationDatasetGenerator:
 
                 # Write image and groundtruth data
                 patient_view_group = patient_group.create_group(view.value)
-                patient_view_group.create_dataset(name=DataTags.img_proc, data=data_x_proc[..., np.newaxis],
+                patient_view_group.create_dataset(name=CamusTags.img_proc, data=data_x_proc[..., np.newaxis],
                                                   **img_save_options)
-                patient_view_group.create_dataset(name=DataTags.gt, data=data_y[..., np.newaxis], **seg_save_options)
-                patient_view_group.create_dataset(name=DataTags.gt_proc, data=data_y_proc[..., np.newaxis],
+                patient_view_group.create_dataset(name=CamusTags.gt, data=data_y[..., np.newaxis], **seg_save_options)
+                patient_view_group.create_dataset(name=CamusTags.gt_proc, data=data_y_proc[..., np.newaxis],
                                                   **seg_save_options)
 
                 # Write metadata useful for providing instants or full sequences
-                patient_view_group.attrs[DataTags.info] = info_view
+                patient_view_group.attrs[CamusTags.info] = info_view
                 for instant, instant_idx in instants_with_gt.items():
                     patient_view_group.attrs[instant.value] = instant_idx
 

@@ -54,6 +54,7 @@ class Tags:
     """
     img: str = 'img'
     gt: str = 'gt'
+    regression: str = 'reg'
     pred: str = 'pred'
     post_pred: str = 'post_pred'
     encoding: str = 'encoding'
