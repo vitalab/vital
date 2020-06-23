@@ -50,18 +50,6 @@ class Autoencoder(nn.Module):
         z = self.encoder(y)
         return self.decoder(z), z
 
-    def predict(self, y: Tensor) -> Tuple[Tensor, Tensor]:
-        """Performs test-time inference on the input.
-
-        Args:
-            y: (N, ``channels``, H, W), input to reconstruct.
-
-        Returns:
-            y_hat: (N, ``channels``, H, W), raw, unnormalized scores for each class in the input's reconstruction.
-            z: (N, ``latent_dim``), encoding of the input in the latent space.
-        """
-        return self(y)
-
 
 class VariationalAutoencoder(nn.Module):
     """Module making up a fully convolutional variational autoencoder."""
@@ -110,16 +98,3 @@ class VariationalAutoencoder(nn.Module):
         mu, logvar = self.encoder(y)
         z = reparameterize(mu, logvar)
         return self.decoder(z), z, mu, logvar
-
-    def predict(self, y: Tensor) -> Tuple[Tensor, Tensor]:
-        """Performs test-time inference on the input.
-
-        Args:
-            y: (N, ``channels``, H, W), input to reconstruct.
-
-        Returns:
-            y_hat: (N, ``channels``, H, W), raw, unnormalized scores for each class in the input's reconstruction.
-            z: (N, ``latent_dim``), deterministic encoding of the input in the latent space.
-        """
-        z, _ = self.encoder(y)
-        return self.decoder(z), z

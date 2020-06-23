@@ -5,6 +5,7 @@ from typing import Tuple, Mapping, Union, List, Dict
 
 import pytorch_lightning as pl
 import torch
+from pytorch_lightning.core.decorators import auto_move_data
 from torch import Tensor
 from torch import nn
 from torch.optim.optimizer import Optimizer
@@ -13,6 +14,7 @@ from torchsummary import summary
 from torchvision.datasets import VisionDataset
 
 from vital.data.config import Subset
+from vital.utils.device import get_device
 from vital.utils.parameters import DataParameters
 
 
@@ -38,19 +40,24 @@ class VitalSystem(pl.LightningModule, ABC):
     def save_model_summary(self, system_input_shape: Tuple[int, ...]):
         """Saves a summary of the model in a format similar to Keras' summary.
 
+        Will not be printed if PL weights' summary was disable.
+        This is done to avoid possible device incompatibilities in clusters.
+
         Args:
             system_input_shape: shape of the input data the system should expect when using the dataset.
         """
-        with open(str(self.hparams.default_root_dir.joinpath('summary.txt')), 'w') as f:
-            with redirect_stdout(f):
-                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-                summary(self.module.to(device), system_input_shape)
+        if self.hparams.weights_summary:
+            with open(str(self.hparams.default_root_dir.joinpath('summary.txt')), 'w') as f:
+                with redirect_stdout(f):
+                    device = get_device()
+                    summary(self.module.to(device), system_input_shape, device=device)
 
     def configure_optimizers(self) -> Optimizer:
         return torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
 
+    @auto_move_data
     def forward(self, *args, **kwargs):
-        return self.module.predict(*args, **kwargs)
+        return self.module(*args, **kwargs)
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
