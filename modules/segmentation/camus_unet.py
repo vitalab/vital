@@ -73,17 +73,6 @@ class CamusUnet(nn.Module):
         x = self.bottleneck(x)
         return self.decoder(x, *connected_features)
 
-    def predict(self, x: Tensor) -> Tensor:
-        """Performs test-time inference on the input.
-
-        Args:
-            x: (N, ``in_channels``, H, W), input image to segment.
-
-        Returns:
-            y_hat: (N, ``out_channels``, H, W), raw, unnormalized scores for each class in the input's segmentation.
-        """
-        return self(x)
-
 
 class _UnetEncoder(nn.Module):
     """Module making up the encoder half of the U-Net model fine-tuned for the CAMUS dataset."""

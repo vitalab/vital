@@ -19,8 +19,9 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
         self.data_params = DataParameters(in_shape=(image_size, image_size, in_channels),
                                           out_shape=(image_size, image_size, len(hparams.labels)),
                                           use_sequence_index=self.use_sequence_index)
+        self._labels = [str(label) for label in self.hparams.labels]
 
-    def prepare_data(self):
+    def setup(self, stage: str):
         common_args = {'path': self.hparams.dataset_path,
                        'labels': self.hparams.labels,
                        'use_sequence': self.hparams.use_sequence,

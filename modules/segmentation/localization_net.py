@@ -9,7 +9,6 @@ from roi_align import CropAndResize
 from torch import Tensor
 from torch import nn
 
-from vital.utils.device import get_device
 from vital.utils.image.transform import resize_image
 
 
@@ -106,7 +105,7 @@ class LocalizationNet(nn.Module):
 
         # Crop and resize ``x`` based on ``roi_bbox_hat`` predicted by the previous modules
         # The ``torch.int32`` is important to pass internal assertions about the type of the bbox index
-        cropped_x = self.crop_resize(x, roi_bbox_hat, torch.arange(x.shape[0], dtype=torch.int32, device=get_device()))
+        cropped_x = self.crop_resize(x, roi_bbox_hat, torch.arange(x.shape[0], dtype=torch.int32, device=x.device))
 
         # Second segmentation module: Segment cropped ROI
         # Segmentation module trained to take as input the image cropped around the predicted segmentation's ROI, and
