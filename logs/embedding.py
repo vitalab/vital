@@ -1,3 +1,4 @@
+import logging
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Mapping
@@ -8,6 +9,8 @@ import umap
 
 from vital.logs.logger import Logger
 from vital.utils.delegate import delegate_inheritance
+
+logger = logging.getLogger(__name__)
 
 
 @delegate_inheritance()
@@ -50,7 +53,7 @@ class GroupsEmbeddingLogger(Logger):
         encodings = np.vstack(encodings)
         indices_in_groups = np.hstack(indices_in_groups)
 
-        print(f"Generating UMAP embedding for results ...")
+        logger.info(f"Generating UMAP embedding for results ...")
         mapper = self.umap.fit(encodings)
 
         if self.interactive:
