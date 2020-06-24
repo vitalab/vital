@@ -50,7 +50,7 @@ class VitalSystem(pl.LightningModule, ABC):
             with open(str(self.hparams.default_root_dir.joinpath('summary.txt')), 'w') as f:
                 with redirect_stdout(f):
                     device = get_device()
-                    summary(self.module.to(device), system_input_shape, device=device)
+                    summary(self.module.to(device), system_input_shape, device=device.type)
 
     def configure_optimizers(self) -> Optimizer:
         return torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
