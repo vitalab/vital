@@ -1,5 +1,6 @@
-import numpy as np
 from math import degrees
+
+import numpy as np
 from skimage.measure import regionprops, inertia_tensor
 
 from vital.data.camus.config import Label

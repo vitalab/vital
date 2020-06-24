@@ -14,7 +14,7 @@ from vital.data.camus.config import image_size, View, Instant, CamusTags, Label
 from vital.data.config import Subset
 from vital.utils.image.io import load_mhd
 from vital.utils.image.register.camus import CamusRegisteringTransformer
-from vital.utils.image.transform import resize_image, resize_image, remove_labels
+from vital.utils.image.transform import resize_image, remove_labels
 
 
 class CrossValidationDatasetGenerator:
