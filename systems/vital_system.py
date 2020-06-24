@@ -82,6 +82,16 @@ class SystemDataManagerMixin(VitalSystem, ABC):
     data_params: DataParameters
     dataset: Mapping[Subset, VisionDataset]
 
+    def prepare_data(self):
+        pass
+
+    def setup(self, stage: str):
+        """Set state to the model before requesting the dataloaders.
+
+        This is the ideal place to initialize the ``Dataset`` instances.
+        """
+        pass
+
     def train_dataloader(self) -> DataLoader:
         raise NotImplementedError
 
