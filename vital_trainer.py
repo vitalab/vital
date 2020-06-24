@@ -1,12 +1,16 @@
+import logging
 import os
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+from shutil import copyfile
 from typing import Type
 
 from pytorch_lightning import Trainer
 
 from vital.systems.vital_system import VitalSystem
+
+logger = logging.getLogger(__name__)
 
 
 class VitalTrainer(ABC):
@@ -49,19 +53,37 @@ class VitalTrainer(ABC):
             if hparams.predict:  # If we try to skip training and go straight to testing
                 raise ValueError("Trainer set to skip training (`--predict` flag) without a pretrained model provided. "
                                  "Please allow model to train (remove `--predict` flag) or "
-                                 "provide a pretrained model (through `--pretrained` parameter).")
+                                 "provide a pretrained model (through `--pretra  ined` parameter).")
             else:  # If we have to train and then test the system
                 model = system_cls(hparams)
                 trainer.fit(model)
 
+                # Copy best model checkpoint to a fixed path
+                best_model_path = cls._define_best_model_path(hparams)
+                copyfile(trainer.checkpoint_callback.best_model_path, best_model_path)
+                logger.info(f"Copied best model checkpoint to: {best_model_path}")
+
         trainer.test(model)
+
+    @classmethod
+    def _define_best_model_path(cls, hparams: Namespace) -> Path:
+        """Defines the fixed path (w.r.t to the system to run) where to copy the best model checkpoint after training.
+
+        Args:
+            hparams: arguments parsed from the CLI.
+
+        Returns:
+            fixed path (w.r.t to the system to run) where to copy the best model checkpoint after training.
+        """
+        system_cls = cls._get_selected_system(hparams)
+        return hparams.default_root_dir.joinpath(f'{system_cls.__name__}.ckpt')
 
     @classmethod
     def _add_system_args(cls, parser: ArgumentParser) -> ArgumentParser:
         """Adds system-specific subparsers/arguments to a parser object.
 
-        The hierarchy of the added arguments can be arbitrarily complex, as long as ``_get_selected_system`` can pinpoint
-        a single ``VitalSystem`` to run.
+        The hierarchy of the added arguments can be arbitrarily complex, as long as ``_get_selected_system`` can
+        pinpoint a single ``VitalSystem`` to run.
 
         Args:
             parser: parser object to which system-specific arguments will be added.
