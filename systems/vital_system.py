@@ -67,10 +67,7 @@ class VitalSystem(pl.LightningModule, ABC):
             parser object that supports CL arguments specific to a system.
         """
         parser = ArgumentParser(add_help=False)
-        parser = cls.add_data_manager_args(parser)
-        parser = cls.add_computation_args(parser)
-        parser = cls.add_evaluation_args(parser)
-        return parser
+        return cls.add_evaluation_args(cls.add_computation_args(cls.add_data_manager_args(parser)))
 
 
 class SystemDataManagerMixin(VitalSystem, ABC):

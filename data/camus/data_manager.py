@@ -47,6 +47,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
 
     @classmethod
     def add_data_manager_args(cls, parser: ArgumentParser) -> ArgumentParser:
+        parser = super().add_data_manager_args(parser)
         parser.add_argument("dataset_path", type=Path, help="Path to the HDF5 dataset")
         parser.add_argument("--labels", type=Label.from_name, default=list(Label), nargs='+', choices=list(Label),
                             help="Labels of the segmentation classes to take into account (including background). "
