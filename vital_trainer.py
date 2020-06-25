@@ -3,7 +3,7 @@ import os
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from shutil import copyfile
+from shutil import copy2
 from typing import Type
 
 from pytorch_lightning import Trainer
@@ -59,14 +59,14 @@ class VitalTrainer(ABC):
                 trainer.fit(model)
 
                 # Copy best model checkpoint to a fixed path
-                best_model_path = cls._define_best_model_path(hparams)
-                copyfile(trainer.checkpoint_callback.best_model_path, best_model_path)
+                best_model_path = cls._define_best_model_save_path(hparams)
+                copy2(str(trainer.checkpoint_callback.best_model_path), str(best_model_path))
                 logger.info(f"Copied best model checkpoint to: {best_model_path}")
 
         trainer.test(model)
 
     @classmethod
-    def _define_best_model_path(cls, hparams: Namespace) -> Path:
+    def _define_best_model_save_path(cls, hparams: Namespace) -> Path:
         """Defines the fixed path (w.r.t to the system to run) where to copy the best model checkpoint after training.
 
         Args:
