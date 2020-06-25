@@ -1,6 +1,5 @@
 from abc import ABC
 from argparse import ArgumentParser, Namespace
-from contextlib import redirect_stdout
 from typing import Tuple, Mapping, Union, List, Dict
 
 import pytorch_lightning as pl
@@ -10,12 +9,11 @@ from torch import Tensor
 from torch import nn
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
-from torchsummary import summary
 from torchvision.datasets import VisionDataset
 
 from vital.data.config import Subset
-from vital.utils.device import get_device
 from vital.utils.parameters import DataParameters
+from vital.utils.summary import summary_info
 
 
 class VitalSystem(pl.LightningModule, ABC):
@@ -46,11 +44,9 @@ class VitalSystem(pl.LightningModule, ABC):
         Args:
             system_input_shape: shape of the input data the system should expect when using the dataset.
         """
-        if self.hparams.weights_summary:
-            with open(str(self.hparams.default_root_dir.joinpath('summary.txt')), 'w') as f:
-                with redirect_stdout(f):
-                    device = get_device()
-                    summary(self.module.to(device), system_input_shape, device=device.type)
+        with open(str(self.hparams.default_root_dir.joinpath('summary.txt')), 'w') as f:
+            summary_str, _ = summary_info(self.module, system_input_shape, self.device)
+            f.write(summary_str)
 
     def configure_optimizers(self) -> Optimizer:
         return torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
