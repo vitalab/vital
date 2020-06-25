@@ -1,16 +1,14 @@
-import logging
 import os
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from shutil import copyfile
+from shutil import copy2
 from typing import Type
 
 from pytorch_lightning import Trainer
 
 from vital.systems.vital_system import VitalSystem
-
-logger = logging.getLogger(__name__)
+from vital.utils.logging import configure_logging
 
 
 class VitalTrainer(ABC):
@@ -34,7 +32,14 @@ class VitalTrainer(ABC):
         # Add subparsers for all systems available through the trainer
         parser = cls._add_system_args(parser)
 
-        # Parse args and run the target system
+        # Parse args
+        hparams = cls._parse_and_check_args(parser)
+
+        # Configure logging right after args parsing,
+        # since this allows customization of logging behavior
+        cls._configure_logging(hparams)
+
+        # Run target system
         cls.run_system(cls._parse_and_check_args(parser))
 
     @classmethod
@@ -59,14 +64,23 @@ class VitalTrainer(ABC):
                 trainer.fit(model)
 
                 # Copy best model checkpoint to a fixed path
-                best_model_path = cls._define_best_model_path(hparams)
-                copyfile(trainer.checkpoint_callback.best_model_path, best_model_path)
-                logger.info(f"Copied best model checkpoint to: {best_model_path}")
+                best_model_path = cls._define_best_model_save_path(hparams)
+                copy2(str(trainer.checkpoint_callback.best_model_path), str(best_model_path))
 
         trainer.test(model)
 
     @classmethod
-    def _define_best_model_path(cls, hparams: Namespace) -> Path:
+    def _configure_logging(cls, hparams: Namespace):
+        """Hook to allow for overriding the default logging behavior, and possibly customizing it according to user
+        arguments passed to the CLI.
+
+        Args:
+            hparams: arguments parsed from the CLI.
+        """
+        configure_logging(print_to_console=True)
+
+    @classmethod
+    def _define_best_model_save_path(cls, hparams: Namespace) -> Path:
         """Defines the fixed path (w.r.t to the system to run) where to copy the best model checkpoint after training.
 
         Args:
