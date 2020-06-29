@@ -30,8 +30,9 @@ class CrossValidationDatasetGenerator:
         - resize images to a given size
     """
 
-    def __init__(self, data: Path, output_template: Path, use_sequence: bool, register: bool,
-                 labels: Sequence[Label] = None):
+    def __init__(
+        self, data: Path, output_template: Path, use_sequence: bool, register: bool, labels: Sequence[Label] = None
+    ):
         """
         Args:
             data: path to the mhd data.
@@ -44,8 +45,7 @@ class CrossValidationDatasetGenerator:
         self.output_template = output_template
         self.use_sequence = use_sequence
         self.register = register
-        self.labels_to_remove = [] if labels is None else [label for label in Label
-                                                           if label not in labels]
+        self.labels_to_remove = [] if labels is None else [label for label in Label if label not in labels]
 
     def create_subfold_dataset(self, subfold: int):
         """This function writes a cross validation configuration of the dataset, where ``subfold`` makes up the test
@@ -56,9 +56,9 @@ class CrossValidationDatasetGenerator:
         """
         # Create directory hierarchy if the output template is not only a filename
         self.output_template.parent.mkdir(exist_ok=True)
-        subfold_dataset = h5py.File(str(self.output_template).format(subfold), 'w')
+        subfold_dataset = h5py.File(str(self.output_template).format(subfold), "w")
 
-        for subset, subgroup_name in zip(Subset, ['training', 'validation', 'testing']):
+        for subset, subgroup_name in zip(Subset, ["training", "validation", "testing"]):
             # read test train valid details in the correspond .txt files
             group_patients = self.get_subgroup_from_file(subfold, subgroup_name)
 
@@ -69,7 +69,7 @@ class CrossValidationDatasetGenerator:
         subfold_dataset.attrs[CamusTags.full_sequence] = self.use_sequence
         subfold_dataset.attrs[CamusTags.registered] = self.register
 
-    def get_subgroup_from_file(self, subfold: int, subset: Literal['training', 'validation', 'testing']) -> List[str]:
+    def get_subgroup_from_file(self, subfold: int, subset: Literal["training", "validation", "testing"]) -> List[str]:
         """Reads patient ids for a subset of a cross-validation configuration.
 
         Args:
@@ -79,9 +79,9 @@ class CrossValidationDatasetGenerator:
         Returns:
             patient ids.
         """
-        list_fn = self.data.joinpath('listSubGroups', f'subGroup{subfold}_{subset}.txt')
+        list_fn = self.data.joinpath("listSubGroups", f"subGroup{subfold}_{subset}.txt")
         # Open text file containing patient ids (one patient id by row)
-        with open(str(list_fn), 'r') as f:
+        with open(str(list_fn), "r") as f:
             patient_ids = [line for line in f.read().splitlines()]
         return patient_ids
 
@@ -93,39 +93,43 @@ class CrossValidationDatasetGenerator:
             subfold: int, the id of the test set for the cross-validation configuration.
             patient_ids: ids of the patient whose data will be written in the subset.
         """
-        registering_transformer = CamusRegisteringTransformer(num_classes=Label.count(),
-                                                              crop_shape=(image_size, image_size))
-        for patient_id in tqdm(patient_ids, total=len(patient_ids), unit='patient',
-                               desc="Creating {} group for subfold {}".format(os.path.basename(subset_group.name),
-                                                                              subfold)):
+        registering_transformer = CamusRegisteringTransformer(
+            num_classes=Label.count(), crop_shape=(image_size, image_size)
+        )
+        for patient_id in tqdm(
+            patient_ids,
+            total=len(patient_ids),
+            unit="patient",
+            desc="Creating {} group for subfold {}".format(os.path.basename(subset_group.name), subfold),
+        ):
 
             patient_group = subset_group.create_group(patient_id)
 
-            img_save_options = {'dtype': np.float32, 'compression': "gzip", 'compression_opts': 4}
-            seg_save_options = {'dtype': np.uint8, 'compression': "gzip", 'compression_opts': 4}
+            img_save_options = {"dtype": np.float32, "compression": "gzip", "compression_opts": 4}
+            seg_save_options = {"dtype": np.uint8, "compression": "gzip", "compression_opts": 4}
             for view in View:
                 # The order of the instants within a view dataset is chronological: ED -> ES -> ED
                 data_x, data_y, info_view, instants_with_gt = self._get_view_data(patient_id, view)
 
-                data_y = remove_labels(data_y, [lbl.value for lbl in self.labels_to_remove],
-                                       fill_label=Label.BG.value)
+                data_y = remove_labels(data_y, [lbl.value for lbl in self.labels_to_remove], fill_label=Label.BG.value)
 
                 if self.register:
-                    registering_parameters, data_y_proc, data_x_proc = registering_transformer.register_batch(data_y,
-                                                                                                              data_x)
+                    registering_parameters, data_y_proc, data_x_proc = registering_transformer.register_batch(
+                        data_y, data_x
+                    )
                 else:
-                    data_x_proc = np.array([resize_image(x, (image_size, image_size), resample=LINEAR)
-                                            for x in data_x])
-                    data_y_proc = np.array([resize_image(y, (image_size, image_size))
-                                            for y in data_y])
+                    data_x_proc = np.array([resize_image(x, (image_size, image_size), resample=LINEAR) for x in data_x])
+                    data_y_proc = np.array([resize_image(y, (image_size, image_size)) for y in data_y])
 
                 # Write image and groundtruth data
                 patient_view_group = patient_group.create_group(view.value)
-                patient_view_group.create_dataset(name=CamusTags.img_proc, data=data_x_proc[..., np.newaxis],
-                                                  **img_save_options)
+                patient_view_group.create_dataset(
+                    name=CamusTags.img_proc, data=data_x_proc[..., np.newaxis], **img_save_options
+                )
                 patient_view_group.create_dataset(name=CamusTags.gt, data=data_y[..., np.newaxis], **seg_save_options)
-                patient_view_group.create_dataset(name=CamusTags.gt_proc, data=data_y_proc[..., np.newaxis],
-                                                  **seg_save_options)
+                patient_view_group.create_dataset(
+                    name=CamusTags.gt_proc, data=data_y_proc[..., np.newaxis], **seg_save_options
+                )
 
                 # Write metadata useful for providing instants or full sequences
                 patient_view_group.attrs[CamusTags.info] = info_view
@@ -137,8 +141,9 @@ class CrossValidationDatasetGenerator:
                     for registering_step, values in registering_parameters.items():
                         patient_view_group.attrs[registering_step] = values
 
-    def _get_view_data(self, patient_id: str, view: View) \
-            -> Tuple[np.ndarray, np.ndarray, List[Real], Dict[Instant, int]]:
+    def _get_view_data(
+        self, patient_id: str, view: View
+    ) -> Tuple[np.ndarray, np.ndarray, List[Real], Dict[Instant, int]]:
         """Fetches the data for a specific view of a patient.
 
         If ``self.use_sequence`` is True, augments the dataset with sequence between the ED and ES instants.
@@ -157,11 +162,11 @@ class CrossValidationDatasetGenerator:
             - mapping between the instants with manually validated groundtruths and the index where they appear in the
               sequence.
         """
-        view_info_fn = self.data.joinpath(patient_id, f'Info_{view.value}.cfg')
+        view_info_fn = self.data.joinpath(patient_id, f"Info_{view.value}.cfg")
 
         # Determine the index of segmented instants in sequence
         instants_with_gt = {}
-        with open(str(view_info_fn), 'r') as view_info_file:
+        with open(str(view_info_fn), "r") as view_info_file:
             view_info_lines = view_info_file.read().splitlines()
             for instant_idx, instant in enumerate(Instant):
                 instants_with_gt[instant] = int(view_info_lines[instant_idx].split()[-1]) - 1
@@ -170,8 +175,10 @@ class CrossValidationDatasetGenerator:
         sequence, sequence_gt, info = self._get_sequence_data(patient_id, view, instants_with_gt)
 
         if instants_with_gt[Instant.ED] > instants_with_gt[Instant.ES]:  # Ensure ED comes before ES (swap when ES->ED)
-            instants_with_gt[Instant.ED], instants_with_gt[Instant.ES] = \
-                instants_with_gt[Instant.ES], instants_with_gt[Instant.ED]
+            instants_with_gt[Instant.ED], instants_with_gt[Instant.ES] = (
+                instants_with_gt[Instant.ES],
+                instants_with_gt[Instant.ED],
+            )
 
         # Include all or only some instants from the input and reference data according to the parameters
         data_x, data_y = [], []
@@ -188,8 +195,9 @@ class CrossValidationDatasetGenerator:
         # Add channel dimension
         return np.array(data_x), np.array(data_y), info, instants_with_gt
 
-    def _get_sequence_data(self, patient_id: str, view: View, instants_with_gt: Mapping[Instant, int]) \
-            -> Tuple[List[np.ndarray], List[np.ndarray], List[Real]]:
+    def _get_sequence_data(
+        self, patient_id: str, view: View, instants_with_gt: Mapping[Instant, int]
+    ) -> Tuple[List[np.ndarray], List[np.ndarray], List[Real]]:
         """Fetches additional reference segmentations, interpolated between ED and ES instants.
 
         Args:
@@ -205,15 +213,15 @@ class CrossValidationDatasetGenerator:
             - metadata concerning the sequence.
         """
         patient_folder = self.data.joinpath(patient_id)
-        sequence_fn_template = f'{patient_id}_{view.value}_sequence{{}}.mhd'
+        sequence_fn_template = f"{patient_id}_{view.value}_sequence{{}}.mhd"
 
         # Indicate if ED comes after ES (normal) or the opposite
         reverse_sequence = False if instants_with_gt[Instant.ED] < instants_with_gt[Instant.ES] else True
 
         # Open interpolated segmentations
         data_x, data_y = [], []
-        sequence, info = load_mhd(patient_folder.joinpath(sequence_fn_template.format('')))
-        sequence_gt, _ = load_mhd(patient_folder.joinpath(sequence_fn_template.format('_gt')))
+        sequence, info = load_mhd(patient_folder.joinpath(sequence_fn_template.format("")))
+        sequence_gt, _ = load_mhd(patient_folder.joinpath(sequence_fn_template.format("_gt")))
 
         for image, segmentation in zip(sequence, sequence_gt):  # For every instant in the sequence
             data_x.append(image)
@@ -229,21 +237,37 @@ class CrossValidationDatasetGenerator:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data", type=Path, required=True,
-                        help="Root directory under which the patient directories are stored")
-    parser.add_argument("--output_template", type=Path, default="camus_subfold_{}.h5",
-                        help="Path template for saving cross validation configurations to HDF5 files")
-    parser.add_argument("-s", "--sequence", action='store_true',
-                        help="Augment the dataset by adding data for the sequence between ED and ES, where the "
-                             "groundtruths between ED and ES are interpolated linearly from reference segmentations")
-    parser.add_argument("-r", "--register", action='store_true', help="Apply registering on images and groundtruths")
-    parser.add_argument("--labels", type=Label.from_name, default=list(Label), nargs='+', choices=list(Label),
-                        help="Labels of the segmentation classes to take into account (including background). "
-                             "If None, target all labels included in the data")
+    parser.add_argument(
+        "--data", type=Path, required=True, help="Root directory under which the patient directories are stored"
+    )
+    parser.add_argument(
+        "--output_template",
+        type=Path,
+        default="camus_subfold_{}.h5",
+        help="Path template for saving cross validation configurations to HDF5 files",
+    )
+    parser.add_argument(
+        "-s",
+        "--sequence",
+        action="store_true",
+        help="Augment the dataset by adding data for the sequence between ED and ES, where the "
+        "groundtruths between ED and ES are interpolated linearly from reference segmentations",
+    )
+    parser.add_argument("-r", "--register", action="store_true", help="Apply registering on images and groundtruths")
+    parser.add_argument(
+        "--labels",
+        type=Label.from_name,
+        default=list(Label),
+        nargs="+",
+        choices=list(Label),
+        help="Labels of the segmentation classes to take into account (including background). "
+        "If None, target all labels included in the data",
+    )
     args = parser.parse_args()
 
-    dataset_generator = CrossValidationDatasetGenerator(args.data, args.output_template, args.sequence, args.register,
-                                                        labels=args.labels)
+    dataset_generator = CrossValidationDatasetGenerator(
+        args.data, args.output_template, args.sequence, args.register, labels=args.labels
+    )
 
     with Pool() as pool:
         pool.map(dataset_generator.create_subfold_dataset, range(1, 11))

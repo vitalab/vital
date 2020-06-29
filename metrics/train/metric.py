@@ -7,9 +7,13 @@ from vital.metrics.train.functionnal import dice_score
 class DiceCoefficient(nn.Module):
     """Computes a differentiable version of the dice_score coefficient."""
 
-    def __init__(self, include_background: bool = False,
-                 nan_score: float = 0.0, no_fg_score: float = 0.0,
-                 reduction: str = 'elementwise_mean'):
+    def __init__(
+        self,
+        include_background: bool = False,
+        nan_score: float = 0.0,
+        no_fg_score: float = 0.0,
+        reduction: str = "elementwise_mean",
+    ):
         """
         Args:
             include_background: whether to also compute dice_score for the background.
@@ -37,6 +41,11 @@ class DiceCoefficient(nn.Module):
         Return:
             (1,) or (C,), the calculated dice_score coefficient, average/summed or by labels.
         """
-        return dice_score(input=input, target=target, bg=self.include_background,
-                          nan_score=self.nan_score, no_fg_score=self.no_fg_score,
-                          reduction=self.reduction)
+        return dice_score(
+            input=input,
+            target=target,
+            bg=self.include_background,
+            nan_score=self.nan_score,
+            no_fg_score=self.no_fg_score,
+            reduction=self.reduction,
+        )

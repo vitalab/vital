@@ -4,10 +4,15 @@ from torch import Tensor
 from torch.nn import functional as F
 
 
-def tversky_score(input: Tensor, target: Tensor,
-                  beta: float = 0.5, bg: bool = False,
-                  nan_score: float = 0.0, no_fg_score: float = 0.0,
-                  reduction: str = 'elementwise_mean') -> Tensor:
+def tversky_score(
+    input: Tensor,
+    target: Tensor,
+    beta: float = 0.5,
+    bg: bool = False,
+    nan_score: float = 0.0,
+    no_fg_score: float = 0.0,
+    reduction: str = "elementwise_mean",
+) -> Tensor:
     """Computes the loss definition of the Tversky index.
 
     Inspired by Pytorch Lightning's ``dice_score`` implementation
@@ -31,7 +36,7 @@ def tversky_score(input: Tensor, target: Tensor,
         (1,) or (C,), the calculated Tversky index, average/summed or by labels.
     """
     n_classes = input.shape[1]
-    bg = (1 - int(bool(bg)))
+    bg = 1 - int(bool(bg))
     pred = F.softmax(input, dim=1)  # Use the softmax probability of the correct label instead of a hard label
     scores = torch.zeros(n_classes - bg, device=input.device, dtype=torch.float32)
     for i in range(bg, n_classes):
@@ -46,7 +51,7 @@ def tversky_score(input: Tensor, target: Tensor,
         fp = (class_pred * (target != i)).sum()
         fn = ((1 - class_pred) * (target == i)).sum()
 
-        denom = (tp + (beta * fp) + ((1 - beta) * fn))
+        denom = tp + (beta * fp) + ((1 - beta) * fn)
 
         if torch.isclose(denom, torch.zeros_like(denom)).any():
             # nan result
@@ -58,9 +63,14 @@ def tversky_score(input: Tensor, target: Tensor,
     return reduce(scores, reduction=reduction)
 
 
-def dice_score(input: Tensor, target: Tensor, bg: bool = False,
-               nan_score: float = 0.0, no_fg_score: float = 0.0,
-               reduction: str = 'elementwise_mean') -> Tensor:
+def dice_score(
+    input: Tensor,
+    target: Tensor,
+    bg: bool = False,
+    nan_score: float = 0.0,
+    no_fg_score: float = 0.0,
+    reduction: str = "elementwise_mean",
+) -> Tensor:
     """Computes the loss definition of the Dice coefficient.
 
     Args:
@@ -78,12 +88,12 @@ def dice_score(input: Tensor, target: Tensor, bg: bool = False,
     Returns:
         (1,) or (C,), the calculated Dice coefficient, average/summed or by labels.
     """
-    return tversky_score(input, target, beta=0.5, bg=bg,
-                         nan_score=nan_score, no_fg_score=no_fg_score,
-                         reduction=reduction)
+    return tversky_score(
+        input, target, beta=0.5, bg=bg, nan_score=nan_score, no_fg_score=no_fg_score, reduction=reduction
+    )
 
 
-def kl_div_zmuv(mu: Tensor, logvar: Tensor, reduction: str = 'elementwise_mean') -> Tensor:
+def kl_div_zmuv(mu: Tensor, logvar: Tensor, reduction: str = "elementwise_mean") -> Tensor:
     """Computes the KL divergence between the distribution described by parameters ``mu`` and ``logvar``
     and a Zero Mean, Unit Variance (ZMUV) Gaussian distribution i.e. N(0,1).
 

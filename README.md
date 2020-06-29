@@ -1,5 +1,7 @@
 # VITAL
 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 Welcome to the git repo of the [Videos & Images Theory and Analytics Laboratory (VITAL)](http://vital.dinf.usherbrooke.ca/ "VITAL home page")
 of Sherbrooke University, headed by Professor [Pierre-Marc Jodoin](http://info.usherbrooke.ca/pmjodoin/).
 
@@ -33,3 +35,31 @@ configuration, as well as multiple systems and their configuration.
 The [vital.yml](vital.yml) file lists the dependencies required by the whole repository. In case you include the
 repository inside your own project, you may want to add project specific dependencies, or maybe even remove some
 dependencies (if you only use some of the utilities provided by the repository).
+
+
+## How to contribute
+
+### Version Control Hooks
+The [`.pre-commit-config.yaml`](.pre-commit-config.yaml) file defines the pre-commit hooks that should be installed in
+any project contributing to the `vital` repository. For consistency's sake, it is recommended to use the same
+configuration for the pre-commit hooks for both the project repository and the `vital` submodule. This can be achieved
+by using symlinks to the `vital` configuration files from the project repository. 
+
+Assuming you start at the root of your project directory, linking the configuration files in the project repository to
+the `vital` configuration and installing hooks should look something like this:
+```
+# navigate to the vital submodule and 
+# install the pre-commit hooks for the vital submodule
+cd vital
+pre-commit install
+cd ..
+
+# symlink configuration files for the project repository to
+# the configuration files in the vital submodule
+ln -s ./vital/.pre-commit-config.yaml .pre-commit-config.yaml
+ln -s ./vital/pyproject.toml pyproject.toml
+ln -s ./vital/setup.cfg setup.cfg
+
+# install the pre-commit hooks for the project repository
+pre-commit install
+``` 

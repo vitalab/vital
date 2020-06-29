@@ -13,7 +13,7 @@ from vital.utils.image.transform import resize_image
 
 
 class LocalizationNet(nn.Module):
-    """Generalization of the LU-Net model initially implemented for the CAMUS dataset.
+    """Generalization of the LU-Net model, initially implemented for the CAMUS dataset.
 
     # TODO Add reference to paper describing the network
 
@@ -31,9 +31,9 @@ class LocalizationNet(nn.Module):
           tensors, where the expected input for the bottleneck is the first element of the tuple.
     """
 
-    def __init__(self, segmentation_cls: Type[nn.Module],
-                 in_shape: Tuple[int, ...], out_shape: Tuple[int, ...],
-                 **kwargs):
+    def __init__(
+        self, segmentation_cls: Type[nn.Module], in_shape: Tuple[int, ...], out_shape: Tuple[int, ...], **kwargs
+    ):
         """
         Args:
             segmentation_cls: class of the module to use as a base segmentation model for the LocalizationNet.
@@ -43,15 +43,13 @@ class LocalizationNet(nn.Module):
         super().__init__()
         self.in_shape = in_shape
         self.out_shape = out_shape
-        self.global_segmentation_module = segmentation_cls(in_channels=in_shape[-1],
-                                                           out_channels=out_shape[-1],
-                                                           **kwargs)
-        self.localized_segmentation_module = segmentation_cls(in_channels=in_shape[-1],
-                                                              out_channels=out_shape[-1],
-                                                              **kwargs)
-        segmentation_module = segmentation_cls(in_channels=out_shape[-1],
-                                               out_channels=out_shape[-1],
-                                               **kwargs)
+        self.global_segmentation_module = segmentation_cls(
+            in_channels=in_shape[-1], out_channels=out_shape[-1], **kwargs
+        )
+        self.localized_segmentation_module = segmentation_cls(
+            in_channels=in_shape[-1], out_channels=out_shape[-1], **kwargs
+        )
+        segmentation_module = segmentation_cls(in_channels=out_shape[-1], out_channels=out_shape[-1], **kwargs)
         self.segmentation_encoder = segmentation_module.encoder
         self.segmentation_bottleneck = segmentation_module.bottleneck
 
@@ -65,15 +63,19 @@ class LocalizationNet(nn.Module):
         if isinstance(features, Tuple):  # In case of multiple tensors returned by the encoder
             features = features[0]  # Extract expected bottleneck input
         features = self.segmentation_bottleneck(features)
-        self.roi_bbox_module = nn.Sequential(OrderedDict([
-            ('linear1', nn.Linear(reduce(mul, features.shape[1:]), 1024)),
-            ('relu1', nn.ReLU(inplace=True)),
-            ('linear2', nn.Linear(1024, 256)),
-            ('relu2', nn.ReLU(inplace=True)),
-            ('linear3', nn.Linear(256, 32)),
-            ('relu3', nn.ReLU(inplace=True)),
-            ('bbox_', nn.Linear(32, 4))
-        ]))
+        self.roi_bbox_module = nn.Sequential(
+            OrderedDict(
+                [
+                    ("linear1", nn.Linear(reduce(mul, features.shape[1:]), 1024)),
+                    ("relu1", nn.ReLU(inplace=True)),
+                    ("linear2", nn.Linear(1024, 256)),
+                    ("relu2", nn.ReLU(inplace=True)),
+                    ("linear3", nn.Linear(256, 32)),
+                    ("relu3", nn.ReLU(inplace=True)),
+                    ("bbox_", nn.Linear(32, 4)),
+                ]
+            )
+        )
 
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         """Defines the computation performed at every call.
@@ -150,8 +152,7 @@ class LocalizationNet(nn.Module):
         segmentation = []
         for item_roi_bbox, item_localized_seg in zip(roi_bbox, localized_segmentation):
             # Get bbox size in order (width, height)
-            bbox_size = (item_roi_bbox[3] - item_roi_bbox[1],
-                         item_roi_bbox[2] - item_roi_bbox[0])
+            bbox_size = (item_roi_bbox[3] - item_roi_bbox[1], item_roi_bbox[2] - item_roi_bbox[0])
 
             # Convert segmentation tensor to array (compatible with PIL) to resize, then convert back to tensor
             pil_formatted_localized_seg = item_localized_seg.byte().cpu().numpy().squeeze()
@@ -159,7 +160,8 @@ class LocalizationNet(nn.Module):
 
             # Place the resized localised segmentation inside an empty segmentation
             segmentation.append(torch.zeros_like(item_localized_seg))
-            segmentation[-1][:, item_roi_bbox[0]:item_roi_bbox[2],
-            item_roi_bbox[1]:item_roi_bbox[3]] = item_resized_seg
+            segmentation[-1][
+                :, item_roi_bbox[0] : item_roi_bbox[2], item_roi_bbox[1] : item_roi_bbox[3]
+            ] = item_resized_seg
 
         return torch.stack(segmentation)

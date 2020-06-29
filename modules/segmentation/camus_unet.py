@@ -18,10 +18,7 @@ class CamusUnet(nn.Module):
     (link to the paper: https://ieeexplore.ieee.org/document/8649738)
     """
 
-    def __init__(self, in_channels: int,
-                 out_channels: int,
-                 init_channels: int,
-                 use_batchnorm: bool = True):
+    def __init__(self, in_channels: int, out_channels: int, init_channels: int, use_batchnorm: bool = True):
         """
         Args:
             in_channels: number of channels of the input image to segment.
@@ -37,9 +34,7 @@ class CamusUnet(nn.Module):
         self.decoder = _UnetDecoder(out_channels, init_channels, use_batchnorm=use_batchnorm)
 
     @staticmethod
-    def _block(in_channels: int,
-               out_channels: int,
-               use_batchnorm: bool = True) -> nn.Module:
+    def _block(in_channels: int, out_channels: int, use_batchnorm: bool = True) -> nn.Module:
         """Defines a convolutional block that maintains the spatial resolution of the feature maps.
 
         Args:
@@ -55,10 +50,14 @@ class CamusUnet(nn.Module):
             conv_block = conv3x3_bn_activation
         else:
             conv_block = conv3x3_activation
-        return nn.Sequential(OrderedDict([
-            ('conv_block1', conv_block(in_channels, out_channels)),
-            ('conv_block2', conv_block(out_channels, out_channels))
-        ]))
+        return nn.Sequential(
+            OrderedDict(
+                [
+                    ("conv_block1", conv_block(in_channels, out_channels)),
+                    ("conv_block2", conv_block(out_channels, out_channels)),
+                ]
+            )
+        )
 
     def forward(self, x: Tensor) -> Tensor:
         """Defines the computation performed at every call.
@@ -77,9 +76,7 @@ class CamusUnet(nn.Module):
 class _UnetEncoder(nn.Module):
     """Module making up the encoder half of the U-Net model fine-tuned for the CAMUS dataset."""
 
-    def __init__(self, in_channels: int,
-                 init_channels: int,
-                 use_batchnorm: bool = True):
+    def __init__(self, in_channels: int, init_channels: int, use_batchnorm: bool = True):
         """
         Args:
             in_channels: number of channels of the input image to segment.
@@ -109,8 +106,10 @@ class _UnetEncoder(nn.Module):
         Returns:
             a convolutional block that downsamples by a factor of 2 the spatial resolution of the feature maps.
         """
-        return (CamusUnet._block(in_channels, out_channels, use_batchnorm=self.use_batchnorm),
-                nn.MaxPool2d(kernel_size=2))
+        return (
+            CamusUnet._block(in_channels, out_channels, use_batchnorm=self.use_batchnorm),
+            nn.MaxPool2d(kernel_size=2),
+        )
 
     def forward(self, x: Tensor) -> Tuple[Tensor, ...]:
         """Defines the computation performed at every call.
@@ -135,9 +134,7 @@ class _UnetEncoder(nn.Module):
 class _UnetDecoder(nn.Module):
     """Module making up the decoder half of the U-Net model fine-tuned for the CAMUS dataset."""
 
-    def __init__(self, out_channels: int,
-                 init_channels: int,
-                 use_batchnorm: bool = True):
+    def __init__(self, out_channels: int, init_channels: int, use_batchnorm: bool = True):
         """
         Args:
             out_channels: number of channels of the segmentation to predict.
@@ -168,8 +165,10 @@ class _UnetDecoder(nn.Module):
         Returns:
             a convolutional block that upsamples by a factor of 2 the spatial resolution of the feature maps.
         """
-        return (nn.Upsample(scale_factor=2, mode='nearest'),
-                CamusUnet._block(in_channels, out_channels, use_batchnorm=self.use_batchnorm))
+        return (
+            nn.Upsample(scale_factor=2, mode="nearest"),
+            CamusUnet._block(in_channels, out_channels, use_batchnorm=self.use_batchnorm),
+        )
 
     def forward(self, x: Tensor, *connected_features: Tensor) -> Tensor:
         """Defines the computation performed at every call.

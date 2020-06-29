@@ -7,7 +7,6 @@ SemanticStructureId = Union[int, Sequence[int]]
 
 
 class DataTag(Enum):
-
     def __str__(self):
         return self.name.lower()
 
@@ -37,9 +36,10 @@ class Subset(DataTag):
         valid: id of the validation subset.
         test: id of the testing subset.
     """
-    TRAIN = 'train'
-    VALID = 'valid'
-    TEST = 'test'
+
+    TRAIN = "train"
+    VALID = "valid"
+    TEST = "test"
 
 
 @parameters
@@ -52,9 +52,10 @@ class Tags:
         pred: name of the tag referring to original predictions.
         post_pred: name of the tag referring to post processed predictions.
     """
-    img: str = 'img'
-    gt: str = 'gt'
-    regression: str = 'reg'
-    pred: str = 'pred'
-    post_pred: str = 'post_pred'
-    encoding: str = 'encoding'
+
+    img: str = "img"
+    gt: str = "gt"
+    regression: str = "reg"
+    pred: str = "pred"
+    post_pred: str = "post_pred"
+    encoding: str = "encoding"

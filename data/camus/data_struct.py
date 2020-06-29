@@ -13,6 +13,7 @@ class PatientData:
         id: patient's identifier (in format "patient0123").
         views: mapping between each view available for the patient and the data associated with the view.
     """
+
     id: str
     views: MutableMapping[View, "ViewData"] = field(default_factory=dict)
 
@@ -27,6 +28,7 @@ class ViewData:
                           view.
         registering: parameters applied originally to register the images and groundtruths.
     """
+
     gt: np.ndarray
     info: np.ndarray
     instants_with_gt: Mapping[Instant, int]

@@ -56,9 +56,11 @@ class VitalTrainer(ABC):
             model = system_cls.load_from_checkpoint(hparams.pretrained)
         else:
             if hparams.predict:  # If we try to skip training and go straight to testing
-                raise ValueError("Trainer set to skip training (`--predict` flag) without a pretrained model provided. "
-                                 "Please allow model to train (remove `--predict` flag) or "
-                                 "provide a pretrained model (through `--pretra  ined` parameter).")
+                raise ValueError(
+                    "Trainer set to skip training (`--predict` flag) without a pretrained model provided. \n"
+                    "Please allow model to train (remove `--predict` flag) or "
+                    "provide a pretrained model (through `--pretrained` parameter)."
+                )
             else:  # If we have to train and then test the system
                 model = system_cls(hparams)
                 trainer.fit(model)
@@ -90,7 +92,7 @@ class VitalTrainer(ABC):
             fixed path (w.r.t to the system to run) where to copy the best model checkpoint after training.
         """
         system_cls = cls._get_selected_system(hparams)
-        return hparams.default_root_dir.joinpath(f'{system_cls.__name__}.ckpt')
+        return hparams.default_root_dir.joinpath(f"{system_cls.__name__}.ckpt")
 
     @classmethod
     def _add_system_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -145,12 +147,16 @@ class VitalTrainer(ABC):
         parser.add_argument("--pretrained", type=Path, help="Path to Lightning module checkpoints to restore system")
 
         # evaluation parameters
-        parser.add_argument("--predict", action='store_true', help="Skip training and do test phase")
+        parser.add_argument("--predict", action="store_true", help="Skip training and do test phase")
 
         # resource-use parameters
-        parser.add_argument('--workers', type=int, default=os.cpu_count() - 1,
-                            help="How many subprocesses to use for data loading. "
-                                 "0 means that the data will be loaded in the main process.")
+        parser.add_argument(
+            "--workers",
+            type=int,
+            default=os.cpu_count() - 1,
+            help="How many subprocesses to use for data loading. "
+            "0 means that the data will be loaded in the main process.",
+        )
 
         return parser
 

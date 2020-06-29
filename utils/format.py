@@ -4,7 +4,7 @@ Derived from Keras' numpy utility: https://github.com/keras-team/keras/blob/mast
 import numpy as np
 
 
-def to_onehot(y: np.ndarray, num_classes: int = None, channel_axis: int = -1, dtype: str = 'uint8') -> np.ndarray:
+def to_onehot(y: np.ndarray, num_classes: int = None, channel_axis: int = -1, dtype: str = "uint8") -> np.ndarray:
     """Converts a class vector (integers) to binary class matrix.
 
     Args:
@@ -18,7 +18,7 @@ def to_onehot(y: np.ndarray, num_classes: int = None, channel_axis: int = -1, dt
     Returns:
         A binary matrix representation of the input.
     """
-    y = np.array(y, dtype='int')
+    y = np.array(y, dtype="int")
     input_shape = list(y.shape)
     if input_shape and input_shape[channel_axis] == 1 and len(input_shape) > 1:
         input_shape.pop(channel_axis)
@@ -35,7 +35,7 @@ def to_onehot(y: np.ndarray, num_classes: int = None, channel_axis: int = -1, dt
     return categorical
 
 
-def to_categorical(y: np.ndarray, channel_axis: int = -1, dtype: str = 'uint8') -> np.ndarray:
+def to_categorical(y: np.ndarray, channel_axis: int = -1, dtype: str = "uint8") -> np.ndarray:
     """Converts a binary class matrix to class vector (integers).
 
     Args:

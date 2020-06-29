@@ -44,7 +44,7 @@ class VitalSystem(pl.LightningModule, ABC):
         Args:
             system_input_shape: shape of the input data the system should expect when using the dataset.
         """
-        with open(str(self.hparams.default_root_dir.joinpath('summary.txt')), 'w') as f:
+        with open(str(self.hparams.default_root_dir.joinpath("summary.txt")), "w") as f:
             summary_str, _ = summary_info(self.module, system_input_shape, self.device)
             f.write(summary_str)
 
@@ -72,6 +72,7 @@ class VitalSystem(pl.LightningModule, ABC):
 
 class SystemDataManagerMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the interface between the Datasets and DataLoaders."""
+
     data_params: DataParameters
     dataset: Mapping[Subset, VisionDataset]
 
@@ -139,8 +140,9 @@ class SystemEvaluationMixin(VitalSystem, ABC):
     def test_step(self, *args, **kwargs) -> Dict[str, Tensor]:
         pass
 
-    def test_epoch_end(self, outputs: Union[List[Dict[str, Tensor]], List[List[Dict[str, Tensor]]]]) \
-            -> Dict[str, Dict[str, Tensor]]:
+    def test_epoch_end(
+        self, outputs: Union[List[Dict[str, Tensor]], List[List[Dict[str, Tensor]]]]
+    ) -> Dict[str, Dict[str, Tensor]]:
         """Called at the end of the testing epoch. Can be used to export results using custom loggers, while not
         returning any metrics to display in the progress bar (as Lightning normally expects).
         """
