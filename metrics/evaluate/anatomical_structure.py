@@ -17,7 +17,7 @@ class Anatomical2DStructureMetrics:
         """
         self.segmentation_metrics = segmentation_metrics
         self.struct_label = struct_label
-        self.no_structure_flag = float('nan')
+        self.no_structure_flag = float("nan")
 
     def count_holes(self) -> int:
         """ Counts the pixels that form holes in the segmentation of the anatomical structure.
@@ -41,8 +41,7 @@ class Anatomical2DStructureMetrics:
         Returns:
              the depth (in mm) of a concavity in the anatomical structure.
         """
-        return self.segmentation_metrics.measure_concavity(self.struct_label,
-                                                           no_structure_flag=self.no_structure_flag)
+        return self.segmentation_metrics.measure_concavity(self.struct_label, no_structure_flag=self.no_structure_flag)
 
     def measure_circularity(self) -> float:
         """ Measures the isoperimetric ratio for an anatomical structure assuming the structure is contiguous.
@@ -50,8 +49,9 @@ class Anatomical2DStructureMetrics:
         Returns:
             the isoperimetric ratio of the anatomical structure.
         """
-        return self.segmentation_metrics.measure_circularity(self.struct_label,
-                                                             no_structure_flag=self.no_structure_flag)
+        return self.segmentation_metrics.measure_circularity(
+            self.struct_label, no_structure_flag=self.no_structure_flag
+        )
 
     def measure_erosion_ratio_before_split(self) -> float:
         """ Measures the ratio between the depth of erosion necessary to divide a continuous anatomical structure in at
@@ -61,8 +61,9 @@ class Anatomical2DStructureMetrics:
             the ratio between the depth of erosion necessary to divide a continuous anatomical structure in at least
             two fragments and the maximum thickness (in pixels) of the structure.
         """
-        return self.segmentation_metrics.measure_erosion_ratio_before_split(self.struct_label,
-                                                                            no_structure_flag=self.no_structure_flag)
+        return self.segmentation_metrics.measure_erosion_ratio_before_split(
+            self.struct_label, no_structure_flag=self.no_structure_flag
+        )
 
     def measure_convexity(self) -> float:
         """  Measures the shape convexity of the anatomical structure's segmentation.
@@ -70,5 +71,4 @@ class Anatomical2DStructureMetrics:
         Returns:
             the value of the shape convexity metric for the anatomical structure's segmentation.
         """
-        return self.segmentation_metrics.measure_convexity(self.struct_label,
-                                                           no_structure_flag=self.no_structure_flag)
+        return self.segmentation_metrics.measure_convexity(self.struct_label, no_structure_flag=self.no_structure_flag)

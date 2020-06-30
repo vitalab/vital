@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Type, Tuple, Optional, Sequence, Mapping
+from typing import Mapping, Optional, Sequence, Tuple, Type
 
 from pathos.multiprocessing import Pool
 from tqdm import tqdm
@@ -10,12 +10,12 @@ from vital.logs.utils.itertools import IterableResult, Result
 
 class Logger:
     """Abstract class used for logging results during the evaluation phase."""
+
     IterableResultT: Type[IterableResult[Result]]  # Iterable over which the logs are generated.
     Log: Type = None  # Type of the data returned by logging a single result, if any.
     desc: str  # Description of the logger. Used in e.g. progress bar, logs file name, etc.
 
-    def __init__(self, output_name_template: str = None,
-                 **iterable_result_params):
+    def __init__(self, output_name_template: str = None, **iterable_result_params):
         """
         Args:
             output_name_template: name template for the aggregated log, if the logger produces an aggregated log.
@@ -40,17 +40,27 @@ class Logger:
 
         if self.Log is not None:  # If the logger returns data for each result to be aggregated in a single log
             with Pool() as pool:
-                logs = dict(tqdm(pool.imap(self._log_result, results),
-                                 total=len(results), unit=results.desc,
-                                 desc=f"Collecting {results_path.stem} data for {self.desc}"))
+                logs = dict(
+                    tqdm(
+                        pool.imap(self._log_result, results),
+                        total=len(results),
+                        unit=results.desc,
+                        desc=f"Collecting {results_path.stem} data for {self.desc}",
+                    )
+                )
             output_path = output_folder.joinpath(self.output_name_template.format(results_path.stem))
             tqdm.write(f"Aggregating {results_path.stem} {self.desc} in {output_path} ...")
             self.aggregate_logs(logs, output_path)
         else:  # If the logger writes the log as side-effects as it iterates over the results
             with Pool() as pool:
-                list(tqdm(pool.imap(self._log_result, results),
-                          total=len(results), unit=results.desc,
-                          desc=f"Logging {results_path.stem} {self.desc} to {output_folder}"))
+                list(
+                    tqdm(
+                        pool.imap(self._log_result, results),
+                        total=len(results),
+                        unit=results.desc,
+                        desc=f"Logging {results_path.stem} {self.desc} to {output_folder}",
+                    )
+                )
 
     def _log_result(self, result: Result) -> Optional[Tuple[str, "Log"]]:
         """ Generates a log (either writing to a file or computing a result to aggregate) for a single result.
@@ -85,10 +95,10 @@ class Logger:
            parser object with support for generic logger and iterable arguments.
         """
         parser = ArgumentParser()
-        parser.add_argument("--results_path", type=Path, required=True,
-                            help="Path to a HDF5 file of results to log")
-        parser.add_argument("--output_folder", type=Path, default="logs",
-                            help="Path to the directory in which to save the logs")
+        parser.add_argument("--results_path", type=Path, required=True, help="Path to a HDF5 file of results to log")
+        parser.add_argument(
+            "--output_folder", type=Path, default="logs", help="Path to the directory in which to save the logs"
+        )
         cls.IterableResultT.add_args(parser)
         return parser
 
@@ -108,7 +118,7 @@ class Logger:
         parser = cls.build_parser()
         kwargs = vars(parser.parse_args())
 
-        results_path = kwargs.pop('results_path')
-        output_folder = kwargs.pop('output_folder')
+        results_path = kwargs.pop("results_path")
+        output_folder = kwargs.pop("output_folder")
         logger = cls(**kwargs)
         logger(results_path=results_path, output_folder=output_folder)

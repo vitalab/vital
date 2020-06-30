@@ -17,7 +17,7 @@ from statistics import mean
 from typing import Callable, Sequence
 
 import numpy as np
-from medpy.metric import hd, assd, precision, recall, dc, jc
+from medpy.metric import assd, dc, hd, jc, precision, recall
 from sklearn.metrics import accuracy_score
 
 from vital.data.config import SemanticStructureId
@@ -48,10 +48,10 @@ class Metric:
             value of the metric for the result/reference pair.
         """
         # Compute results for all the structures
-        metrics = [self.call_metric_wrapper(np.isin(result, struct_label),
-                                            np.isin(reference, struct_label),
-                                            **metric_params)
-                   for struct_label in self.struct_labels]
+        metrics = [
+            self.call_metric_wrapper(np.isin(result, struct_label), np.isin(reference, struct_label), **metric_params)
+            for struct_label in self.struct_labels
+        ]
         return metrics
 
     def call_metric_wrapper(self, result, reference, **metric_params) -> Real:
@@ -94,7 +94,7 @@ class Distance(Metric):
 class Hausdorff(Distance):
     """Hausdorff class."""
 
-    def __init__(self, desc='hausdorff', **kwargs):
+    def __init__(self, desc="hausdorff", **kwargs):
         super().__init__(hd, desc=desc, **kwargs)
 
 
@@ -105,7 +105,7 @@ class Assd(Distance):
     This metric is the same as the Median Absolute Deviation (MAD) score.
     """
 
-    def __init__(self, desc='assd', **kwargs):
+    def __init__(self, desc="assd", **kwargs):
         super().__init__(assd, desc=desc, **kwargs)
 
 
@@ -129,7 +129,7 @@ class Score(Metric):
 class Precision(Score):
     """Precision class."""
 
-    def __init__(self, desc='precision', **kwargs):
+    def __init__(self, desc="precision", **kwargs):
         super().__init__(precision, desc=desc, **kwargs)
 
 
@@ -137,7 +137,7 @@ class Precision(Score):
 class Recall(Score):
     """Recall class."""
 
-    def __init__(self, desc='recall', **kwargs):
+    def __init__(self, desc="recall", **kwargs):
         super().__init__(recall, desc=desc, **kwargs)
 
 
@@ -145,7 +145,7 @@ class Recall(Score):
 class Dice(Score):
     """Dice class."""
 
-    def __init__(self, desc='dice', **kwargs):
+    def __init__(self, desc="dice", **kwargs):
         super().__init__(dc, desc=desc, **kwargs)
 
 
@@ -153,7 +153,7 @@ class Dice(Score):
 class Jaccard(Score):
     """Jaccard class."""
 
-    def __init__(self, desc='jaccard', **kwargs):
+    def __init__(self, desc="jaccard", **kwargs):
         super().__init__(jc, desc=desc, **kwargs)
 
 
@@ -161,7 +161,7 @@ class Jaccard(Score):
 class Accuracy(Score):
     """Accuracy class."""
 
-    def __init__(self, desc='accuracy', **kwargs):
+    def __init__(self, desc="accuracy", **kwargs):
         super().__init__(self._accuracy, desc=desc, **kwargs)
 
     @staticmethod

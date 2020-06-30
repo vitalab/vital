@@ -1,8 +1,8 @@
 from numbers import Real
-from typing import Tuple, Sequence, Mapping, Literal
+from typing import Literal, Mapping, Sequence, Tuple
 
 import numpy as np
-from scipy.ndimage import distance_transform_edt, binary_fill_holes, measurements
+from scipy.ndimage import binary_fill_holes, distance_transform_edt, measurements
 from skimage import measure, morphology
 from skimage.morphology import convex_hull_image
 
@@ -13,8 +13,12 @@ class Segmentation2DMetrics:
     """ Class that implements algorithms to compute metrics on segmentations.
     """
 
-    def __init__(self, segmentation: np.ndarray, struct_labels: Sequence[SemanticStructureId],
-                 voxelspacing: Tuple[Real, Real] = (1., 1.)):
+    def __init__(
+        self,
+        segmentation: np.ndarray,
+        struct_labels: Sequence[SemanticStructureId],
+        voxelspacing: Tuple[Real, Real] = (1.0, 1.0),
+    ):
         """
         Args:
             segmentation: (H, W), a 2D array where the value of each entry in the array is the label of the
@@ -24,10 +28,12 @@ class Segmentation2DMetrics:
         """
         self.segmentation = segmentation
         self.voxelspacing = voxelspacing
-        self.binary_structs = {struct_label: np.isin(segmentation, struct_label).astype(dtype=np.uint8)
-                               for struct_label in struct_labels}
-        self.binary_structs_inverse = {struct_label: 1 - binary_struct
-                                       for struct_label, binary_struct in self.binary_structs.items()}
+        self.binary_structs = {
+            struct_label: np.isin(segmentation, struct_label).astype(dtype=np.uint8) for struct_label in struct_labels
+        }
+        self.binary_structs_inverse = {
+            struct_label: 1 - binary_struct for struct_label, binary_struct in self.binary_structs.items()
+        }
 
         # Approximate size of small blobs determined through empirical experiments. Those small blobs correspond to
         # small artifacts left behind by some morphological operations on the images, and which can be ignored since
@@ -46,7 +52,7 @@ class Segmentation2DMetrics:
         # Mark the class of interest as 0 and everything else as 1
         # Merge the regions of 1 that are open by a side using padding (these are not holes)
         binary_struct = self.binary_structs_inverse[struct_label]
-        binary_struct = np.pad(binary_struct, ((1, 1), (1, 1)), 'constant', constant_values=1)
+        binary_struct = np.pad(binary_struct, ((1, 1), (1, 1)), "constant", constant_values=1)
 
         # Extract properties of continuous regions of 1
         props = measure.regionprops(measure.label(binary_struct, connectivity=2))
@@ -83,8 +89,9 @@ class Segmentation2DMetrics:
         else:  # If there was only a single contiguous region making up the segmented area
             return 0
 
-    def count_holes_between_regions(self, struct1_label: SemanticStructureId,
-                                    struct2_label: SemanticStructureId) -> int:
+    def count_holes_between_regions(
+        self, struct1_label: SemanticStructureId, struct2_label: SemanticStructureId
+    ) -> int:
         """ Counts the pixels in the gap between two supposedly connected segmented areas.
 
         NOTE: As this method iterates over holes (directly in Python) in supposedly filled-in segmented areas, its
@@ -115,17 +122,22 @@ class Segmentation2DMetrics:
         holes_class2[holes_class2 == outside_class2] = 0
 
         # Find the holes in the first area that don't contain the second area (and the opposite)
-        hole_labels_class1_without_class2 = [h for h in range(1, last_hole_label_class1 + 1) if
-                                             h not in np.unique(holes_struct1 * binary_struct2)]
-        hole_labels_class2_without_class1 = [h for h in range(1, last_hole_label_class2 + 1) if
-                                             h not in np.unique(holes_class2 * binary_struct1)]
-        holes_class1_without_class2 = np.isin(holes_struct1, hole_labels_class1_without_class2, assume_unique=True) \
-            .astype(dtype=np.uint8)
-        holes_class2_without_class1 = np.isin(holes_class2, hole_labels_class2_without_class1, assume_unique=True) \
-            .astype(dtype=np.uint8)
+        hole_labels_class1_without_class2 = [
+            h for h in range(1, last_hole_label_class1 + 1) if h not in np.unique(holes_struct1 * binary_struct2)
+        ]
+        hole_labels_class2_without_class1 = [
+            h for h in range(1, last_hole_label_class2 + 1) if h not in np.unique(holes_class2 * binary_struct1)
+        ]
+        holes_class1_without_class2 = np.isin(
+            holes_struct1, hole_labels_class1_without_class2, assume_unique=True
+        ).astype(dtype=np.uint8)
+        holes_class2_without_class1 = np.isin(
+            holes_class2, hole_labels_class2_without_class1, assume_unique=True
+        ).astype(dtype=np.uint8)
 
-        not_both = 1 - ((binary_struct1 + holes_class1_without_class2 +
-                         binary_struct2 + holes_class2_without_class1) > 0)
+        not_both = 1 - (
+            (binary_struct1 + holes_class1_without_class2 + binary_struct2 + holes_class2_without_class1) > 0
+        )
         holes_between = measure.label(not_both, connectivity=1)
         outside = holes_between[0, 0]
         holes_between[holes_between == outside] = 0
@@ -133,8 +145,9 @@ class Segmentation2DMetrics:
 
         return pixels_in_holes if pixels_in_holes > self.small_objects_size else 0
 
-    def count_frontier_between_regions(self, struct1_label: SemanticStructureId,
-                                       struct2_label: SemanticStructureId) -> int:
+    def count_frontier_between_regions(
+        self, struct1_label: SemanticStructureId, struct2_label: SemanticStructureId
+    ) -> int:
         """ Counts the pixels touching between two supposedly disconnected segmented areas.
 
         Args:
@@ -152,7 +165,7 @@ class Segmentation2DMetrics:
         pixels_on_frontier = frontier.sum()
         return pixels_on_frontier if pixels_on_frontier > 1 else 0
 
-    def measure_concavity(self, struct_label: SemanticStructureId, no_structure_flag: float = float('nan')) -> float:
+    def measure_concavity(self, struct_label: SemanticStructureId, no_structure_flag: float = float("nan")) -> float:
         """ Measures the depth of a concavity in a supposedly convex segmented area.
 
         Args:
@@ -190,7 +203,7 @@ class Segmentation2DMetrics:
         else:  # If the structure is not in the image
             return no_structure_flag
 
-    def measure_circularity(self, struct_label: SemanticStructureId, no_structure_flag: float = float('nan')) -> float:
+    def measure_circularity(self, struct_label: SemanticStructureId, no_structure_flag: float = float("nan")) -> float:
         """ Measures the isoperimetric ratio of a segmented area, assuming the area is contiguous.
 
         Args:
@@ -222,8 +235,9 @@ class Segmentation2DMetrics:
         else:  # If the structure is not in the image
             return no_structure_flag
 
-    def measure_frontier_ratio_between_regions(self, struct1_label: SemanticStructureId,
-                                               struct2_label: SemanticStructureId) -> float:
+    def measure_frontier_ratio_between_regions(
+        self, struct1_label: SemanticStructureId, struct2_label: SemanticStructureId
+    ) -> float:
         """ Measures the ratio between the largest continuous segment of the frontier between the two segmented areas
         and the width of the first segmented area.
         Note that because of this behavior, `struct1_label` and `struct2_label` are note interchangeable.
@@ -250,11 +264,14 @@ class Segmentation2DMetrics:
             return frontier_proportion
 
         else:  # If the structure is not in the image
-            return 0.
+            return 0
 
-    def measure_width_ratio_between_regions(self, struct1_label: SemanticStructureId,
-                                            struct2_label: SemanticStructureId,
-                                            no_structure_flag: float = float('nan')) -> float:
+    def measure_width_ratio_between_regions(
+        self,
+        struct1_label: SemanticStructureId,
+        struct2_label: SemanticStructureId,
+        no_structure_flag: float = float("nan"),
+    ) -> float:
         """ Measures the ratio between the width (not necessarily contiguous) of two structures at the center of mass
         of the regions.
 
@@ -270,8 +287,7 @@ class Segmentation2DMetrics:
         # This is to avoid cases where the structures to segment are small and in one corner of the image
 
         # Compute the center of mass
-        joint_binary_structs = np.logical_or(self.binary_structs[struct1_label],
-                                             self.binary_structs[struct2_label])
+        joint_binary_structs = np.logical_or(self.binary_structs[struct1_label], self.binary_structs[struct2_label])
         center_of_mass_row = int(measurements.center_of_mass(joint_binary_structs)[0])
 
         # Measure the width ratio at the center of mass
@@ -279,8 +295,9 @@ class Segmentation2DMetrics:
         struct2_width = np.sum(self.binary_structs[struct2_label][center_of_mass_row])
         return struct1_width / struct2_width if (struct1_width and struct2_width) else no_structure_flag
 
-    def measure_erosion_ratio_before_split(self, struct_label: SemanticStructureId,
-                                           no_structure_flag: float = float('nan')) -> float:
+    def measure_erosion_ratio_before_split(
+        self, struct_label: SemanticStructureId, no_structure_flag: float = float("nan")
+    ) -> float:
         """ Measures the ratio between the depth of erosion necessary to divide a continuous structure in at least two
         fragments and the maximum thickness (in pixels) of the structure.
 
@@ -312,7 +329,7 @@ class Segmentation2DMetrics:
         else:  # If the structure is not in the image
             return no_structure_flag
 
-    def measure_convexity(self, struct_label: SemanticStructureId, no_structure_flag: float = float('nan')) -> float:
+    def measure_convexity(self, struct_label: SemanticStructureId, no_structure_flag: float = float("nan")) -> float:
         """ Measures the shape convexity of a segmented area.
 
         Args:
@@ -332,9 +349,9 @@ class Segmentation2DMetrics:
             return no_structure_flag
 
 
-def check_metric_validity(metric_value: Real,
-                          thresholds: Mapping[Literal['min', 'max'], Real] = None,
-                          optional_structure: bool = False) -> bool:
+def check_metric_validity(
+    metric_value: Real, thresholds: Mapping[Literal["min", "max"], Real] = None, optional_structure: bool = False
+) -> bool:
     """ Checks whether the value of the metric is within the range of values meaning the segmentation is correct.
 
     Args:
@@ -352,7 +369,7 @@ def check_metric_validity(metric_value: Real,
     if np.isnan(metric_value):  # If the structure on which to compute the metric was not present in the segmentation
         validity = optional_structure
     elif thresholds:  # If the metric has a range of value within which segmentations are considered valid
-        validity = thresholds.get('min', 0.) <= metric_value <= thresholds.get('max', np.inf)
+        validity = thresholds.get("min", 0) <= metric_value <= thresholds.get("max", np.inf)
     else:  # If no range of valid values are provided, a value of '0' is considered to mean no error, and any other
         # value means an error
         validity = not bool(metric_value)

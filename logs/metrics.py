@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from numbers import Real
 from pathlib import Path
-from typing import Sequence, Mapping
+from typing import Mapping, Sequence
 
 import pandas as pd
 
@@ -12,6 +12,7 @@ from vital.utils.delegate import delegate_inheritance
 @delegate_inheritance()
 class MetricsLogger(Logger):
     """Abstract class that computes metrics on the results and saves them to csv."""
+
     Log = Mapping[str, Real]
     data_choices: Sequence[str]  # tags of the data on which to compute metrics.
 
@@ -20,7 +21,7 @@ class MetricsLogger(Logger):
         Args:
             data: tag of the data on which to compute metrics.
         """
-        super().__init__(output_name_template=f'{{}}_{data}_{self.desc}.csv', **kwargs)
+        super().__init__(output_name_template=f"{{}}_{data}_{self.desc}.csv", **kwargs)
         self.data = data
 
     @classmethod
@@ -31,7 +32,7 @@ class MetricsLogger(Logger):
             logs: mapping between each result in the iterable results and their metrics' values.
             output_path: the name of the metrics' csv file to be produced as output.
         """
-        df_metrics = pd.DataFrame.from_dict(logs, orient='index')
+        df_metrics = pd.DataFrame.from_dict(logs, orient="index")
 
         # Build a dataframe with the aggregated metrics at the top and relevant index names
         aggregated_metrics = cls._aggregate_metrics(df_metrics)
@@ -39,7 +40,7 @@ class MetricsLogger(Logger):
         df_full_metrics.index.name = cls.IterableResultT.desc
 
         # Save the combination of aggregated and detailed metrics to the csv file
-        pd.DataFrame(df_full_metrics).to_csv(output_path, na_rep='Nan')
+        pd.DataFrame(df_full_metrics).to_csv(output_path, na_rep="Nan")
 
     @classmethod
     def _aggregate_metrics(cls, metrics: pd.DataFrame) -> pd.DataFrame:
@@ -51,7 +52,7 @@ class MetricsLogger(Logger):
         Returns:
             global statistics on the metrics computed over each result.
         """
-        return metrics.agg(['mean', 'std'])
+        return metrics.agg(["mean", "std"])
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:

@@ -1,6 +1,6 @@
 import math
 from numbers import Real
-from typing import Mapping, Tuple, Sequence
+from typing import Mapping, Sequence, Tuple
 
 import numpy as np
 from skimage.measure import find_contours
@@ -8,8 +8,9 @@ from skimage.measure import find_contours
 from vital.utils.image.transform import resize_image
 
 
-def compute_left_ventricle_volumes(segmentations: Mapping[str, np.ndarray],
-                                   voxelspacings: Mapping[str, Tuple[Real, Real]]) -> Tuple[Real, Real]:
+def compute_left_ventricle_volumes(
+    segmentations: Mapping[str, np.ndarray], voxelspacings: Mapping[str, Tuple[Real, Real]]
+) -> Tuple[Real, Real]:
     """ Computes the ED and ES volumes of the left ventricle from 2 orthogonal 2D segmentations (2CH and 4CH).
 
     Args:
@@ -20,7 +21,7 @@ def compute_left_ventricle_volumes(segmentations: Mapping[str, np.ndarray],
         the left ventricle ED and ES volumes.
     """
     step_sizes = []
-    diameters = {'ED': [], 'ES': []}
+    diameters = {"ED": [], "ES": []}
     for view, view_binary_masks in segmentations.items():
         for instant_idx, instant_key in enumerate(diameters.keys()):
             img_diameters, step_size = _compute_diameters(view_binary_masks[instant_idx], voxelspacings[view])
@@ -28,8 +29,8 @@ def compute_left_ventricle_volumes(segmentations: Mapping[str, np.ndarray],
             step_sizes.append(step_size)
     step_size = max(step_sizes)
 
-    ed_volume = _compute_left_ventricle_volume_by_instant(diameters['ED'], step_size)
-    es_volume = _compute_left_ventricle_volume_by_instant(diameters['ES'], step_size)
+    ed_volume = _compute_left_ventricle_volume_by_instant(diameters["ED"], step_size)
+    es_volume = _compute_left_ventricle_volume_by_instant(diameters["ES"], step_size)
     return ed_volume, es_volume
 
 
@@ -46,8 +47,10 @@ def _compute_left_ventricle_volume_by_instant(diameters: Sequence[np.ndarray], s
     diameters_2ch, diameters_4ch = diameters
 
     # All measures are now in millimeters, convert to meters by dividing by 1000:
-    sum_over_diameters = sum((diameter_2ch / 1000) * (diameter_4ch / 1000)
-                             for diameter_2ch, diameter_4ch in zip(diameters_2ch, diameters_4ch))
+    sum_over_diameters = sum(
+        (diameter_2ch / 1000) * (diameter_4ch / 1000)
+        for diameter_2ch, diameter_4ch in zip(diameters_2ch, diameters_4ch)
+    )
     step_size /= 1000
     sum_over_diameters *= (step_size * math.pi) / 4
 
@@ -58,8 +61,9 @@ def _compute_left_ventricle_volume_by_instant(diameters: Sequence[np.ndarray], s
     return round(sum_over_diameters)
 
 
-def _find_distance_to_edge(segmentation: np.ndarray, point_on_mid_line: np.ndarray,
-                           normal_direction: np.ndarray) -> Real:
+def _find_distance_to_edge(
+    segmentation: np.ndarray, point_on_mid_line: np.ndarray, normal_direction: np.ndarray
+) -> Real:
     distance = 8  # start a bit in to avoid line stopping early at base
     while True:
         current_position = point_on_mid_line + distance * normal_direction
@@ -78,9 +82,9 @@ def _find_distance_to_edge(segmentation: np.ndarray, point_on_mid_line: np.ndarr
 
 def _distance_line_to_points(line_point_0: np.ndarray, line_point_1: np.ndarray, points: np.ndarray) -> np.ndarray:
     # https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
-    return (np.absolute(np.cross(line_point_1 - line_point_0,
-                                 line_point_0 - points)) /
-            np.linalg.norm(line_point_1 - line_point_0))
+    return np.absolute(np.cross(line_point_1 - line_point_0, line_point_0 - points)) / np.linalg.norm(
+        line_point_1 - line_point_0
+    )
 
 
 def _get_angle_of_lines_to_point(reference_point: np.ndarray, moving_points: np.ndarray) -> np.ndarray:
@@ -127,9 +131,10 @@ def _compute_diameters(segmentation: np.ndarray, voxelspacing: Tuple[Real, Real]
 
         for acute_angle_idx in np.nonzero(angles_to_previous_points <= 45)[0]:
 
-            intermediate_points = contour[acute_angle_idx + 1: point_idx]
-            distance_to_intermediate_points = _distance_line_to_points(contour[point_idx], contour[acute_angle_idx],
-                                                                       intermediate_points)
+            intermediate_points = contour[acute_angle_idx + 1 : point_idx]
+            distance_to_intermediate_points = _distance_line_to_points(
+                contour[point_idx], contour[acute_angle_idx], intermediate_points
+            )
             if np.all(distance_to_intermediate_points <= 8):
                 distance = np.linalg.norm(contour[point_idx] - contour[acute_angle_idx])
                 if best_length < distance:

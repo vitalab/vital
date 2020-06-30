@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 @delegate_inheritance()
 class GroupsEmbeddingLogger(Logger):
     """Abstract class that allows to visualize the UMAP embedding of groups of results in a 2D space."""
-    desc = 'groups_embedding'
+
+    desc = "groups_embedding"
     Log = np.ndarray
 
     def __init__(self, embedding_params: Mapping[str, Any] = None, interactive: bool = False, **kwargs):
@@ -53,13 +54,12 @@ class GroupsEmbeddingLogger(Logger):
         encodings = np.vstack(encodings)
         indices_in_groups = np.hstack(indices_in_groups)
 
-        logger.info(f"Generating UMAP embedding for results ...")
+        logger.info("Generating UMAP embedding for results ...")
         mapper = self.umap.fit(encodings)
 
         if self.interactive:
             # Format information for hover tooltips in the interactive plot
-            hover_data = pd.DataFrame({'group_id': labels,
-                                       'index_in_group': indices_in_groups})
+            hover_data = pd.DataFrame({"group_id": labels, "index_in_group": indices_in_groups})
 
             self.show_interactive_plot(mapper, labels, hover_data)
 
@@ -100,7 +100,8 @@ class GroupsEmbeddingLogger(Logger):
           parser object with support for generic groups embedding and iterable logger arguments.
         """
         parser = super().build_parser()
-        parser.add_argument("--interactive", action='store_true',
-                            help="Enable UMAP interactive plot, instead of saving scatter plots")
+        parser.add_argument(
+            "--interactive", action="store_true", help="Enable UMAP interactive plot, instead of saving scatter plots"
+        )
         # TODO Add CL arguments for UMAP init
         return parser
