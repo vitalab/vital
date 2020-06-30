@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple, List, Callable, Dict, Sequence
+from typing import Callable, Dict, List, Sequence, Tuple
 
 import h5py
 import numpy as np
@@ -9,8 +9,8 @@ from torchvision.datasets import VisionDataset
 from torchvision.transforms.functional import to_tensor
 
 import vital
-from vital.data.camus.config import Instant, View, CamusTags, Label
-from vital.data.camus.data_struct import ViewData, PatientData
+from vital.data.camus.config import CamusTags, Instant, Label, View
+from vital.data.camus.data_struct import PatientData, ViewData
 from vital.data.config import Subset
 from vital.utils.format import to_onehot
 from vital.utils.image.register.camus import CamusRegisteringTransformer
@@ -24,20 +24,23 @@ class DataParameters(vital.utils.parameters.DataParameters):
     Args:
         use_sequence_index: whether to use instants' normalized indices in the sequence.
     """
+
     use_sequence_index: bool
 
 
 class Camus(VisionDataset):
-
-    def __init__(self, path: Path,
-                 image_set: Subset,
-                 labels: Sequence[Label],
-                 use_sequence: bool = False,
-                 use_sequence_index: bool = False,
-                 predict: bool = False,
-                 transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
-                 transform: Callable[[Tensor], Tensor] = None,
-                 target_transform: Callable[[Tensor], Tensor] = None):
+    def __init__(
+        self,
+        path: Path,
+        image_set: Subset,
+        labels: Sequence[Label],
+        use_sequence: bool = False,
+        use_sequence_index: bool = False,
+        predict: bool = False,
+        transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
+        transform: Callable[[Tensor], Tensor] = None,
+        target_transform: Callable[[Tensor], Tensor] = None,
+    ):
         """
         Args:
             path: path to the HDF5 dataset.
@@ -59,12 +62,14 @@ class Camus(VisionDataset):
         self.use_sequence = use_sequence
         self.use_sequence_index = use_sequence_index
 
-        with h5py.File(path, 'r') as f:
+        with h5py.File(path, "r") as f:
             self.registered_dataset = f.attrs[CamusTags.registered]
             self.dataset_with_sequence = f.attrs[CamusTags.full_sequence]
         if self.use_sequence and not self.dataset_with_sequence:
-            raise ValueError("Request to use complete sequences, but the dataset only contains cardiac phase end "
-                             "instants. Should specify `no_sequence` flag, or generate a new dataset with sequences.")
+            raise ValueError(
+                "Request to use complete sequences, but the dataset only contains cardiac phase end instants. "
+                "Should specify `no_sequence` flag, or generate a new dataset with sequences."
+            )
 
         # Determine labels to remove based on labels to take into account
         self.labels_to_remove = [label for label in Label if label not in self.labels]
@@ -92,9 +97,8 @@ class Camus(VisionDataset):
         Returns:
             paths to the patients, from the requested ``image_set``, inside the HDF5 file.
         """
-        with h5py.File(self.root, 'r') as dataset:
-            patient_paths = [f'{self.image_set}/{patient_id}'
-                             for patient_id in dataset[self.image_set].keys()]
+        with h5py.File(self.root, "r") as dataset:
+            patient_paths = [f"{self.image_set}/{patient_id}" for patient_id in dataset[self.image_set].keys()]
         return patient_paths
 
     def _get_instant_paths(self) -> List[Tuple[str, int]]:
@@ -105,21 +109,22 @@ class Camus(VisionDataset):
         """
 
         def include_image(view_group, instant):
-            is_instant_with_gt = instant in (view_group.attrs[instant_key]
-                                             for instant_key in Instant.values())
-            return not self.dataset_with_sequence or \
-                   self.use_sequence or \
-                   (self.dataset_with_sequence and is_instant_with_gt)
+            is_instant_with_gt = instant in (view_group.attrs[instant_key] for instant_key in Instant.values())
+            return (
+                not self.dataset_with_sequence
+                or self.use_sequence
+                or (self.dataset_with_sequence and is_instant_with_gt)
+            )
 
         image_paths = []
         patient_paths = self._get_patient_paths()
-        with h5py.File(self.root, 'r') as dataset:
+        with h5py.File(self.root, "r") as dataset:
             for patient_path in patient_paths:
                 for view in dataset[patient_path].keys():
                     view_group = dataset[patient_path][view]
                     for instant in range(view_group[CamusTags.gt].shape[0]):
                         if include_image(view_group, instant):
-                            image_paths.append((f'{patient_path}/{view}', instant))
+                            image_paths.append((f"{patient_path}/{view}", instant))
         return image_paths
 
     def _get_train_item(self, index: int) -> Dict[str, Tensor]:
@@ -133,12 +138,11 @@ class Camus(VisionDataset):
         """
         set_patient_view_key, instant = self.item_list[index]
 
-        with h5py.File(self.root, 'r') as dataset:
+        with h5py.File(self.root, "r") as dataset:
             # Collect and process data
-            view_imgs, view_gts = self._get_data(dataset, set_patient_view_key,
-                                                 CamusTags.img_proc, CamusTags.gt_proc)
+            view_imgs, view_gts = self._get_data(dataset, set_patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
             img = view_imgs[instant]
-            gt, = self._process_target_data(view_gts[instant])
+            (gt,) = self._process_target_data(view_gts[instant])
 
             # Collect metadata
             # Explicit cast to float32 to avoid "Expected object" type error in PyTorch models
@@ -149,8 +153,7 @@ class Camus(VisionDataset):
         if self.transforms:
             img, gt = self.transforms(img, gt)
 
-        item = {CamusTags.img: img,
-                CamusTags.gt: gt}
+        item = {CamusTags.img: img, CamusTags.gt: gt}
 
         if self.use_sequence_index:
             item[CamusTags.regression] = sequence_idx
@@ -167,19 +170,21 @@ class Camus(VisionDataset):
             data for inference on a test item.
         """
         views = {}
-        with h5py.File(self.root, 'r') as dataset:
+        with h5py.File(self.root, "r") as dataset:
             for view in dataset[self.item_list[index]]:
-                set_patient_view_key = f'{self.item_list[index]}/{view}'
+                set_patient_view_key = f"{self.item_list[index]}/{view}"
                 view = View(view)
 
                 # Collect and process data
-                proc_imgs, proc_gts = Camus._get_data(dataset, set_patient_view_key,
-                                                      CamusTags.img_proc, CamusTags.gt_proc)
-                proc_gts, = self._process_target_data(proc_gts)
+                proc_imgs, proc_gts = Camus._get_data(
+                    dataset, set_patient_view_key, CamusTags.img_proc, CamusTags.gt_proc
+                )
+                (proc_gts,) = self._process_target_data(proc_gts)
 
                 # Indicate indices of instants with manually annotated segmentations in view sequences
-                instants_with_gt = {instant: Camus._get_metadata(dataset, set_patient_view_key, instant.value)[0]
-                                    for instant in Instant}
+                instants_with_gt = {
+                    instant: Camus._get_metadata(dataset, set_patient_view_key, instant.value)[0] for instant in Instant
+                }
 
                 # Only keep instants with manually annotated groundtruths if we do not use the whole sequence
                 if self.dataset_with_sequence and not self.use_sequence:
@@ -207,22 +212,23 @@ class Camus(VisionDataset):
         Returns:
             data about a patient.
         """
-        with h5py.File(self.root, 'r') as dataset:
-            patient_data = PatientData(id=self.item_list[index].split('/')[1])
+        with h5py.File(self.root, "r") as dataset:
+            patient_data = PatientData(id=self.item_list[index].split("/")[1])
             for view in dataset[self.item_list[index]]:
-                set_patient_view_key = f'{self.item_list[index]}/{view}'
+                set_patient_view_key = f"{self.item_list[index]}/{view}"
                 view = View(view)
 
                 # Collect data
-                gts, = Camus._get_data(dataset, set_patient_view_key, CamusTags.gt)
-                gts, = self._process_target_data(gts)
+                (gts,) = Camus._get_data(dataset, set_patient_view_key, CamusTags.gt)
+                (gts,) = self._process_target_data(gts)
 
                 # Collect metadata
-                info, = Camus._get_metadata(dataset, set_patient_view_key, CamusTags.info)
+                (info,) = Camus._get_metadata(dataset, set_patient_view_key, CamusTags.info)
 
                 # Indicate indices of instants with manually annotated segmentations in view sequences
-                instants_with_gt = {instant: Camus._get_metadata(dataset, set_patient_view_key, instant.value)[0]
-                                    for instant in Instant}
+                instants_with_gt = {
+                    instant: Camus._get_metadata(dataset, set_patient_view_key, instant.value)[0] for instant in Instant
+                }
 
                 # Only keep instants with manually annotated groundtruths if we do not use the whole sequence
                 if self.dataset_with_sequence and not self.use_sequence:
@@ -235,8 +241,10 @@ class Camus(VisionDataset):
                 # Extract metadata concerning the registering applied
                 registering_parameters = None
                 if self.registered_dataset:
-                    registering_parameters = {reg_step: Camus._get_metadata(dataset, set_patient_view_key, reg_step)[0]
-                                              for reg_step in CamusRegisteringTransformer.registering_steps}
+                    registering_parameters = {
+                        reg_step: Camus._get_metadata(dataset, set_patient_view_key, reg_step)[0]
+                        for reg_step in CamusRegisteringTransformer.registering_steps
+                    }
 
                 patient_data.views[view] = ViewData(gts, info, instants_with_gt, registering=registering_parameters)
 
@@ -251,10 +259,13 @@ class Camus(VisionDataset):
         Returns:
             target data arrays processed and formatted.
         """
-        return [to_onehot(remove_labels(target_data, [lbl.value for lbl in self.labels_to_remove],
-                                        fill_label=Label.BG.value),
-                          num_classes=len(self.labels))
-                for target_data in args]
+        return [
+            to_onehot(
+                remove_labels(target_data, [lbl.value for lbl in self.labels_to_remove], fill_label=Label.BG.value),
+                num_classes=len(self.labels),
+            )
+            for target_data in args
+        ]
 
     @staticmethod
     def _get_data(file: h5py.File, set_patient_view_key: str, *data_tags: str) -> List[np.ndarray]:

@@ -6,6 +6,7 @@ channels:
 dependencies:
   - python>=3.8
   - pip
+  - pre-commit
   - pathos
   - pillow
   - scipy
@@ -22,7 +23,6 @@ dependencies:
   - pytorch-lightning>=0.8
   - cudatoolkit=10.1
   - pip:
-      - torchsummary
       - keras # Used by `utils/image/register.py` for its image processing utilities (w/o backend)
       - git+https://github.com/longcw/RoIAlign.pytorch
       - medpy

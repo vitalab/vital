@@ -1,11 +1,11 @@
 from math import degrees
 
 import numpy as np
-from skimage.measure import regionprops, inertia_tensor
+from skimage.measure import inertia_tensor, regionprops
 
 from vital.data.camus.config import Label
 from vital.utils.image.measure import bbox
-from vital.utils.image.register.affine import AffineRegisteringTransformer, Shift, Rotation, Crop
+from vital.utils.image.register.affine import AffineRegisteringTransformer, Crop, Rotation, Shift
 
 
 class CamusRegisteringTransformer(AffineRegisteringTransformer):
@@ -14,7 +14,8 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
     not the input MRI image. The goal of this registration is to shift the centroid of the epicardium in the middle
     of the image and rotate the image so the major axis of the left ventricle is vertically aligned.
     """
-    registering_steps = ['shift', 'rotation', 'crop']
+
+    registering_steps = ["shift", "rotation", "crop"]
 
     def _compute_shift_parameters(self, segmentation: np.ndarray) -> Shift:
         """Computes the pixel shift to apply along each axis to center the segmentation around the epicardium
@@ -65,7 +66,7 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
             rotation_angle = degrees(np.arctan2(evec1[1], evec1[0]))
             rotation_angle -= 90  # Get angle with y-axis from angle with x-axis
         else:  # If the left ventricle is not present in the image
-            rotation_angle = 0.
+            rotation_angle = 0
         return rotation_angle
 
     def _compute_crop_parameters(self, segmentation: np.ndarray, margin: float = 0.05) -> Crop:
@@ -110,9 +111,11 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
     #         zoom to apply along each axis to fit the bounding box surrounding the segmented classes.
     #     """
     #     # Find dimensions of the bounding box encompassing all segmentation classes
-    #     segmentation_mask = (segmentation[..., Label.ENDO.value] |
-    #                          segmentation[..., Label.EPI.value] |
-    #                          segmentation[..., Label.ATRIUM.value])
+    #     segmentation_mask = (
+    #         segmentation[..., Label.ENDO.value]
+    #         | segmentation[..., Label.EPI.value]
+    #         | segmentation[..., Label.ATRIUM.value]
+    #     )
     #     segmentation_props = regionprops(segmentation_mask)[0]
     #     segmentation_bbox = segmentation_props.bbox
     #

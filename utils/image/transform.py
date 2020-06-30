@@ -1,7 +1,7 @@
-from typing import Tuple, Sequence
+from typing import Sequence, Tuple
 
-import PIL
 import numpy as np
+import PIL
 import torch
 from PIL import Image
 from PIL.Image import NEAREST
@@ -47,7 +47,7 @@ def remove_labels(segmentation: np.ndarray, labels_to_remove: Sequence[int], fil
     return segmentation
 
 
-def segmentation_to_tensor(segmentation: np.ndarray, dtype: str = 'float32') -> Tensor:
+def segmentation_to_tensor(segmentation: np.ndarray, dtype: str = "float32") -> Tensor:
     """Converts a segmentation map to a tensor, including reordering the dimensions.
 
     Args:

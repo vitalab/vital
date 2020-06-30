@@ -10,13 +10,13 @@ class Label(DataTag):
 
 
 class View(DataTag):
-    TWO = '2CH'
-    FOUR = '4CH'
+    TWO = "2CH"
+    FOUR = "4CH"
 
 
 class Instant(DataTag):
-    ED = 'ED'
-    ES = 'ES'
+    ED = "ED"
+    ES = "ES"
 
 
 @parameters
@@ -33,14 +33,14 @@ class CamusTags(Tags):
         proc_instants: name of the tag referring to metadata indicating which image where affected by the
                        postprocessing.
     """
-    registered: str = 'register'
-    full_sequence: str = 'sequence'
 
-    img_proc: str = 'img_proc'
-    gt_proc: str = 'gt_proc'
-    info: str = 'info'
-    proc_instants: str = 'processed_instants'
+    registered: str = "register"
+    full_sequence: str = "sequence"
 
+    img_proc: str = "img_proc"
+    gt_proc: str = "gt_proc"
+    info: str = "info"
+    proc_instants: str = "processed_instants"
 
 
 image_size = 256

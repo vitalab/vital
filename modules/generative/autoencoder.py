@@ -1,7 +1,6 @@
 from typing import Tuple
 
-from torch import Tensor
-from torch import nn
+from torch import Tensor, nn
 
 from vital.modules.generative.decoder import Decoder
 from vital.modules.generative.encoder import Encoder
@@ -11,11 +10,7 @@ from vital.modules.layers import reparameterize
 class Autoencoder(nn.Module):
     """Module making up a fully convolutional autoencoder."""
 
-    def __init__(self, image_size: Tuple[int, int],
-                 channels: int,
-                 blocks: int,
-                 init_channels: int,
-                 latent_dim: int):
+    def __init__(self, image_size: Tuple[int, int], channels: int, blocks: int, init_channels: int, latent_dim: int):
         """
         Args:
             image_size: size of the output segmentation groundtruth for each axis.
@@ -26,16 +21,20 @@ class Autoencoder(nn.Module):
             latent_dim: number of dimensions in the latent space.
         """
         super().__init__()
-        self.encoder = Encoder(image_size=image_size,
-                               in_channels=channels,
-                               blocks=blocks,
-                               init_channels=init_channels,
-                               latent_dim=latent_dim)
-        self.decoder = Decoder(image_size=image_size,
-                               out_channels=channels,
-                               blocks=blocks,
-                               init_channels=init_channels,
-                               latent_dim=latent_dim)
+        self.encoder = Encoder(
+            image_size=image_size,
+            in_channels=channels,
+            blocks=blocks,
+            init_channels=init_channels,
+            latent_dim=latent_dim,
+        )
+        self.decoder = Decoder(
+            image_size=image_size,
+            out_channels=channels,
+            blocks=blocks,
+            init_channels=init_channels,
+            latent_dim=latent_dim,
+        )
 
     def forward(self, y: Tensor) -> Tuple[Tensor, Tensor]:
         """Defines the computation performed at every call.
@@ -54,11 +53,7 @@ class Autoencoder(nn.Module):
 class VariationalAutoencoder(nn.Module):
     """Module making up a fully convolutional variational autoencoder."""
 
-    def __init__(self, image_size: Tuple[int, int],
-                 channels: int,
-                 blocks: int,
-                 init_channels: int,
-                 latent_dim: int):
+    def __init__(self, image_size: Tuple[int, int], channels: int, blocks: int, init_channels: int, latent_dim: int):
         """
         Args:
             image_size: size of the output segmentation groundtruth for each axis.
@@ -69,17 +64,21 @@ class VariationalAutoencoder(nn.Module):
             latent_dim: number of dimensions in the latent space.
         """
         super().__init__()
-        self.encoder = Encoder(image_size=image_size,
-                               in_channels=channels,
-                               blocks=blocks,
-                               init_channels=init_channels,
-                               latent_dim=latent_dim,
-                               output_distribution=True)
-        self.decoder = Decoder(image_size=image_size,
-                               out_channels=channels,
-                               blocks=blocks,
-                               init_channels=init_channels,
-                               latent_dim=latent_dim)
+        self.encoder = Encoder(
+            image_size=image_size,
+            in_channels=channels,
+            blocks=blocks,
+            init_channels=init_channels,
+            latent_dim=latent_dim,
+            output_distribution=True,
+        )
+        self.decoder = Decoder(
+            image_size=image_size,
+            out_channels=channels,
+            blocks=blocks,
+            init_channels=init_channels,
+            latent_dim=latent_dim,
+        )
 
     def forward(self, y: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         """Defines the computation performed at every call.

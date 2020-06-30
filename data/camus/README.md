@@ -22,7 +22,7 @@ The dataset itself is available from the [challenge web page](https://www.creati
 Once you have downloaded the dataset and extracted its content from the archive:
 ```bash
 # generate the cross validation subfold HDF5 files
-# (by default in the current working directory) 
+# (by default in the current working directory)
 # NOTE: this step could take quite a bit of time (up to a few hours)
 python cross_validation_dataset_generator.py \
   --data {path to the extracted data}

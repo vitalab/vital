@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Literal, Dict, List
+from typing import Dict, List, Literal
 
 import torch
 from torch import Tensor
@@ -14,7 +14,7 @@ class SupervisedComputationMixin(SystemComputationMixin, ABC):
         - Handling of identical train/val step results (metrics logging and printing)
     """
 
-    def trainval_step(self, *args, metric_prefix: Literal['', 'val_'] = '', **kwargs) -> Dict[str, Tensor]:
+    def trainval_step(self, *args, metric_prefix: Literal["", "val_"] = "", **kwargs) -> Dict[str, Tensor]:
         """Handles steps for both training and validation loops, assuming the behavior should be the same.
 
         For models where the behavior in training and validation is different, then override ``training_step`` and
@@ -26,7 +26,7 @@ class SupervisedComputationMixin(SystemComputationMixin, ABC):
         return self.trainval_step(*args, **kwargs)
 
     def validation_step(self, *args, **kwargs) -> Dict[str, Tensor]:
-        return self.trainval_step(*args, metric_prefix='val_', **kwargs)
+        return self.trainval_step(*args, metric_prefix="val_", **kwargs)
 
     def trainval_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:
         """Handles logging and displaying metrics in the progress bar for both training and validation loops, assuming
@@ -39,12 +39,13 @@ class SupervisedComputationMixin(SystemComputationMixin, ABC):
         called).
         """
         metric_names = outputs[0].keys()
-        reduced_metrics = {metric_name: torch.stack([output[metric_name]
-                                                     for output in outputs]).mean()
-                           for metric_name in metric_names}
-        return {'progress_bar': {metric: value for metric, value in reduced_metrics.items()
-                                 if metric != 'loss'},
-                'log': reduced_metrics}
+        reduced_metrics = {
+            metric_name: torch.stack([output[metric_name] for output in outputs]).mean() for metric_name in metric_names
+        }
+        return {
+            "progress_bar": {metric: value for metric, value in reduced_metrics.items() if metric != "loss"},
+            "log": reduced_metrics,
+        }
 
     def training_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:
         return self.trainval_epoch_end(outputs)

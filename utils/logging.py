@@ -3,8 +3,7 @@ from pathlib import Path
 from typing import Union
 
 
-def configure_logging(level: Union[int, str] = logging.WARNING,
-                      filename: Path = None, print_to_console: bool = True):
+def configure_logging(level: Union[int, str] = logging.WARNING, filename: Path = None, print_to_console: bool = True):
     """Configures a standardized way of logging for the library.
 
     Args:
@@ -14,7 +13,7 @@ def configure_logging(level: Union[int, str] = logging.WARNING,
     """
     handlers = []
     if filename:
-        handlers.append(logging.FileHandler(str(filename), mode='w'))
+        handlers.append(logging.FileHandler(str(filename), mode="w"))
     if print_to_console:
         handlers.append(logging.StreamHandler())
 

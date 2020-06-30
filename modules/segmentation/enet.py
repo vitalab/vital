@@ -14,12 +14,15 @@ class _InitialBlock(nn.Module):
            extension branch outputs 3, for a total of 16 feature maps after concatenation.
     """
 
-    def __init__(self, in_channels: int,
-                 out_channels: int,
-                 kernel_size: int = 3,
-                 padding: int = 0,
-                 bias: bool = False,
-                 relu: bool = True):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int = 3,
+        padding: int = 0,
+        bias: bool = False,
+        relu: bool = True,
+    ):
         """
         Args:
             in_channels: the number of input channels.
@@ -40,8 +43,7 @@ class _InitialBlock(nn.Module):
         # branch is the total minus 3, since the remaining channels come from
         # the extension branch
         self.main_branch = nn.Conv2d(
-            in_channels, out_channels - in_channels, kernel_size=kernel_size, stride=2,
-            padding=padding, bias=bias
+            in_channels, out_channels - in_channels, kernel_size=kernel_size, stride=2, padding=padding, bias=bias
         )
 
         # Extension branch
@@ -78,15 +80,18 @@ class _RegularBottleneck(nn.Module):
         4. dropout as a regularizer.
     """
 
-    def __init__(self, channels: int,
-                 internal_ratio: int = 4,
-                 kernel_size: int = 3,
-                 padding: int = 0,
-                 dilation: int = 1,
-                 asymmetric: bool = False,
-                 dropout: float = 0.,
-                 bias: bool = False,
-                 relu: bool = True):
+    def __init__(
+        self,
+        channels: int,
+        internal_ratio: int = 4,
+        kernel_size: int = 3,
+        padding: int = 0,
+        dilation: int = 1,
+        asymmetric: bool = False,
+        dropout: float = 0.0,
+        bias: bool = False,
+        relu: bool = True,
+    ):
         """
         Args:
             channels: the number of input and output channels.
@@ -104,12 +109,11 @@ class _RegularBottleneck(nn.Module):
         """
         super().__init__()
 
-        # Check in the internal_scale parameter is within the expected range [1, channels]
+        # Check in the internal_ratio parameter is within the expected range [1, channels]
         if internal_ratio <= 1 or internal_ratio > channels:
             raise RuntimeError(
-                "Value out of range. Expected value in the "
-                "interval [1, {0}], got internal_scale={1}."
-                    .format(channels, internal_ratio)
+                f"Value out of range. Expected value in the interval [1, {channels}], "
+                f"got internal_ratio={internal_ratio}."
             )
 
         internal_channels = channels // internal_ratio
@@ -128,10 +132,9 @@ class _RegularBottleneck(nn.Module):
 
         # 1x1 projection convolution
         self.ext_conv1 = nn.Sequential(
-            nn.Conv2d(
-                channels, internal_channels, kernel_size=1, stride=1, bias=bias
-            ),
-            nn.BatchNorm2d(internal_channels), activation
+            nn.Conv2d(channels, internal_channels, kernel_size=1, stride=1, bias=bias),
+            nn.BatchNorm2d(internal_channels),
+            activation,
         )
 
         # If the convolution is asymmetric we split the main convolution in
@@ -140,35 +143,49 @@ class _RegularBottleneck(nn.Module):
         if asymmetric:
             self.ext_conv2 = nn.Sequential(
                 nn.Conv2d(
-                    internal_channels, internal_channels,
-                    kernel_size=(kernel_size, 1), stride=1,
-                    padding=(padding, 0), dilation=dilation, bias=bias
+                    internal_channels,
+                    internal_channels,
+                    kernel_size=(kernel_size, 1),
+                    stride=1,
+                    padding=(padding, 0),
+                    dilation=dilation,
+                    bias=bias,
                 ),
-                nn.BatchNorm2d(internal_channels), activation,
+                nn.BatchNorm2d(internal_channels),
+                activation,
                 nn.Conv2d(
-                    internal_channels, internal_channels,
-                    kernel_size=(1, kernel_size), stride=1,
-                    padding=(0, padding), dilation=dilation, bias=bias
+                    internal_channels,
+                    internal_channels,
+                    kernel_size=(1, kernel_size),
+                    stride=1,
+                    padding=(0, padding),
+                    dilation=dilation,
+                    bias=bias,
                 ),
-                nn.BatchNorm2d(internal_channels), activation
+                nn.BatchNorm2d(internal_channels),
+                activation,
             )
 
         else:
             self.ext_conv2 = nn.Sequential(
                 nn.Conv2d(
-                    internal_channels, internal_channels,
-                    kernel_size=kernel_size, stride=1, padding=padding,
-                    dilation=dilation, bias=bias
+                    internal_channels,
+                    internal_channels,
+                    kernel_size=kernel_size,
+                    stride=1,
+                    padding=padding,
+                    dilation=dilation,
+                    bias=bias,
                 ),
-                nn.BatchNorm2d(internal_channels), activation
+                nn.BatchNorm2d(internal_channels),
+                activation,
             )
 
         # 1x1 expansion convolution
         self.ext_conv3 = nn.Sequential(
-            nn.Conv2d(
-                internal_channels, channels, kernel_size=1, stride=1, bias=bias
-            ),
-            nn.BatchNorm2d(channels), activation
+            nn.Conv2d(internal_channels, channels, kernel_size=1, stride=1, bias=bias),
+            nn.BatchNorm2d(channels),
+            activation,
         )
 
         self.ext_regul = nn.Dropout2d(p=dropout)
@@ -205,15 +222,18 @@ class _DownsamplingBottleneck(nn.Module):
         4. dropout as a regularizer.
     """
 
-    def __init__(self, in_channels: int,
-                 out_channels: int,
-                 internal_ratio: int = 4,
-                 kernel_size: int = 3,
-                 padding: int = 0,
-                 return_indices: bool = False,
-                 dropout: float = 0.,
-                 bias: bool = False,
-                 relu: bool = True):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        internal_ratio: int = 4,
+        kernel_size: int = 3,
+        padding: int = 0,
+        return_indices: bool = False,
+        dropout: float = 0.0,
+        bias: bool = False,
+        relu: bool = True,
+    ):
         """
         Args:
             in_channels: the number of input channels.
@@ -235,12 +255,11 @@ class _DownsamplingBottleneck(nn.Module):
         # Store parameters that are needed later
         self.return_indices = return_indices
 
-        # Check in the internal_scale parameter is within the expected range [1, channels]
+        # Check in the internal_ratio parameter is within the expected range [1, channels]
         if internal_ratio <= 1 or internal_ratio > in_channels:
             raise RuntimeError(
-                "Value out of range. Expected value in the "
-                "interval [1, {0}], got internal_scale={1}. "
-                    .format(in_channels, internal_ratio)
+                f"Value out of range. Expected value in the interval [1, {in_channels}], "
+                f"got internal_ratio={internal_ratio}."
             )
 
         internal_channels = in_channels // internal_ratio
@@ -251,10 +270,7 @@ class _DownsamplingBottleneck(nn.Module):
             activation = nn.PReLU()
 
         # Main branch - max pooling followed by feature map (channels) padding
-        self.main_max1 = nn.MaxPool2d(
-            kernel_size, stride=2, padding=padding,
-            return_indices=return_indices
-        )
+        self.main_max1 = nn.MaxPool2d(kernel_size, stride=2, padding=padding, return_indices=return_indices)
 
         # Extension branch - 2x2 convolution, followed by a regular, dilated or
         # asymmetric convolution, followed by another 1x1 convolution. Number
@@ -262,29 +278,25 @@ class _DownsamplingBottleneck(nn.Module):
 
         # 2x2 projection convolution with stride 2
         self.ext_conv1 = nn.Sequential(
-            nn.Conv2d(
-                in_channels, internal_channels, kernel_size=2, stride=2,
-                bias=bias
-            ),
-            nn.BatchNorm2d(internal_channels), activation
+            nn.Conv2d(in_channels, internal_channels, kernel_size=2, stride=2, bias=bias),
+            nn.BatchNorm2d(internal_channels),
+            activation,
         )
 
         # Convolution
         self.ext_conv2 = nn.Sequential(
             nn.Conv2d(
-                internal_channels, internal_channels, kernel_size=kernel_size,
-                stride=1, padding=padding, bias=bias
+                internal_channels, internal_channels, kernel_size=kernel_size, stride=1, padding=padding, bias=bias
             ),
-            nn.BatchNorm2d(internal_channels), activation
+            nn.BatchNorm2d(internal_channels),
+            activation,
         )
 
         # 1x1 expansion convolution
         self.ext_conv3 = nn.Sequential(
-            nn.Conv2d(
-                internal_channels, out_channels, kernel_size=1, stride=1,
-                bias=bias
-            ),
-            nn.BatchNorm2d(out_channels), activation
+            nn.Conv2d(internal_channels, out_channels, kernel_size=1, stride=1, bias=bias),
+            nn.BatchNorm2d(out_channels),
+            activation,
         )
 
         self.ext_regul = nn.Dropout2d(p=dropout)
@@ -327,7 +339,7 @@ class _DownsamplingBottleneck(nn.Module):
 class _UpsamplingBottleneck(nn.Module):
     """The upsampling bottlenecks upsample the feature map resolution using max pooling indices stored from the
     corresponding downsampling bottleneck.
-    
+
     Main branch:
         1. 1x1 convolution with stride 1 that decreases the number of channels by ``internal_ratio``, also called a
            projection;
@@ -340,14 +352,17 @@ class _UpsamplingBottleneck(nn.Module):
         4. dropout as a regularizer.
     """
 
-    def __init__(self, in_channels: int,
-                 out_channels: int,
-                 internal_ratio: int = 4,
-                 kernel_size: int = 3,
-                 padding: int = 0,
-                 dropout: float = 0.,
-                 bias: bool = False,
-                 relu: bool = True):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        internal_ratio: int = 4,
+        kernel_size: int = 3,
+        padding: int = 0,
+        dropout: float = 0.0,
+        bias: bool = False,
+        relu: bool = True,
+    ):
         """
         Args:
             in_channels: the number of input channels.
@@ -364,12 +379,11 @@ class _UpsamplingBottleneck(nn.Module):
         """
         super().__init__()
 
-        # Check in the internal_scale parameter is within the expected range [1, channels]
+        # Check in the internal_ratio parameter is within the expected range [1, channels]
         if internal_ratio <= 1 or internal_ratio > in_channels:
             raise RuntimeError(
-                "Value out of range. Expected value in the "
-                "interval [1, {0}], got internal_scale={1}. "
-                    .format(in_channels, internal_ratio)
+                f"Value out of range. Expected value in the interval [1, {in_channels}], "
+                f"got internal_ratio={internal_ratio}."
             )
 
         internal_channels = in_channels // internal_ratio
@@ -381,8 +395,7 @@ class _UpsamplingBottleneck(nn.Module):
 
         # Main branch - max pooling followed by feature map (channels) padding
         self.main_conv1 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=bias),
-            nn.BatchNorm2d(out_channels)
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=bias), nn.BatchNorm2d(out_channels)
         )
 
         # Remember that the stride is the same as the kernel_size, just like
@@ -396,22 +409,30 @@ class _UpsamplingBottleneck(nn.Module):
         # 1x1 projection convolution with stride 1
         self.ext_conv1 = nn.Sequential(
             nn.Conv2d(in_channels, internal_channels, kernel_size=1, bias=bias),
-            nn.BatchNorm2d(internal_channels), activation
+            nn.BatchNorm2d(internal_channels),
+            activation,
         )
 
         # Transposed convolution
         self.ext_conv2 = nn.Sequential(
             nn.ConvTranspose2d(
-                internal_channels, internal_channels, kernel_size=kernel_size,
-                stride=2, padding=padding, output_padding=1, bias=bias
-            ), nn.BatchNorm2d(internal_channels), activation
+                internal_channels,
+                internal_channels,
+                kernel_size=kernel_size,
+                stride=2,
+                padding=padding,
+                output_padding=1,
+                bias=bias,
+            ),
+            nn.BatchNorm2d(internal_channels),
+            activation,
         )
 
         # 1x1 expansion convolution
         self.ext_conv3 = nn.Sequential(
-            nn.Conv2d(
-                internal_channels, out_channels, kernel_size=1, bias=bias
-            ), nn.BatchNorm2d(out_channels), activation
+            nn.Conv2d(internal_channels, out_channels, kernel_size=1, bias=bias),
+            nn.BatchNorm2d(out_channels),
+            activation,
         )
         self.ext_regul = nn.Dropout2d(p=dropout)
 
@@ -437,12 +458,15 @@ class _UpsamplingBottleneck(nn.Module):
 class Enet(nn.Module):
     """Generate the ENet model."""
 
-    def __init__(self, in_channels: int = None,
-                 out_channels: int = None,
-                 init_channels: int = 16,
-                 dropout: float = 0.1,
-                 encoder_relu: bool = True,
-                 decoder_relu: bool = True):
+    def __init__(
+        self,
+        in_channels: int = None,
+        out_channels: int = None,
+        init_channels: int = 16,
+        dropout: float = 0.1,
+        encoder_relu: bool = True,
+        decoder_relu: bool = True,
+    ):
         """
         Args:
             in_channels: the number of channels in the input images.
@@ -462,77 +486,55 @@ class Enet(nn.Module):
 
         # Stage 1 - Encoder
         self.downsample1_0 = _DownsamplingBottleneck(
-            init_channels, init_channels * 2, padding=1, return_indices=True, dropout=0.1 * dropout,
-            relu=encoder_relu
+            init_channels, init_channels * 2, padding=1, return_indices=True, dropout=0.1 * dropout, relu=encoder_relu
         )
-        self.regular1_1 = _RegularBottleneck(
-            init_channels * 2, padding=1, dropout=0.1 * dropout, relu=encoder_relu
-        )
-        self.regular1_2 = _RegularBottleneck(
-            init_channels * 2, padding=1, dropout=0.1 * dropout, relu=encoder_relu
-        )
-        self.regular1_3 = _RegularBottleneck(
-            init_channels * 2, padding=1, dropout=0.1 * dropout, relu=encoder_relu
-        )
-        self.regular1_4 = _RegularBottleneck(
-            init_channels * 2, padding=1, dropout=0.1 * dropout, relu=encoder_relu
-        )
+        self.regular1_1 = _RegularBottleneck(init_channels * 2, padding=1, dropout=0.1 * dropout, relu=encoder_relu)
+        self.regular1_2 = _RegularBottleneck(init_channels * 2, padding=1, dropout=0.1 * dropout, relu=encoder_relu)
+        self.regular1_3 = _RegularBottleneck(init_channels * 2, padding=1, dropout=0.1 * dropout, relu=encoder_relu)
+        self.regular1_4 = _RegularBottleneck(init_channels * 2, padding=1, dropout=0.1 * dropout, relu=encoder_relu)
 
         # Stage 2 - Encoder
         self.downsample2_0 = _DownsamplingBottleneck(
-            init_channels * 2, init_channels * 4, padding=1, return_indices=True, dropout=dropout,
-            relu=encoder_relu
+            init_channels * 2, init_channels * 4, padding=1, return_indices=True, dropout=dropout, relu=encoder_relu
         )
-        self.regular2_1 = _RegularBottleneck(
-            init_channels * 4, padding=1, dropout=dropout, relu=encoder_relu
-        )
+        self.regular2_1 = _RegularBottleneck(init_channels * 4, padding=1, dropout=dropout, relu=encoder_relu)
         self.dilated2_2 = _RegularBottleneck(
             init_channels * 4, dilation=2, padding=2, dropout=dropout, relu=encoder_relu
         )
         self.asymmetric2_3 = _RegularBottleneck(
-            init_channels * 4, kernel_size=5, padding=2, asymmetric=True, dropout=dropout,
-            relu=encoder_relu
+            init_channels * 4, kernel_size=5, padding=2, asymmetric=True, dropout=dropout, relu=encoder_relu
         )
         self.dilated2_4 = _RegularBottleneck(
             init_channels * 4, dilation=4, padding=4, dropout=dropout, relu=encoder_relu
         )
-        self.regular2_5 = _RegularBottleneck(
-            init_channels * 4, padding=1, dropout=dropout, relu=encoder_relu
-        )
+        self.regular2_5 = _RegularBottleneck(init_channels * 4, padding=1, dropout=dropout, relu=encoder_relu)
         self.dilated2_6 = _RegularBottleneck(
             init_channels * 4, dilation=8, padding=8, dropout=dropout, relu=encoder_relu
         )
         self.asymmetric2_7 = _RegularBottleneck(
-            init_channels * 4, kernel_size=5, asymmetric=True, padding=2, dropout=dropout,
-            relu=encoder_relu
+            init_channels * 4, kernel_size=5, asymmetric=True, padding=2, dropout=dropout, relu=encoder_relu
         )
         self.dilated2_8 = _RegularBottleneck(
             init_channels * 4, dilation=16, padding=16, dropout=dropout, relu=encoder_relu
         )
 
         # Stage 3 - Encoder
-        self.regular3_0 = _RegularBottleneck(
-            init_channels * 4, padding=1, dropout=dropout, relu=encoder_relu
-        )
+        self.regular3_0 = _RegularBottleneck(init_channels * 4, padding=1, dropout=dropout, relu=encoder_relu)
         self.dilated3_1 = _RegularBottleneck(
             init_channels * 4, dilation=2, padding=2, dropout=dropout, relu=encoder_relu
         )
         self.asymmetric3_2 = _RegularBottleneck(
-            init_channels * 4, kernel_size=5, padding=2, asymmetric=True, dropout=dropout,
-            relu=encoder_relu
+            init_channels * 4, kernel_size=5, padding=2, asymmetric=True, dropout=dropout, relu=encoder_relu
         )
         self.dilated3_3 = _RegularBottleneck(
             init_channels * 4, dilation=4, padding=4, dropout=dropout, relu=encoder_relu
         )
-        self.regular3_4 = _RegularBottleneck(
-            init_channels * 4, padding=1, dropout=dropout, relu=encoder_relu
-        )
+        self.regular3_4 = _RegularBottleneck(init_channels * 4, padding=1, dropout=dropout, relu=encoder_relu)
         self.dilated3_5 = _RegularBottleneck(
             init_channels * 4, dilation=8, padding=8, dropout=dropout, relu=encoder_relu
         )
         self.asymmetric3_6 = _RegularBottleneck(
-            init_channels * 4, kernel_size=5, asymmetric=True, padding=2, dropout=dropout,
-            relu=encoder_relu
+            init_channels * 4, kernel_size=5, asymmetric=True, padding=2, dropout=dropout, relu=encoder_relu
         )
         self.dilated3_7 = _RegularBottleneck(
             init_channels * 4, dilation=16, padding=16, dropout=dropout, relu=encoder_relu
@@ -542,24 +544,17 @@ class Enet(nn.Module):
         self.upsample4_0 = _UpsamplingBottleneck(
             init_channels * 4, init_channels * 2, padding=1, dropout=dropout, relu=decoder_relu
         )
-        self.regular4_1 = _RegularBottleneck(
-            init_channels * 2, padding=1, dropout=dropout, relu=decoder_relu
-        )
-        self.regular4_2 = _RegularBottleneck(
-            init_channels * 2, padding=1, dropout=dropout, relu=decoder_relu
-        )
+        self.regular4_1 = _RegularBottleneck(init_channels * 2, padding=1, dropout=dropout, relu=decoder_relu)
+        self.regular4_2 = _RegularBottleneck(init_channels * 2, padding=1, dropout=dropout, relu=decoder_relu)
 
         # Stage 5 - Decoder
         self.upsample5_0 = _UpsamplingBottleneck(
             init_channels * 2, init_channels, padding=1, dropout=dropout, relu=decoder_relu
         )
-        self.regular5_1 = _RegularBottleneck(
-            init_channels, padding=1, dropout=dropout, relu=decoder_relu
-        )
+        self.regular5_1 = _RegularBottleneck(init_channels, padding=1, dropout=dropout, relu=decoder_relu)
 
         self.transposed_conv = nn.ConvTranspose2d(
-            init_channels, out_channels, kernel_size=3, stride=2, padding=1,
-            output_padding=1, bias=False
+            init_channels, out_channels, kernel_size=3, stride=2, padding=1, output_padding=1, bias=False
         )
 
     def forward(self, x: Tensor) -> Tensor:

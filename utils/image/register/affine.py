@@ -1,13 +1,13 @@
 import itertools
-from typing import Tuple, Optional, Mapping, Union
+from typing import Mapping, Optional, Tuple, Union
 
 import numpy as np
-from PIL.Image import LINEAR
 from keras_preprocessing.image import ImageDataGenerator
+from PIL.Image import LINEAR
 from scipy import ndimage
 
 from vital.data.config import SemanticStructureId
-from vital.utils.format import to_onehot, to_categorical
+from vital.utils.format import to_categorical, to_onehot
 from vital.utils.image.transform import resize_image
 
 Shift = Tuple[int, int]
@@ -21,7 +21,8 @@ class AffineRegisteringTransformer:
     """Class that uses Keras' ImageDataGenerator to register image/segmentation pairs based on the structures in the
     segmentations.
     """
-    registering_steps = ['shift', 'rotation', 'zoom', 'crop']
+
+    registering_steps = ["shift", "rotation", "zoom", "crop"]
 
     def __init__(self, num_classes: int, crop_shape: tuple = None):
         """
@@ -32,21 +33,26 @@ class AffineRegisteringTransformer:
         """
         self.num_classes = num_classes
         self.crop_shape = crop_shape
-        self.transformer = ImageDataGenerator(fill_mode='constant', cval=0)
-        self.registering_step_fcts = {'shift': self._center,
-                                      'rotation': self._rotate,
-                                      'zoom': self._zoom_to_fit,
-                                      'crop': self._crop_resize}
+        self.transformer = ImageDataGenerator(fill_mode="constant", cval=0)
+        self.registering_step_fcts = {
+            "shift": self._center,
+            "rotation": self._rotate,
+            "zoom": self._zoom_to_fit,
+            "crop": self._crop_resize,
+        }
 
     @staticmethod
     def _get_default_parameters(segmentation: np.ndarray) -> dict:
-        return {'shift': (0, 0),
-                'rotation': 0,
-                'zoom': (1, 1),
-                'crop:': segmentation.shape + (0, 0, segmentation.shape[0] - 1, segmentation.shape[1] - 1)}
+        return {
+            "shift": (0, 0),
+            "rotation": 0,
+            "zoom": (1, 1),
+            "crop:": segmentation.shape + (0, 0, segmentation.shape[0] - 1, segmentation.shape[1] - 1),
+        }
 
-    def register_batch(self, segmentations: np.ndarray, images: np.ndarray = None) \
-            -> Tuple[dict, np.ndarray, Optional[np.ndarray]]:
+    def register_batch(
+        self, segmentations: np.ndarray, images: np.ndarray = None
+    ) -> Tuple[dict, np.ndarray, Optional[np.ndarray]]:
         """Registers the segmentations (and images) based on the positioning of the structures in the segmentations.
 
         Args:
@@ -69,13 +75,16 @@ class AffineRegisteringTransformer:
             images = []
         elif images.shape[:3] != segmentations.shape[:3]:
             # If `images` are provided, ensure they match `segmentations` in every dimension except number of channels
-            raise ValueError("Provided images parameter does not match first 3 dimensions of segmentations. "
-                             f"images has shape {images.shape}, "
-                             f"segmentations has shape {segmentations.shape}.")
+            raise ValueError(
+                "Provided `images` parameter does not match first 3 dimensions of `segmentations`. \n"
+                f"`images` has shape {images.shape}, \n"
+                f"`segmentations` has shape {segmentations.shape}."
+            )
 
         for idx, (segmentation, image) in enumerate(itertools.zip_longest(segmentations, images)):
-            segmentation_registering_parameters, registered_segmentation, registered_image = \
-                self.register(segmentation, image)
+            segmentation_registering_parameters, registered_segmentation, registered_image = self.register(
+                segmentation, image
+            )
             registered_segmentations.append(registered_segmentation)
 
             if image is not None:
@@ -87,8 +96,9 @@ class AffineRegisteringTransformer:
 
         return registering_parameters, np.array(registered_segmentations), np.array(registered_images)
 
-    def register(self, segmentation: np.ndarray, image: np.ndarray = None) \
-            -> Tuple[dict, np.ndarray, Optional[np.ndarray]]:
+    def register(
+        self, segmentation: np.ndarray, image: np.ndarray = None
+    ) -> Tuple[dict, np.ndarray, Optional[np.ndarray]]:
         """Registers the segmentation (and image) based on the positioning of the structures in the segmentation.
 
         Args:
@@ -120,8 +130,9 @@ class AffineRegisteringTransformer:
 
         return registering_parameters, segmentation, image
 
-    def undo_batch_registering(self, segmentations: np.ndarray, registering_parameters: Mapping[str, np.ndarray]) \
-            -> np.ndarray:
+    def undo_batch_registering(
+        self, segmentations: np.ndarray, registering_parameters: Mapping[str, np.ndarray]
+    ) -> np.ndarray:
         """Undoes the registering on the segmentations using the parameters saved during the registration.
 
         Args:
@@ -135,26 +146,33 @@ class AffineRegisteringTransformer:
         # Check that provided parameters correspond to supported registering operations
         for parameter in registering_parameters.keys():
             if parameter not in self.registering_steps:
-                raise ValueError(f"Provided {parameter} parameter does not match "
-                                 f"any of the following supported registering steps: {self.registering_steps}")
+                raise ValueError(
+                    f"Provided `{parameter}` parameter does not match any of the following supported registering "
+                    f"steps: \n"
+                    f"{self.registering_steps}"
+                )
 
         # Check that parameters for supported registering operations match the provided data
         for registering_step, parameter_values in registering_parameters.items():
             if len(registering_parameters[registering_step]) != len(segmentations):
-                raise ValueError(f"Provided {registering_step} parameter does not match the number of elements "
-                                 "in segmentations. \n"
-                                 f"{registering_step} has length {len(parameter_values)}, "
-                                 f"segmentations has length {len(segmentations)}.")
+                raise ValueError(
+                    f"Provided `{registering_step}` parameter does not match the number of elements in "
+                    f"segmentations. \n"
+                    f"`{registering_step}` has length {len(parameter_values)}, "
+                    f"`segmentations` has length {len(segmentations)}."
+                )
 
         unregistered_segmentations = np.empty_like(segmentations)
         for idx, segmentation in enumerate(segmentations):
-            seg_registering_parameters = {registering_step: values[idx]
-                                          for registering_step, values in registering_parameters.items()}
+            seg_registering_parameters = {
+                registering_step: values[idx] for registering_step, values in registering_parameters.items()
+            }
             unregistered_segmentations[idx] = self.undo_registering(segmentation, seg_registering_parameters)
         return unregistered_segmentations
 
-    def undo_registering(self, segmentation: np.ndarray, registering_parameters: Mapping[str, RegisteringParameter]) \
-            -> np.ndarray:
+    def undo_registering(
+        self, segmentation: np.ndarray, registering_parameters: Mapping[str, RegisteringParameter]
+    ) -> np.ndarray:
         """Undoes the registering on the segmentation using the parameters saved during the registration.
 
         Args:
@@ -167,29 +185,36 @@ class AffineRegisteringTransformer:
         """
         # Get default registering parameters for steps that were not provided
         registering_parameters = dict(registering_parameters)
-        registering_parameters.update({registering_step: self._get_default_parameters(segmentation)[registering_step]
-                                       for registering_step in AffineRegisteringTransformer.registering_steps
-                                       if registering_step not in registering_parameters.keys()})
+        registering_parameters.update(
+            {
+                registering_step: self._get_default_parameters(segmentation)[registering_step]
+                for registering_step in AffineRegisteringTransformer.registering_steps
+                if registering_step not in registering_parameters.keys()
+            }
+        )
 
         # Ensure that the segmentation is in categorical format and of integer type
         segmentation, original_segmentation_format = self._check_segmentation_format(segmentation)
 
         # Start by restoring the segmentation to its original dimension
-        if 'crop' in self.registering_steps:
-            segmentation = self._restore_crop(segmentation, registering_parameters['crop'])
+        if "crop" in self.registering_steps:
+            segmentation = self._restore_crop(segmentation, registering_parameters["crop"])
 
         # Format the transformations' parameters
-        shift = registering_parameters['shift']
-        rotation = registering_parameters['rotation']
-        zoom = registering_parameters['zoom']
-        transformation_parameters = {'shift': {'tx': -shift[0], 'ty': -shift[1]},
-                                     'rotation': {'theta': -rotation},
-                                     'zoom': {'zx': 1 / zoom[0], 'zy': 1 / zoom[1]}}
+        shift = registering_parameters["shift"]
+        rotation = registering_parameters["rotation"]
+        zoom = registering_parameters["zoom"]
+        transformation_parameters = {
+            "shift": {"tx": -shift[0], "ty": -shift[1]},
+            "rotation": {"theta": -rotation},
+            "zoom": {"zx": 1 / zoom[0], "zy": 1 / zoom[1]},
+        }
 
         # Apply each inverse transformation step corresponding to an original transformation,
         # and in the reverse order they were first applied (except for crop that's already been undone)
-        registering_steps_wo_crop = [registering_step for registering_step in self.registering_steps
-                                     if registering_step != 'crop']
+        registering_steps_wo_crop = [
+            registering_step for registering_step in self.registering_steps if registering_step != "crop"
+        ]
         for registering_step in reversed(registering_steps_wo_crop):
             segmentation = self._transform_segmentation(segmentation, transformation_parameters[registering_step])
 
@@ -272,8 +297,9 @@ class AffineRegisteringTransformer:
         return image
 
     @staticmethod
-    def _find_structure_center(segmentation: np.ndarray, struct_label: SemanticStructureId,
-                               default_center: Tuple[int, int] = None) -> Tuple[int, int]:
+    def _find_structure_center(
+        segmentation: np.ndarray, struct_label: SemanticStructureId, default_center: Tuple[int, int] = None
+    ) -> Tuple[int, int]:
         """Extract the center of mass of a structure in a segmentation.
 
         Args:
@@ -298,7 +324,7 @@ class AffineRegisteringTransformer:
         Returns:
              pixel shift to apply along each axis to center the segmentation.
         """
-        return self._get_default_parameters(segmentation)['shift']
+        return self._get_default_parameters(segmentation)["shift"]
 
     def _compute_rotation_parameters(self, segmentation: np.ndarray) -> Rotation:
         """Computes the angle of the rotation to apply to align the segmentation along the desired axis.
@@ -309,7 +335,7 @@ class AffineRegisteringTransformer:
         Returns:
             angle of the rotation to apply to align the segmentation along the desired axis.
         """
-        return self._get_default_parameters(segmentation)['rotation']
+        return self._get_default_parameters(segmentation)["rotation"]
 
     def _compute_zoom_to_fit_parameters(self, segmentation: np.ndarray, margin: float = 0.1) -> Zoom:
         """Computes the zoom to apply along each axis to fit the bounding box surrounding the segmented classes.
@@ -322,7 +348,7 @@ class AffineRegisteringTransformer:
         Returns:
             zoom to apply along each axis to fit the bounding box surrounding the segmented classes.
         """
-        return self._get_default_parameters(segmentation)['zoom']
+        return self._get_default_parameters(segmentation)["zoom"]
 
     def _compute_crop_parameters(self, segmentation: np.ndarray, margin: float = 0.05) -> Crop:
         """Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
@@ -336,10 +362,11 @@ class AffineRegisteringTransformer:
             original shape and coordinates of the bbox, in the following order:
             height, width, row_min, col_min, row_max, col_max.
         """
-        return self._get_default_parameters(segmentation)['crop']
+        return self._get_default_parameters(segmentation)["crop"]
 
-    def _center(self, segmentation: np.ndarray, image: np.ndarray = None) \
-            -> Tuple[Shift, np.ndarray, Optional[np.ndarray]]:
+    def _center(
+        self, segmentation: np.ndarray, image: np.ndarray = None
+    ) -> Tuple[Shift, np.ndarray, Optional[np.ndarray]]:
         """Applies a pixel shift along each axis to center the segmentation (and image).
 
         Args:
@@ -352,13 +379,16 @@ class AffineRegisteringTransformer:
             image: centered image (if `image` is not None).
         """
         pixel_shift_by_axis = self._compute_shift_parameters(segmentation)
-        shift_parameters = {'tx': pixel_shift_by_axis[0], 'ty': pixel_shift_by_axis[1]}
-        return (pixel_shift_by_axis,
-                self._transform_segmentation(segmentation, shift_parameters),
-                self._transform_image(image, shift_parameters) if image is not None else None)
+        shift_parameters = {"tx": pixel_shift_by_axis[0], "ty": pixel_shift_by_axis[1]}
+        return (
+            pixel_shift_by_axis,
+            self._transform_segmentation(segmentation, shift_parameters),
+            self._transform_image(image, shift_parameters) if image is not None else None,
+        )
 
-    def _rotate(self, segmentation: np.ndarray, image: np.ndarray = None) \
-            -> Tuple[Rotation, np.ndarray, Optional[np.ndarray]]:
+    def _rotate(
+        self, segmentation: np.ndarray, image: np.ndarray = None
+    ) -> Tuple[Rotation, np.ndarray, Optional[np.ndarray]]:
         """Applies a rotation to align the segmentation (and image) along the desired axis.
 
         Args:
@@ -371,13 +401,16 @@ class AffineRegisteringTransformer:
             image: rotated image (if `image` is not None).
         """
         rotation_angle = self._compute_rotation_parameters(segmentation)
-        rotation_parameters = {'theta': rotation_angle}
-        return (rotation_angle,
-                self._transform_segmentation(segmentation, rotation_parameters),
-                self._transform_image(image, rotation_parameters) if image is not None else None)
+        rotation_parameters = {"theta": rotation_angle}
+        return (
+            rotation_angle,
+            self._transform_segmentation(segmentation, rotation_parameters),
+            self._transform_image(image, rotation_parameters) if image is not None else None,
+        )
 
-    def _zoom_to_fit(self, segmentation: np.ndarray, image: np.ndarray = None) \
-            -> Tuple[Zoom, np.ndarray, Optional[np.ndarray]]:
+    def _zoom_to_fit(
+        self, segmentation: np.ndarray, image: np.ndarray = None
+    ) -> Tuple[Zoom, np.ndarray, Optional[np.ndarray]]:
         """Applies a zoom along each axis to fit the segmentation (and image) to the area of interest.
 
         Args:
@@ -390,13 +423,16 @@ class AffineRegisteringTransformer:
             image: fitted image (if `image` is not None).
         """
         zoom_to_fit = self._compute_zoom_to_fit_parameters(segmentation)
-        zoom_to_fit_parameters = {'zx': zoom_to_fit[0], 'zy': zoom_to_fit[1]}
-        return (zoom_to_fit,
-                self._transform_segmentation(segmentation, zoom_to_fit_parameters),
-                self._transform_image(image, zoom_to_fit_parameters) if image is not None else None)
+        zoom_to_fit_parameters = {"zx": zoom_to_fit[0], "zy": zoom_to_fit[1]}
+        return (
+            zoom_to_fit,
+            self._transform_segmentation(segmentation, zoom_to_fit_parameters),
+            self._transform_image(image, zoom_to_fit_parameters) if image is not None else None,
+        )
 
-    def _crop_resize(self, segmentation: np.ndarray, image: np.ndarray = None) \
-            -> Tuple[Crop, np.ndarray, Optional[np.ndarray]]:
+    def _crop_resize(
+        self, segmentation: np.ndarray, image: np.ndarray = None
+    ) -> Tuple[Crop, np.ndarray, Optional[np.ndarray]]:
         """Applies a zoom along each axis to fit the segmentation (and image) to the area of interest.
 
         Args:
@@ -416,7 +452,7 @@ class AffineRegisteringTransformer:
             # Pad the image if it is necessary to fit the bbox
             row_pad = max(0, 0 - row_min), max(0, row_max - image.shape[0])
             col_pad = max(0, 0 - col_min), max(0, col_max - image.shape[1])
-            image = np.pad(image, (row_pad, col_pad), mode='constant', constant_values=0)
+            image = np.pad(image, (row_pad, col_pad), mode="constant", constant_values=0)
 
             # Adjust bbox coordinates to new padded image
             row_min += row_pad[0]
@@ -457,22 +493,23 @@ class AffineRegisteringTransformer:
 
         # Resize the resized cropped segmentation to the original shape of the bbox
         bbox_shape = (row_max - row_min, col_max - col_min)
-        segmentation = to_onehot(resize_image(to_categorical(segmentation), bbox_shape[::-1]),
-                                 num_classes=segmentation.shape[-1])
+        segmentation = to_onehot(
+            resize_image(to_categorical(segmentation), bbox_shape[::-1]), num_classes=segmentation.shape[-1]
+        )
 
         # Place the cropped segmentation at its original location, inside an empty segmentation
         og_segmentation = np.zeros(og_shape, dtype=np.uint8)
         row_pad = max(0, 0 - row_min), max(0, row_max - og_shape[0])
         col_pad = max(0, 0 - col_min), max(0, col_max - og_shape[1])
-        og_segmentation[max(0, row_min):min(row_max, og_shape[0]),
-        max(0, col_min):min(col_max, og_shape[1]), :] = \
-            segmentation[row_pad[0]:bbox_shape[0] - row_pad[1],
-            col_pad[0]:bbox_shape[1] - col_pad[1], :]
+        og_segmentation[
+            max(0, row_min) : min(row_max, og_shape[0]), max(0, col_min) : min(col_max, og_shape[1]), :
+        ] = segmentation[row_pad[0] : bbox_shape[0] - row_pad[1], col_pad[0] : bbox_shape[1] - col_pad[1], :]
 
         return og_segmentation
 
-    def _transform_image(self, image: np.ndarray, transform_parameters: Mapping[str, RegisteringParameter]) \
-            -> np.ndarray:
+    def _transform_image(
+        self, image: np.ndarray, transform_parameters: Mapping[str, RegisteringParameter]
+    ) -> np.ndarray:
         """Applies transformations on an image.
 
         Args:
@@ -486,8 +523,9 @@ class AffineRegisteringTransformer:
         """
         return self.transformer.apply_transform(image, transform_parameters)
 
-    def _transform_segmentation(self, segmentation: np.ndarray,
-                                transform_parameters: Mapping[str, RegisteringParameter]) -> np.ndarray:
+    def _transform_segmentation(
+        self, segmentation: np.ndarray, transform_parameters: Mapping[str, RegisteringParameter]
+    ) -> np.ndarray:
         """Applies transformations on a segmentation.
 
         Args:

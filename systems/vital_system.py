@@ -1,21 +1,18 @@
 from abc import ABC
 from argparse import ArgumentParser, Namespace
-from contextlib import redirect_stdout
-from typing import Tuple, Mapping, Union, List, Dict
+from typing import Dict, List, Mapping, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.core.decorators import auto_move_data
-from torch import Tensor
-from torch import nn
+from torch import Tensor, nn
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
-from torchsummary import summary
 from torchvision.datasets import VisionDataset
 
 from vital.data.config import Subset
-from vital.utils.device import get_device
 from vital.utils.parameters import DataParameters
+from vital.utils.summary import summary_info
 
 
 class VitalSystem(pl.LightningModule, ABC):
@@ -46,11 +43,9 @@ class VitalSystem(pl.LightningModule, ABC):
         Args:
             system_input_shape: shape of the input data the system should expect when using the dataset.
         """
-        if self.hparams.weights_summary:
-            with open(str(self.hparams.default_root_dir.joinpath('summary.txt')), 'w') as f:
-                with redirect_stdout(f):
-                    device = get_device()
-                    summary(self.module.to(device), system_input_shape, device=device.type)
+        with open(str(self.hparams.default_root_dir.joinpath("summary.txt")), "w") as f:
+            summary_str, _ = summary_info(self.module, system_input_shape, self.device)
+            f.write(summary_str)
 
     def configure_optimizers(self) -> Optimizer:
         return torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
@@ -71,14 +66,12 @@ class VitalSystem(pl.LightningModule, ABC):
             parser object that supports CL arguments specific to a system.
         """
         parser = ArgumentParser(add_help=False)
-        parser = cls.add_data_manager_args(parser)
-        parser = cls.add_computation_args(parser)
-        parser = cls.add_evaluation_args(parser)
-        return parser
+        return cls.add_evaluation_args(cls.add_computation_args(cls.add_data_manager_args(parser)))
 
 
 class SystemDataManagerMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the interface between the Datasets and DataLoaders."""
+
     data_params: DataParameters
     dataset: Mapping[Subset, VisionDataset]
 
@@ -146,8 +139,9 @@ class SystemEvaluationMixin(VitalSystem, ABC):
     def test_step(self, *args, **kwargs) -> Dict[str, Tensor]:
         pass
 
-    def test_epoch_end(self, outputs: Union[List[Dict[str, Tensor]], List[List[Dict[str, Tensor]]]]) \
-            -> Dict[str, Dict[str, Tensor]]:
+    def test_epoch_end(
+        self, outputs: Union[List[Dict[str, Tensor]], List[List[Dict[str, Tensor]]]]
+    ) -> Dict[str, Dict[str, Tensor]]:
         """Called at the end of the testing epoch. Can be used to export results using custom loggers, while not
         returning any metrics to display in the progress bar (as Lightning normally expects).
         """
