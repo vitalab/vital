@@ -339,7 +339,7 @@ class _DownsamplingBottleneck(nn.Module):
 class _UpsamplingBottleneck(nn.Module):
     """The upsampling bottlenecks upsample the feature map resolution using max pooling indices stored from the
     corresponding downsampling bottleneck.
-    
+
     Main branch:
         1. 1x1 convolution with stride 1 that decreases the number of channels by ``internal_ratio``, also called a
            projection;

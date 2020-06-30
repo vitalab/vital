@@ -10,3 +10,12 @@ repos:
         entry: python -m black
         args: [--config, ./pyproject.toml]
         types: [python]
+
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: "3.8.3"
+    hooks:
+      - id: flake8
+        name: flake8
+        entry: python -m flake8
+        args: [--config, ./setup.cfg]
+        types: [python]
