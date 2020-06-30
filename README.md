@@ -43,12 +43,12 @@ dependencies (if you only use some of the utilities provided by the repository).
 The [`.pre-commit-config.yaml`](.pre-commit-config.yaml) file defines the pre-commit hooks that should be installed in
 any project contributing to the `vital` repository. For consistency's sake, it is recommended to use the same
 configuration for the pre-commit hooks for both the project repository and the `vital` submodule. This can be achieved
-by using symlinks to the `vital` configuration files from the project repository. 
+by using symlinks to the `vital` configuration files from the project repository.
 
 Assuming you start at the root of your project directory, linking the configuration files in the project repository to
 the `vital` configuration and installing hooks should look something like this:
 ```
-# navigate to the vital submodule and 
+# navigate to the vital submodule and
 # install the pre-commit hooks for the vital submodule
 cd vital
 pre-commit install
@@ -62,4 +62,4 @@ ln -s ./vital/setup.cfg setup.cfg
 
 # install the pre-commit hooks for the project repository
 pre-commit install
-``` 
+```
