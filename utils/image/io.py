@@ -2,8 +2,8 @@ from numbers import Number
 from pathlib import Path
 from typing import Tuple
 
-import SimpleITK
 import numpy as np
+import SimpleITK
 
 
 def load_mhd(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[Number, ...], ...]]:

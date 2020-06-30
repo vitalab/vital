@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple, List, Callable, Dict, Sequence
+from typing import Callable, Dict, List, Sequence, Tuple
 
 import h5py
 import numpy as np
@@ -9,8 +9,8 @@ from torchvision.datasets import VisionDataset
 from torchvision.transforms.functional import to_tensor
 
 import vital
-from vital.data.camus.config import Instant, View, CamusTags, Label
-from vital.data.camus.data_struct import ViewData, PatientData
+from vital.data.camus.config import CamusTags, Instant, Label, View
+from vital.data.camus.data_struct import PatientData, ViewData
 from vital.data.config import Subset
 from vital.utils.format import to_onehot
 from vital.utils.image.register.camus import CamusRegisteringTransformer

@@ -2,19 +2,19 @@ import argparse
 import os
 from numbers import Real
 from pathlib import Path
-from typing import List, Dict, Tuple, Sequence, Mapping, Literal
+from typing import Dict, List, Literal, Mapping, Sequence, Tuple
 
 import h5py
 import numpy as np
-from PIL.Image import LINEAR
 from pathos.multiprocessing import Pool
+from PIL.Image import LINEAR
 from tqdm import tqdm
 
-from vital.data.camus.config import image_size, View, Instant, CamusTags, Label
+from vital.data.camus.config import CamusTags, Instant, Label, View, image_size
 from vital.data.config import Subset
 from vital.utils.image.io import load_mhd
 from vital.utils.image.register.camus import CamusRegisteringTransformer
-from vital.utils.image.transform import resize_image, remove_labels
+from vital.utils.image.transform import remove_labels, resize_image
 
 
 class CrossValidationDatasetGenerator:

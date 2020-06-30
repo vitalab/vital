@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
 import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 
 def _get_module(module: str, **module_params) -> nn.Module:

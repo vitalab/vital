@@ -1,10 +1,11 @@
-import numpy as np
 from math import degrees
-from skimage.measure import regionprops, inertia_tensor
+
+import numpy as np
+from skimage.measure import inertia_tensor, regionprops
 
 from vital.data.camus.config import Label
 from vital.utils.image.measure import bbox
-from vital.utils.image.register.affine import AffineRegisteringTransformer, Shift, Rotation, Crop
+from vital.utils.image.register.affine import AffineRegisteringTransformer, Crop, Rotation, Shift
 
 
 class CamusRegisteringTransformer(AffineRegisteringTransformer):

@@ -45,6 +45,9 @@ any project contributing to the `vital` repository. For consistency's sake, it i
 configuration for the pre-commit hooks for both the project repository and the `vital` submodule. This can be achieved
 by using symlinks to the `vital` configuration files from the project repository.
 
+NOTE: `isort` must be configured slightly differently in the project than in the `vital` submodule, in order to list the
+project's top-level packages as known first party.
+
 Assuming you start at the root of your project directory, linking the configuration files in the project repository to
 the `vital` configuration and installing hooks should look something like this:
 ```
@@ -59,6 +62,11 @@ cd ..
 ln -s ./vital/.pre-commit-config.yaml .pre-commit-config.yaml
 ln -s ./vital/pyproject.toml pyproject.toml
 ln -s ./vital/setup.cfg setup.cfg
+
+# create an isort configuration for the project from the vital configuration
+cp ./vital/.isort.cfg isort.cfg
+# Afterwards, edit the copied configuration file manually to add all top-level
+# project packages in the `known_first_party` tag
 
 # install the pre-commit hooks for the project repository
 pre-commit install

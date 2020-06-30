@@ -1,7 +1,7 @@
-from typing import Tuple, Sequence
+from typing import Sequence, Tuple
 
-import PIL
 import numpy as np
+import PIL
 import torch
 from PIL import Image
 from PIL.Image import NEAREST

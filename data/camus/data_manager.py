@@ -3,7 +3,7 @@ from pathlib import Path
 
 from torch.utils.data import DataLoader
 
-from vital.data.camus.config import image_size, in_channels, Label
+from vital.data.camus.config import Label, image_size, in_channels
 from vital.data.camus.dataset import Camus, DataParameters
 from vital.data.config import Subset
 from vital.systems.vital_system import SystemDataManagerMixin

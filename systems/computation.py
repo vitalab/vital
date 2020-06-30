@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Literal, Dict, List
+from typing import Dict, List, Literal
 
 import torch
 from torch import Tensor

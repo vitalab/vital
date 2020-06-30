@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Union, Sequence
+from typing import Sequence, Union
 
 from vital.utils.parameters import parameters
 

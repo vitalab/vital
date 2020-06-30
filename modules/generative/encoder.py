@@ -1,10 +1,9 @@
 from functools import reduce
 from operator import mul
-from typing import Union, Tuple
+from typing import Tuple, Union
 
 import torch
-from torch import Tensor
-from torch import nn
+from torch import Tensor, nn
 
 from vital.modules.layers import conv3x3_activation
 

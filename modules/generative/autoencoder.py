@@ -1,7 +1,6 @@
 from typing import Tuple
 
-from torch import Tensor
-from torch import nn
+from torch import Tensor, nn
 
 from vital.modules.generative.decoder import Decoder
 from vital.modules.generative.encoder import Encoder

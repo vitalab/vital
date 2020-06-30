@@ -2,10 +2,9 @@ from collections import OrderedDict
 from typing import Tuple
 
 import torch
-from torch import Tensor
-from torch import nn
+from torch import Tensor, nn
 
-from vital.modules.layers import conv3x3_bn_activation, conv3x3_activation
+from vital.modules.layers import conv3x3_activation, conv3x3_bn_activation
 
 
 class CamusUnet(nn.Module):

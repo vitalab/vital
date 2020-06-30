@@ -1,13 +1,12 @@
 from collections import OrderedDict
 from functools import reduce
 from operator import mul
-from typing import Type, Tuple
+from typing import Tuple, Type
 
 import torch
 import torch.nn.functional as F
 from roi_align import CropAndResize
-from torch import Tensor
-from torch import nn
+from torch import Tensor, nn
 
 from vital.utils.image.transform import resize_image
 

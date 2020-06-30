@@ -1,12 +1,11 @@
 from abc import ABC
 from argparse import ArgumentParser, Namespace
-from typing import Tuple, Mapping, Union, List, Dict
+from typing import Dict, List, Mapping, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.core.decorators import auto_move_data
-from torch import Tensor
-from torch import nn
+from torch import Tensor, nn
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torchvision.datasets import VisionDataset

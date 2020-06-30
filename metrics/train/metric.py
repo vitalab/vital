@@ -1,5 +1,4 @@
-from torch import Tensor
-from torch import nn
+from torch import Tensor, nn
 
 from vital.metrics.train.functionnal import dice_score
 

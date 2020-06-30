@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Tuple, Union, List, Sequence
+from typing import List, Sequence, Tuple, Union
 
 import numpy as np
 import torch

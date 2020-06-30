@@ -1,13 +1,13 @@
 import itertools
-from typing import Tuple, Optional, Mapping, Union
+from typing import Mapping, Optional, Tuple, Union
 
 import numpy as np
-from PIL.Image import LINEAR
 from keras_preprocessing.image import ImageDataGenerator
+from PIL.Image import LINEAR
 from scipy import ndimage
 
 from vital.data.config import SemanticStructureId
-from vital.utils.format import to_onehot, to_categorical
+from vital.utils.format import to_categorical, to_onehot
 from vital.utils.image.transform import resize_image
 
 Shift = Tuple[int, int]
