@@ -1,6 +1,3 @@
-"""Format utilities.
-Derived from Keras' numpy utility: https://github.com/keras-team/keras/blob/master/keras/utils/np_utils.py"""
-
 import numpy as np
 
 
