@@ -1,0 +1,37 @@
+name: "Check Code Format"
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the master and dev branches
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+    branches:
+      - master
+      - dev
+
+jobs:
+  code-formatting:
+    name: Check code format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install code formatting packages
+        run: pip install isort black flake8
+
+      - name: Run Black
+        run: black --config=pyproject.toml --check .
+
+      - name: Run isort
+        run: isort --settings-path=setup.cfg --check-only
+
+      - name: Run flake8
+        run: flake8 --config=setup.cfg .
