@@ -41,35 +41,19 @@ some dependencies (if you only use some of the utilities provided by the reposit
 ## How to contribute
 
 ### Version Control Hooks
-The [`.pre-commit-config.yaml`](.pre-commit-config.yaml) file defines the pre-commit hooks that should be installed in
-any project contributing to the `vital` repository. For consistency's sake, it is recommended to use the same
-configuration for the pre-commit hooks for both the dependent project and the `vital` project. This
-
-#### Notice
-- `isort` must be configured slightly differently in the dependent project than in the `vital` repository, in order to
-indicate the project as the known first party.
-
-#### Version Control Hooks Setup: Git Submodule
-If the `vital` repository is installed as a [git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules),
-copying the pre-commit configurations can be achieved by using symlinks to the `vital` configuration files from the
-dependent project's directory.
-
-Linking the configuration files in the project repository to the `vital` configuration and installing hooks would then
-look something like this:
+Before first trying to commit to the project, it is important to setup the version control hooks, so that commits
+respect the coding standards in place for the project. The [`.pre-commit-config.yaml`](.pre-commit-config.yaml) file
+defines the pre-commit hooks that should be installed in any project contributing to the `vital` repository. To setup
+the version control hooks, run the following commands:
 ```
-# navigate to the vital repository location and install the pre-commit hooks
-cd <vital_repository_dir>   # Likely ./vital
 pre-commit install
-
-# symlink configuration files for the project repository to
-# the configuration files in the vital repository
-cd <project_root_dir>   # Likely ..
-ln -s <vital_repository_dir>/.pre-commit-config.yaml .pre-commit-config.yaml
-ln -s <vital_repository_dir>/pyproject.toml pyproject.toml
-ln -s <vital_repository_dir>/setup.cfg setup.cfg
-
-# create an isort configuration for the project from the vital configuration
-cp <vital_repository_dir>/.isort.cfg isort.cfg
-# Afterwards, edit the copied configuration file manually to change the value
-# of the `known_first_party` tag to the name of the project package
 ```
+
+> NOTE: In case you want to copy the pre-commit hooks configuration to your own project, you're welcome to :)
+> The configuration file for each hook is located in the following files:
+> - [isort](https://github.com/timothycrosley/isort): `setup.cfg`, `[isort]` section
+> - [black](https://github.com/psf/black): `pyproject.toml`
+> - [flake8](https://gitlab.com/pycqa/flake8): `setup.cfg`, `[flake8]` section
+>
+> However, be advised that `isort` must be configured slightly differently in each project. The `known_first_party` tag
+> should thus reflect the package name of the current project, in place of `vital`.
