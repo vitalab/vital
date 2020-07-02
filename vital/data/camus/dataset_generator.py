@@ -47,7 +47,7 @@ class CrossValidationDatasetGenerator:
         self.register = register
         self.labels_to_remove = [] if labels is None else [label for label in Label if label not in labels]
 
-    def create_subfold_dataset(self, subfold: int):
+    def create_subfold_dataset(self, subfold: int) -> None:
         """This function writes a cross validation configuration of the dataset, where ``subfold`` makes up the test
         set, to a HDF5 file.
 
@@ -85,7 +85,7 @@ class CrossValidationDatasetGenerator:
             patient_ids = [line for line in f.read().splitlines()]
         return patient_ids
 
-    def _create_subset(self, subset_group: h5py.Group, subfold: int, patient_ids: Sequence[str]):
+    def _create_subset(self, subset_group: h5py.Group, subfold: int, patient_ids: Sequence[str]) -> None:
         """This function writes in a hdf5 the data for a given subset.
 
         Args:

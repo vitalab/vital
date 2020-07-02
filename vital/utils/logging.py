@@ -3,7 +3,9 @@ from pathlib import Path
 from typing import Union
 
 
-def configure_logging(level: Union[int, str] = logging.WARNING, filename: Path = None, print_to_console: bool = True):
+def configure_logging(
+    level: Union[int, str] = logging.WARNING, filename: Path = None, print_to_console: bool = True
+) -> None:
     """Configures a standardized way of logging for the library.
 
     Args:

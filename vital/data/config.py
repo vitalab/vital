@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Sequence, Union
+from typing import List, Sequence, Union
 
 from vital.utils.parameters import parameters
 
@@ -14,19 +14,16 @@ class DataTag(Enum):
         return str(self)
 
     @classmethod
-    def values(cls):
+    def values(cls) -> List:
         return [e.value for e in cls]
 
     @classmethod
-    def count(cls):
+    def count(cls) -> int:
         return sum(1 for _ in cls)
 
     @classmethod
-    def from_name(cls, name):
-        try:
-            return cls[name.upper()]
-        except KeyError:
-            return name
+    def from_name(cls, name: str) -> "DataTag":
+        return cls[name.upper()]
 
 
 class Subset(DataTag):

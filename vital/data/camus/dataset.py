@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, List, Sequence, Tuple
+from typing import Callable, Dict, List, Sequence, Tuple, Union
 
 import h5py
 import numpy as np
@@ -82,7 +82,7 @@ class Camus(VisionDataset):
             self.item_list = self._get_instant_paths()
             self.getter = self._get_train_item
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> Union[Dict[str, Tensor], Dict[View, Tuple[Tensor, Tensor]]]:
         return self.getter(index)
 
     def __len__(self):
@@ -108,7 +108,7 @@ class Camus(VisionDataset):
             paths to the instants, from the requested ``image_set``, inside the HDF5 file.
         """
 
-        def include_image(view_group, instant):
+        def include_image(view_group: h5py.Group, instant: int) -> bool:
             is_instant_with_gt = instant in (view_group.attrs[instant_key] for instant_key in Instant.values())
             return (
                 not self.dataset_with_sequence

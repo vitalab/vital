@@ -1,5 +1,6 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+from typing import Literal
 
 from torch.utils.data import DataLoader
 
@@ -23,7 +24,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
         )
         self._labels = [str(label) for label in self.hparams.labels]
 
-    def setup(self, stage: str):
+    def setup(self, stage: Literal["fit", "test"]) -> None:
         common_args = {
             "path": self.hparams.dataset_path,
             "labels": self.hparams.labels,

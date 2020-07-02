@@ -43,8 +43,8 @@ def summary_info(
 
     summary_str = ""
 
-    def register_hook(module):
-        def hook(module, input, output):
+    def register_hook(module: nn.Module) -> None:
+        def hook(module: nn.Module, input: Tuple[torch.Tensor], output: torch.Tensor) -> None:
             class_name = str(module.__class__).split(".")[-1].split("'")[0]
             module_idx = len(summary)
 
