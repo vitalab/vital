@@ -27,24 +27,21 @@ def remove_labels(segmentation: np.ndarray, labels_to_remove: Sequence[int], fil
     """Removes labels from the segmentation map, reassigning the affected pixels to `fill_label`.
 
     Args:
-        segmentation: ([N], H, W, 1/C), segmentation map from which to remove labels.
+        segmentation: ([N], H, W, [1|C]), segmentation map from which to remove labels.
         labels_to_remove: labels to remove.
         fill_label: label to assign to the pixels currently assigned to the labels to remove.
 
     Returns:
         ([N], H, W, 1), categorical segmentation map with the specified labels removed.
     """
-    segmentation = segmentation.copy()
-
-    if segmentation.shape[-1] == 1:  # If the segmentation map is categorical
-        segmentation[np.isin(segmentation, labels_to_remove)] = fill_label
-
-    else:  # the segmentation map is in one-hot format
+    seg = segmentation.copy()
+    if seg.max() == 1 and seg.shape[-1] > 1:  # If the segmentation map is in one-hot format
         for label_to_remove in labels_to_remove:
-            segmentation[..., fill_label] += segmentation[..., label_to_remove]
-        segmentation = np.delete(segmentation, labels_to_remove, axis=-1)
-
-    return segmentation
+            seg[..., fill_label] += seg[..., label_to_remove]
+        seg = np.delete(seg, labels_to_remove, axis=-1)
+    else:  # the segmentation map is categorical
+        seg[np.isin(seg, labels_to_remove)] = fill_label
+    return seg
 
 
 def segmentation_to_tensor(segmentation: np.ndarray, dtype: str = "float32") -> Tensor:
