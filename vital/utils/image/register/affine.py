@@ -75,18 +75,16 @@ class AffineRegisteringTransformer:
             ValueError: the provided images do not match the shape of the segmentations.
         """
         registering_parameters = {step: [] for step in self.registering_steps}
-        registered_segmentations = []
-        if images is not None:
-            registered_images = []
-            if images.shape[:3] != segmentations.shape[:3]:
-                # If `images` are provided, ensure they match `segmentations` in every dimension except channels
-                raise ValueError(
-                    "Provided `images` parameter does not match first 3 dimensions of `segmentations`. \n"
-                    f"`images` has shape {images.shape}, \n"
-                    f"`segmentations` has shape {segmentations.shape}."
-                )
-        else:
+        registered_segmentations, registered_images = [], []
+        if images is None:
             images = []
+        elif images.shape[:3] != segmentations.shape[:3]:
+            # If `images` are provided, ensure they match `segmentations` in every dimension except number of channels
+            raise ValueError(
+                "Provided `images` parameter does not match first 3 dimensions of `segmentations`. \n"
+                f"`images` has shape {images.shape}, \n"
+                f"`segmentations` has shape {segmentations.shape}."
+            )
 
         for idx, (segmentation, image) in enumerate(itertools.zip_longest(segmentations, images)):
             if image is not None:
@@ -104,7 +102,7 @@ class AffineRegisteringTransformer:
                 values.append(segmentation_registering_parameters[registering_parameter])
 
         out = registering_parameters, np.array(registered_segmentations)
-        if images:
+        if registered_images:
             out += (np.array(registered_images),)
 
         return out
