@@ -1,10 +1,16 @@
+<div align="center">
+
 # VITAL
 
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
-Welcome to the git repo of the
+Welcome to the repo of the
 [Videos & Images Theory and Analytics Laboratory (VITAL)](http://vital.dinf.usherbrooke.ca/ "VITAL home page") of
-Sherbrooke University, headed by Professor [Pierre-Marc Jodoin](http://info.usherbrooke.ca/pmjodoin/).
+Sherbrooke University, headed by Professor [Pierre-Marc Jodoin](http://info.usherbrooke.ca/pmjodoin/)
+
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Code format](https://github.com/nathanpainchaud/vital/workflows/Code%20Format/badge.svg?event=push)](https://github.com/nathanpainchaud/vital/actions?query=workflow%3A%22Code+Format%22)
+[![license](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/nathanpainchaud/vital/blob/master/LICENSE)
+
+</div>
 
 ## How to use
 This repository was not designed to be used as a standalone project, but was rather meant to be used as a third-party
