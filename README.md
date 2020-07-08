@@ -33,7 +33,7 @@ projects' systems should inherit.
 configuration, as well as multiple systems and their configuration.
 
 ## Requirements
-The [vital.yml](requirements/vital.yml) file lists the dependencies required by the whole repository. In case you
+The [`vital.yml`](requirements/vital.yml) file lists the dependencies required by the whole repository. In case you
 include the repository inside your own project, you may want to add project specific dependencies, or maybe even remove
 some dependencies (if you only use some of the utilities provided by the repository).
 
@@ -44,16 +44,16 @@ some dependencies (if you only use some of the utilities provided by the reposit
 Before first trying to commit to the project, it is important to setup the version control hooks, so that commits
 respect the coding standards in place for the project. The [`.pre-commit-config.yaml`](.pre-commit-config.yaml) file
 defines the pre-commit hooks that should be installed in any project contributing to the `vital` repository. To setup
-the version control hooks, run the following commands:
+the version control hooks, run the following command:
 ```
 pre-commit install
 ```
 
 > NOTE: In case you want to copy the pre-commit hooks configuration to your own project, you're welcome to :)
 > The configuration file for each hook is located in the following files:
-> - [isort](https://github.com/timothycrosley/isort): `setup.cfg`, `[isort]` section
-> - [black](https://github.com/psf/black): `pyproject.toml`
-> - [flake8](https://gitlab.com/pycqa/flake8): `setup.cfg`, `[flake8]` section
+> - [isort](https://github.com/timothycrosley/isort): [`setup.cfg`](./setup.cfg), `[isort]` section
+> - [black](https://github.com/psf/black): [`pyproject.toml`](./pyproject.toml), `[tool.black]` section
+> - [flake8](https://gitlab.com/pycqa/flake8): [`setup.cfg`](./setup.cfg), `[flake8]` section
 >
 > However, be advised that `isort` must be configured slightly differently in each project. The `known_first_party` tag
 > should thus reflect the package name of the current project, in place of `vital`.
