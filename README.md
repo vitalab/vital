@@ -57,9 +57,9 @@ pre-commit install
 
 > NOTE: In case you want to copy the pre-commit hooks configuration to your own project, you're welcome to :)
 > The configuration file for each hook is located in the following files:
-> - [isort](https://github.com/timothycrosley/isort): [`setup.cfg`](./setup.cfg), `[isort]` section
+> - [isort](https://github.com/timothycrosley/isort): [`pyproject.toml`](./pyproject.toml), `[tool.isort]` section
 > - [black](https://github.com/psf/black): [`pyproject.toml`](./pyproject.toml), `[tool.black]` section
 > - [flake8](https://gitlab.com/pycqa/flake8): [`setup.cfg`](./setup.cfg), `[flake8]` section
 >
-> However, be advised that `isort` must be configured slightly differently in each project. The `known_first_party` tag
-> should thus reflect the package name of the current project, in place of `vital`.
+> However, be advised that `isort` must be configured slightly differently in each project. The `src_paths` tag
+> should thus reflect the package directory name of the current project, in place of `vital`.

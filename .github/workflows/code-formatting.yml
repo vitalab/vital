@@ -28,10 +28,10 @@ jobs:
         run: pip install isort black flake8
 
       - name: Run Black
-        run: black --config=pyproject.toml --check .
+        run: black --config=./pyproject.toml --check .
 
       - name: Run isort
-        run: isort --settings-path=setup.cfg --check-only
+        run: isort --settings-path=./pyproject.toml --check-only .
 
       - name: Run flake8
-        run: flake8 --config=setup.cfg .
+        run: flake8 --config=./setup.cfg .

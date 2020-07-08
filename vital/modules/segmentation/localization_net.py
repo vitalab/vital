@@ -4,9 +4,9 @@ from operator import mul
 from typing import Tuple, Type
 
 import torch
-import torch.nn.functional as F
 from roi_align import CropAndResize
 from torch import Tensor, nn
+from torch.nn import functional as F
 
 from vital.utils.image.transform import resize_image
 

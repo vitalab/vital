@@ -3,7 +3,7 @@ from typing import List, Sequence, Tuple, Union
 
 import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 def summary_info(
