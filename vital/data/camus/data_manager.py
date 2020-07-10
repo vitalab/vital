@@ -43,7 +43,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             batch_size=self.hparams.batch_size,
             shuffle=True,
             num_workers=self.hparams.workers,
-            pin_memory=True,
+            pin_memory=self.device.type == "cuda",
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -51,11 +51,16 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             self.dataset[Subset.VALID],
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.workers,
-            pin_memory=True,
+            pin_memory=self.device.type == "cuda",
         )
 
     def test_dataloader(self) -> DataLoader:
-        return DataLoader(self.dataset[Subset.TEST], batch_size=None, num_workers=self.hparams.workers)
+        return DataLoader(
+            self.dataset[Subset.TEST],
+            batch_size=None,
+            num_workers=self.hparams.workers,
+            pin_memory=self.device.type == "cuda",
+        )
 
     @classmethod
     def add_data_manager_args(cls, parser: ArgumentParser) -> ArgumentParser:
