@@ -22,7 +22,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             out_shape=(image_size, image_size, len(hparams.labels)),
             use_sequence_index=self.use_sequence_index,
         )
-        self._labels = [str(label) for label in self.hparams.labels]
+        self.labels = [str(label) for label in self.hparams.labels]
 
     def setup(self, stage: Literal["fit", "test"]) -> None:
         common_args = {
