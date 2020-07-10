@@ -126,10 +126,8 @@ class CrossValidationDatasetGenerator:
                 patient_view_group.create_dataset(
                     name=CamusTags.img_proc, data=data_x_proc[..., np.newaxis], **img_save_options
                 )
-                patient_view_group.create_dataset(name=CamusTags.gt, data=data_y[..., np.newaxis], **seg_save_options)
-                patient_view_group.create_dataset(
-                    name=CamusTags.gt_proc, data=data_y_proc[..., np.newaxis], **seg_save_options
-                )
+                patient_view_group.create_dataset(name=CamusTags.gt, data=data_y, **seg_save_options)
+                patient_view_group.create_dataset(name=CamusTags.gt_proc, data=data_y_proc, **seg_save_options)
 
                 # Write metadata useful for providing instants or full sequences
                 patient_view_group.attrs[CamusTags.info] = info_view

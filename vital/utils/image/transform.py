@@ -32,7 +32,7 @@ def remove_labels(segmentation: np.ndarray, labels_to_remove: Sequence[int], fil
         fill_label: label to assign to the pixels currently assigned to the labels to remove.
 
     Returns:
-        ([N], H, W, 1), categorical segmentation map with the specified labels removed.
+        ([N], H, W, [1]), categorical segmentation map with the specified labels removed.
     """
     seg = segmentation.copy()
     if seg.max() == 1 and seg.shape[-1] > 1:  # If the segmentation map is in one-hot format
@@ -44,15 +44,18 @@ def remove_labels(segmentation: np.ndarray, labels_to_remove: Sequence[int], fil
     return seg
 
 
-def segmentation_to_tensor(segmentation: np.ndarray, dtype: str = "float32") -> Tensor:
+def segmentation_to_tensor(segmentation: np.ndarray, dtype: str = "int64") -> Tensor:
     """Converts a segmentation map to a tensor, including reordering the dimensions.
 
     Args:
-        segmentation: (H, W, C), segmentation map to convert to a tensor.
+        segmentation: (H, W, [C]), segmentation map to convert to a tensor.
         dtype: The data type expected for the converted tensor, as a string
                (`float32`, `float64`, `int32`...)
 
     Returns:
-        (C, H, W), segmentation map converted to a tensor.
+        ([C], H, W), segmentation map converted to a tensor.
     """
-    return torch.from_numpy(segmentation.transpose((2, 0, 1)).astype(dtype))
+    if len(segmentation.shape) == 3:  # If there is a specific channel dimension
+        # Change format from channel last (H, W, C) to channel first (C, H, W)
+        segmentation = segmentation.transpose((2, 0, 1))
+    return torch.from_numpy(segmentation.astype(dtype))
