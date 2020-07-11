@@ -12,6 +12,7 @@ import vital
 from vital.data.camus.config import CamusTags, Instant, Label, View
 from vital.data.camus.data_struct import PatientData, ViewData
 from vital.data.config import Subset
+from vital.utils.decorators import squeeze
 from vital.utils.image.register.camus import CamusRegisteringTransformer
 from vital.utils.image.transform import remove_labels, segmentation_to_tensor
 from vital.utils.parameters import parameters
@@ -141,7 +142,7 @@ class Camus(VisionDataset):
             # Collect and process data
             view_imgs, view_gts = self._get_data(dataset, set_patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
             img = view_imgs[instant]
-            (gt,) = self._process_target_data(view_gts[instant])
+            gt = self._process_target_data(view_gts[instant])
 
             # Collect metadata
             # Explicit cast to float32 to avoid "Expected object" type error in PyTorch models
@@ -178,11 +179,11 @@ class Camus(VisionDataset):
                 proc_imgs, proc_gts = Camus._get_data(
                     dataset, set_patient_view_key, CamusTags.img_proc, CamusTags.gt_proc
                 )
-                (proc_gts,) = self._process_target_data(proc_gts)
+                proc_gts = self._process_target_data(proc_gts)
 
                 # Indicate indices of instants with manually annotated segmentations in view sequences
                 instants_with_gt = {
-                    instant: Camus._get_metadata(dataset, set_patient_view_key, instant.value)[0] for instant in Instant
+                    instant: Camus._get_metadata(dataset, set_patient_view_key, instant.value) for instant in Instant
                 }
 
                 # Only keep instants with manually annotated groundtruths if we do not use the whole sequence
@@ -218,15 +219,14 @@ class Camus(VisionDataset):
                 view = View(view)
 
                 # Collect data
-                (gts,) = Camus._get_data(dataset, set_patient_view_key, CamusTags.gt)
-                (gts,) = self._process_target_data(gts)
+                gts = self._process_target_data(Camus._get_data(dataset, set_patient_view_key, CamusTags.gt))
 
                 # Collect metadata
-                (info,) = Camus._get_metadata(dataset, set_patient_view_key, CamusTags.info)
+                info = Camus._get_metadata(dataset, set_patient_view_key, CamusTags.info)
 
                 # Indicate indices of instants with manually annotated segmentations in view sequences
                 instants_with_gt = {
-                    instant: Camus._get_metadata(dataset, set_patient_view_key, instant.value)[0] for instant in Instant
+                    instant: Camus._get_metadata(dataset, set_patient_view_key, instant.value) for instant in Instant
                 }
 
                 # Only keep instants with manually annotated groundtruths if we do not use the whole sequence
@@ -241,7 +241,7 @@ class Camus(VisionDataset):
                 registering_parameters = None
                 if self.registered_dataset:
                     registering_parameters = {
-                        reg_step: Camus._get_metadata(dataset, set_patient_view_key, reg_step)[0]
+                        reg_step: Camus._get_metadata(dataset, set_patient_view_key, reg_step)
                         for reg_step in CamusRegisteringTransformer.registering_steps
                     }
 
@@ -249,6 +249,7 @@ class Camus(VisionDataset):
 
         return patient_data
 
+    @squeeze
     def _process_target_data(self, *args: np.ndarray) -> List[np.ndarray]:
         """Processes the target data to only keep requested labels and outputs them in categorical format.
 
@@ -266,6 +267,7 @@ class Camus(VisionDataset):
         ]
 
     @staticmethod
+    @squeeze
     def _get_data(file: h5py.File, set_patient_view_key: str, *data_tags: str) -> List[np.ndarray]:
         """Fetches the requested data for a specific set/patient/view dataset from the HDF5 file.
 
@@ -281,6 +283,7 @@ class Camus(VisionDataset):
         return [set_patient_view[data_tag][()] for data_tag in data_tags]
 
     @staticmethod
+    @squeeze
     def _get_metadata(file: h5py.File, set_patient_view_key: str, *metadata_tags: str) -> List[np.ndarray]:
         """Fetches the requested metadata for a specific set/patient/view dataset from the HDF5 file.
 

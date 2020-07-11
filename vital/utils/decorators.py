@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Any, Callable, Dict, Mapping, Sequence, Union
+from typing import Any, Callable, Dict, Mapping, Sequence, TypeVar, Union
 
 
 def prefix(prefix: str, exclude: Union[str, Sequence[str]] = None):
@@ -28,3 +28,26 @@ def prefix(prefix: str, exclude: Union[str, Sequence[str]] = None):
         return prefix_wrapper
 
     return prefix_decorator
+
+
+Item = TypeVar("Item")
+
+
+def squeeze(fn: Callable[..., Sequence[Item]]) -> Callable[..., Union[Item, Sequence[Item]]]:
+    """Decorator for functions that return sequences of possibly one item, where we would want the lone item directly.
+
+    Args:
+        fn: a function that returns a sequence.
+
+    Returns:
+        a function that returns a sequence, or directly an item if the sequence only contains one item.
+    """
+
+    @wraps(fn)
+    def unpack_single_item_return(*args, **kwargs):
+        out = fn(*args, **kwargs)
+        if len(out) == 1:
+            (out,) = out
+        return out
+
+    return unpack_single_item_return
