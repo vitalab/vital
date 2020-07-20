@@ -10,7 +10,7 @@ repos:
       - id: end-of-file-fixer
 
   - repo: https://github.com/timothycrosley/isort
-    rev: 5.0.5
+    rev: 5.1.4
     hooks:
       - id: isort
         name: isort
