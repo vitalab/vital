@@ -8,6 +8,6 @@ setup(
     description="Deep Learning Tooling from the Videos & Images Theory and Analytics Laboratory at UdeS",
     author="Nathan Painchaud",
     author_email="nathan.painchaud@usherbrooke.ca",
-    url="https://bitbucket.org/vitalab/vital",
+    url="https://github.com/nathanpainchaud/vital",
     packages=find_packages(),
 )

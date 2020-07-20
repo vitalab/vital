@@ -1,10 +1,16 @@
+<div align="center">
+
 # VITAL
 
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
-Welcome to the git repo of the
+Welcome to the repo of the
 [Videos & Images Theory and Analytics Laboratory (VITAL)](http://vital.dinf.usherbrooke.ca/ "VITAL home page") of
-Sherbrooke University, headed by Professor [Pierre-Marc Jodoin](http://info.usherbrooke.ca/pmjodoin/).
+Sherbrooke University, headed by Professor [Pierre-Marc Jodoin](http://info.usherbrooke.ca/pmjodoin/)
+
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Check Code Format](https://github.com/nathanpainchaud/vital/workflows/Check%20Code%20Format/badge.svg)](https://github.com/nathanpainchaud/vital/actions?query=workflow%3A%22Check+Code+Format%22)
+[![license](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/nathanpainchaud/vital/blob/dev/LICENSE)
+
+</div>
 
 ## How to use
 This repository was not designed to be used as a standalone project, but was rather meant to be used as a third-party
@@ -35,7 +41,7 @@ projects' systems should inherit.
 configuration, as well as multiple systems and their configuration.
 
 ## Requirements
-The [vital.yml](requirements/vital.yml) file lists the dependencies required by the whole repository. In case you
+The [`vital.yml`](requirements/vital.yml) file lists the dependencies required by the whole repository. In case you
 include the repository inside your own project, you may want to add project specific dependencies, or maybe even remove
 some dependencies (if you only use some of the utilities provided by the repository).
 
@@ -43,35 +49,19 @@ some dependencies (if you only use some of the utilities provided by the reposit
 ## How to contribute
 
 ### Version Control Hooks
-The [`.pre-commit-config.yaml`](.pre-commit-config.yaml) file defines the pre-commit hooks that should be installed in
-any project contributing to the `vital` repository. For consistency's sake, it is recommended to use the same
-configuration for the pre-commit hooks for both the dependent project and the `vital` project. This
-
-#### Notice
-- `isort` must be configured slightly differently in the dependent project than in the `vital` repository, in order to
-indicate the project as the known first party.
-
-#### Version Control Hooks Setup: Git Submodule
-If the `vital` repository is installed as a [git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules),
-copying the pre-commit configurations can be achieved by using symlinks to the `vital` configuration files from the
-dependent project's directory.
-
-Linking the configuration files in the project repository to the `vital` configuration and installing hooks would then
-look something like this:
+Before first trying to commit to the project, it is important to setup the version control hooks, so that commits
+respect the coding standards in place for the project. The [`.pre-commit-config.yaml`](.pre-commit-config.yaml) file
+defines the pre-commit hooks that should be installed in any project contributing to the `vital` repository. To setup
+the version control hooks, run the following command:
 ```
-# navigate to the vital repository location and install the pre-commit hooks
-cd <vital_repository_dir>   # Likely ./vital
 pre-commit install
-
-# symlink configuration files for the project repository to
-# the configuration files in the vital repository
-cd <project_root_dir>   # Likely ..
-ln -s <vital_repository_dir>/.pre-commit-config.yaml .pre-commit-config.yaml
-ln -s <vital_repository_dir>/pyproject.toml pyproject.toml
-ln -s <vital_repository_dir>/setup.cfg setup.cfg
-
-# create an isort configuration for the project from the vital configuration
-cp <vital_repository_dir>/.isort.cfg isort.cfg
-# Afterwards, edit the copied configuration file manually to change the value
-# of the `known_first_party` tag to the name of the project package
 ```
+
+> NOTE: In case you want to copy the pre-commit hooks configuration to your own project, you're welcome to :)
+> The configuration file for each hook is located in the following files:
+> - [isort](https://github.com/timothycrosley/isort): [`pyproject.toml`](./pyproject.toml), `[tool.isort]` section
+> - [black](https://github.com/psf/black): [`pyproject.toml`](./pyproject.toml), `[tool.black]` section
+> - [flake8](https://gitlab.com/pycqa/flake8): [`setup.cfg`](./setup.cfg), `[flake8]` section
+>
+> However, be advised that `isort` must be configured slightly differently in each project. The `src_paths` tag
+> should thus reflect the package directory name of the current project, in place of `vital`.

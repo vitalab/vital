@@ -1,6 +1,6 @@
 from abc import ABC
 from argparse import ArgumentParser, Namespace
-from typing import Dict, List, Mapping, Tuple, Union
+from typing import Dict, List, Literal, Mapping, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
@@ -34,7 +34,7 @@ class VitalSystem(pl.LightningModule, ABC):
         self.data_params: DataParameters
         self.dataset: Mapping[Subset, VisionDataset]
 
-    def save_model_summary(self, system_input_shape: Tuple[int, ...]):
+    def save_model_summary(self, system_input_shape: Tuple[int, ...]) -> None:
         """Saves a summary of the model in a format similar to Keras' summary.
 
         Will not be printed if PL weights' summary was disable.
@@ -75,10 +75,10 @@ class SystemDataManagerMixin(VitalSystem, ABC):
     data_params: DataParameters
     dataset: Mapping[Subset, VisionDataset]
 
-    def prepare_data(self):
+    def prepare_data(self) -> None:
         pass
 
-    def setup(self, stage: str):
+    def setup(self, stage: Literal["fit", "test"]) -> None:
         """Set state to the model before requesting the dataloaders.
 
         This is the ideal place to initialize the ``Dataset`` instances.

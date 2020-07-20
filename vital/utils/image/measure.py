@@ -7,26 +7,20 @@ from torch import Tensor
 from vital.data.config import SemanticStructureId
 
 
-def bbox(
-    segmentation: Union[np.ndarray, Tensor],
-    labels: SemanticStructureId,
-    bbox_margin: Real = 0.05,
-    channel_axis: int = -1,
-) -> np.ndarray:
+def bbox(segmentation: Union[np.ndarray, Tensor], labels: SemanticStructureId, bbox_margin: Real = 0.05,) -> np.ndarray:
     """Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 
     Args:
-        segmentation: segmentation in which to identify the coordinates of the bbox.
+        segmentation: (H, W) segmentation in which to identify the coordinates of the bbox.
         labels: labels of the classes that are part of the ROI.
         bbox_margin: ratio by which to enlarge the bbox from the closest possible fit, so as to leave a slight margin
                      at the edges of the bbox.
-        channel_axis: axis of the channel dimension.
 
     Returns:
         coordinates of the bbox, in the following order: row_min, col_min, row_max, col_max.
     """
     # Only keep ROI from the groundtruth
-    roi_mask = np.isin(np.argmax(segmentation, axis=channel_axis), labels)
+    roi_mask = np.isin(segmentation, labels)
 
     # Find the coordinates of the bounding box around the ROI
     rows = np.any(roi_mask, axis=1)

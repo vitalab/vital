@@ -1,5 +1,6 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+from typing import Literal
 
 from torch.utils.data import DataLoader
 
@@ -21,9 +22,9 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             out_shape=(image_size, image_size, len(hparams.labels)),
             use_sequence_index=self.use_sequence_index,
         )
-        self._labels = [str(label) for label in self.hparams.labels]
+        self.labels = [str(label) for label in self.hparams.labels]
 
-    def setup(self, stage: str):
+    def setup(self, stage: Literal["fit", "test"]) -> None:
         common_args = {
             "path": self.hparams.dataset_path,
             "labels": self.hparams.labels,
@@ -42,7 +43,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             batch_size=self.hparams.batch_size,
             shuffle=True,
             num_workers=self.hparams.workers,
-            pin_memory=True,
+            pin_memory=self.device.type == "cuda",
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -50,11 +51,16 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             self.dataset[Subset.VALID],
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.workers,
-            pin_memory=True,
+            pin_memory=self.device.type == "cuda",
         )
 
     def test_dataloader(self) -> DataLoader:
-        return DataLoader(self.dataset[Subset.TEST], batch_size=None, num_workers=self.hparams.workers)
+        return DataLoader(
+            self.dataset[Subset.TEST],
+            batch_size=None,
+            num_workers=self.hparams.workers,
+            pin_memory=self.device.type == "cuda",
+        )
 
     @classmethod
     def add_data_manager_args(cls, parser: ArgumentParser) -> ArgumentParser:

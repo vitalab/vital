@@ -1,8 +1,7 @@
 from typing import Optional, Tuple
 
 import torch
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 
 class _InitialBlock(nn.Module):
