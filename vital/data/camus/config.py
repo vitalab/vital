@@ -1,3 +1,5 @@
+import numpy as np
+
 from vital.data.config import DataTag, Tags
 from vital.utils.parameters import parameters
 
@@ -45,3 +47,5 @@ class CamusTags(Tags):
 
 image_size = 256
 in_channels = 1
+img_save_options = {"dtype": np.float32, "compression": "gzip", "compression_opts": 4}
+seg_save_options = {"dtype": np.uint8, "compression": "gzip", "compression_opts": 4}

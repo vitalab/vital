@@ -1,16 +1,17 @@
 import argparse
 import os
+from functools import reduce
 from numbers import Real
+from operator import add
 from pathlib import Path
 from typing import Dict, List, Literal, Mapping, Sequence, Tuple
 
 import h5py
 import numpy as np
-from pathos.multiprocessing import Pool
 from PIL.Image import LINEAR
 from tqdm import tqdm
 
-from vital.data.camus.config import CamusTags, Instant, Label, View, image_size
+from vital.data.camus.config import CamusTags, Instant, Label, View, image_size, img_save_options, seg_save_options
 from vital.data.config import Subset
 from vital.utils.image.io import load_mhd
 from vital.utils.image.register.camus import CamusRegisteringTransformer
@@ -18,11 +19,12 @@ from vital.utils.image.transform import remove_labels, resize_image
 
 
 class CrossValidationDatasetGenerator:
-    """Utility to process the raw CAMUS data (as it is when downloaded) and to generate cross validation HDF5 files.
+    """Utility to process the raw CAMUS data (as it is when downloaded) and to generate a cross validation HDF5 file.
 
     The cross validation split organizes the data in the following way:
-        - split data into train, validation and test sets for a selection of subfolds
-        - save each subfold in a separate HDF5 file for further use
+        - split data into train, validation and test sets for a selection of folds
+        - save the list of patient for each set, for each fold, as metadata in the HDF5 file
+        - only save a single copy of the data for each patient in the HDF5
 
     The processing on the data performs the following task, in order:
         - keep only a subset of the labels from the groundtruth (optional)
@@ -30,114 +32,126 @@ class CrossValidationDatasetGenerator:
         - resize images to a given size
     """
 
-    def __init__(
-        self, data: Path, output_template: Path, use_sequence: bool, register: bool, labels: Sequence[Label] = None
-    ):
-        """
+    _subset_names_in_data: Dict[Subset, Literal["training", "validation", "testing"]] = {
+        Subset.TRAIN: "training",
+        Subset.VALID: "validation",
+        Subset.TEST: "testing",
+    }
+
+    def __call__(
+        self,
+        data: Path,
+        output: Path,
+        folds: Sequence[int] = range(1, 11),
+        target_image_size: Tuple[int, int] = (image_size, image_size),
+        sequence: bool = False,
+        register: bool = False,
+        labels: Sequence[Label] = None,
+    ) -> None:
+        """Organizes the raw CAMUS image data in a single HDF5 file, with the metadata of the lists of patients to use
+        for cross-validation experiments.
+
         Args:
-            data: path to the mhd data.
-            output_template: path template for saving cross validation configurations to HDF5 files.
-            use_sequence: whether to augment the dataset by adding sequence between ED and ES.
+            data: path to the CAMUS root directory, under which the patient directories are stored.
+            output: path to the HDF5 file to generate, containing all the raw image data and cross-validation metadata.
+            folds: IDs of the folds for which to include metadata in the generated HDF5 file.
+            sequence: whether to augment the dataset by adding the data for the full sequence between ED and ES.
             register: enable/disable registering.
-            labels: labels of the segmentation classes to predict.
+            labels: labels of the segmentation classes to include.
         """
+        # Save parameters useful in downstream functions inside the object
+        # This is done to avoid overly long function signatures in low-level functions
         self.data = data
-        self.output_template = output_template
-        self.use_sequence = use_sequence
-        self.register = register
+        self.flags = {f"{CamusTags.full_sequence}": sequence, f"{CamusTags.registered}": register}
         self.labels_to_remove = [] if labels is None else [label for label in Label if label not in labels]
+        self.registering_transformer = CamusRegisteringTransformer(
+            num_classes=Label.count(), crop_shape=target_image_size
+        )
 
-    def create_subfold_dataset(self, subfold: int) -> None:
-        """This function writes a cross validation configuration of the dataset, where ``subfold`` makes up the test
-        set, to a HDF5 file.
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with h5py.File(output, "w") as dataset:
+            # Write which option flags were activated when generating the HDF5 file
+            for flag, value in self.flags.items():
+                dataset.attrs[flag] = value
 
-        Args:
-            subfold: the id of the test set for the cross-validation configuration.
-        """
-        # Create directory hierarchy if the output template is not only a filename
-        self.output_template.parent.mkdir(exist_ok=True)
-        subfold_dataset = h5py.File(str(self.output_template).format(subfold), "w")
+            # Write the metadata for each cross-validation fold
+            cross_validation_group = dataset.create_group("cross_validation")
+            for fold in folds:
+                fold_group = cross_validation_group.create_group(f"fold_{fold}")
+                for subset, subset_name_in_data in self._subset_names_in_data.items():
+                    fold_subset_patients = self.get_fold_subset_from_file(data, fold, subset_name_in_data)
+                    fold_group.create_dataset(subset.value, data=np.array(fold_subset_patients, dtype="S"))
 
-        for subset, subgroup_name in zip(Subset, ["training", "validation", "testing"]):
-            # read test train valid details in the correspond .txt files
-            group_patients = self.get_subgroup_from_file(subfold, subgroup_name)
+            # Get a list of all the patients in the dataset
+            patient_ids = reduce(
+                add,
+                [self.get_fold_subset_from_file(data, fold, subset) for subset in self._subset_names_in_data.values()],
+            )
+            patient_ids.sort()
 
-            # save in hdf5
-            self._create_subset(subfold_dataset.create_group(subset.value), subfold, group_patients)
+            # Write the raw image data for each patient in the dataset
+            for patient_id in tqdm(patient_ids, unit="patient", desc=f"Writing patient data to HDF5 file: {output}"):
+                self._write_patient_data(dataset.create_group(patient_id))
 
-        # Add additional metadata to the file
-        subfold_dataset.attrs[CamusTags.full_sequence] = self.use_sequence
-        subfold_dataset.attrs[CamusTags.registered] = self.register
-
-    def get_subgroup_from_file(self, subfold: int, subset: Literal["training", "validation", "testing"]) -> List[str]:
+    @classmethod
+    def get_fold_subset_from_file(
+        cls, data: Path, fold: int, subset: Literal["training", "validation", "testing"]
+    ) -> List[str]:
         """Reads patient ids for a subset of a cross-validation configuration.
 
         Args:
-            subfold: the id of the test set for the cross-validation configuration.
-            subset: name of the subset for which to fetch patient ids for the cross-validation configuration.
+            data: path to the CAMUS root directory, under which the patient directories are stored.
+            fold: the ID of the test set for the cross-validation configuration.
+            subset: name of the subset for which to fetch patient IDs for the cross-validation configuration.
 
         Returns:
-            patient ids.
+            IDs of the patients that are included in the subset of the fold.
         """
-        list_fn = self.data.joinpath("listSubGroups", f"subGroup{subfold}_{subset}.txt")
+        list_fn = data.joinpath("listSubGroups", f"subGroup{fold}_{subset}.txt")
         # Open text file containing patient ids (one patient id by row)
         with open(str(list_fn), "r") as f:
             patient_ids = [line for line in f.read().splitlines()]
         return patient_ids
 
-    def _create_subset(self, subset_group: h5py.Group, subfold: int, patient_ids: Sequence[str]) -> None:
-        """This function writes in a hdf5 the data for a given subset.
+    def _write_patient_data(self, patient_group: h5py.Group) -> None:
+        """Writes the raw image data of a patient to a designated HDF5 group within the HDF5 file.
 
         Args:
-            subset_group: group for the subset in which to write the data.
-            subfold: int, the id of the test set for the cross-validation configuration.
-            patient_ids: ids of the patient whose data will be written in the subset.
+            patient_group: HDF5 patient group for which to fetch and save the data.
         """
-        registering_transformer = CamusRegisteringTransformer(
-            num_classes=Label.count(), crop_shape=(image_size, image_size)
-        )
-        for patient_id in tqdm(
-            patient_ids,
-            total=len(patient_ids),
-            unit="patient",
-            desc="Creating {} group for subfold {}".format(os.path.basename(subset_group.name), subfold),
-        ):
+        patient_id = os.path.basename(patient_group.name)
 
-            patient_group = subset_group.create_group(patient_id)
+        for view in View:
+            # The order of the instants within a view dataset is chronological: ED -> ES -> ED
+            data_x, data_y, info_view, instants_with_gt = self._get_view_data(patient_id, view)
 
-            img_save_options = {"dtype": np.float32, "compression": "gzip", "compression_opts": 4}
-            seg_save_options = {"dtype": np.uint8, "compression": "gzip", "compression_opts": 4}
-            for view in View:
-                # The order of the instants within a view dataset is chronological: ED -> ES -> ED
-                data_x, data_y, info_view, instants_with_gt = self._get_view_data(patient_id, view)
+            data_y = remove_labels(data_y, [lbl.value for lbl in self.labels_to_remove], fill_label=Label.BG.value)
 
-                data_y = remove_labels(data_y, [lbl.value for lbl in self.labels_to_remove], fill_label=Label.BG.value)
-
-                if self.register:
-                    registering_parameters, data_y_proc, data_x_proc = registering_transformer.register_batch(
-                        data_y, data_x
-                    )
-                else:
-                    data_x_proc = np.array([resize_image(x, (image_size, image_size), resample=LINEAR) for x in data_x])
-                    data_y_proc = np.array([resize_image(y, (image_size, image_size)) for y in data_y])
-
-                # Write image and groundtruth data
-                patient_view_group = patient_group.create_group(view.value)
-                patient_view_group.create_dataset(
-                    name=CamusTags.img_proc, data=data_x_proc[..., np.newaxis], **img_save_options
+            if self.flags[CamusTags.registered]:
+                registering_parameters, data_y_proc, data_x_proc = self.registering_transformer.register_batch(
+                    data_y, data_x
                 )
-                patient_view_group.create_dataset(name=CamusTags.gt, data=data_y, **seg_save_options)
-                patient_view_group.create_dataset(name=CamusTags.gt_proc, data=data_y_proc, **seg_save_options)
+            else:
+                data_x_proc = np.array([resize_image(x, (image_size, image_size), resample=LINEAR) for x in data_x])
+                data_y_proc = np.array([resize_image(y, (image_size, image_size)) for y in data_y])
 
-                # Write metadata useful for providing instants or full sequences
-                patient_view_group.attrs[CamusTags.info] = info_view
-                for instant, instant_idx in instants_with_gt.items():
-                    patient_view_group.attrs[instant.value] = instant_idx
+            # Write image and groundtruth data
+            patient_view_group = patient_group.create_group(view.value)
+            patient_view_group.create_dataset(
+                name=CamusTags.img_proc, data=data_x_proc[..., np.newaxis], **img_save_options
+            )
+            patient_view_group.create_dataset(name=CamusTags.gt, data=data_y, **seg_save_options)
+            patient_view_group.create_dataset(name=CamusTags.gt_proc, data=data_y_proc, **seg_save_options)
 
-                # Write metadata concerning the registering applied
-                if self.register:
-                    for registering_step, values in registering_parameters.items():
-                        patient_view_group.attrs[registering_step] = values
+            # Write metadata useful for providing instants or full sequences
+            patient_view_group.attrs[CamusTags.info] = info_view
+            for instant, instant_idx in instants_with_gt.items():
+                patient_view_group.attrs[instant.value] = instant_idx
+
+            # Write metadata concerning the registering applied
+            if self.flags[CamusTags.registered]:
+                for registering_step, values in registering_parameters.items():
+                    patient_view_group.attrs[registering_step] = values
 
     def _get_view_data(
         self, patient_id: str, view: View
@@ -180,7 +194,7 @@ class CrossValidationDatasetGenerator:
 
         # Include all or only some instants from the input and reference data according to the parameters
         data_x, data_y = [], []
-        if self.use_sequence:
+        if self.flags[CamusTags.full_sequence]:
             data_x, data_y = sequence, sequence_gt
         else:
             for instant in Instant:
@@ -233,16 +247,25 @@ class CrossValidationDatasetGenerator:
         return data_x, data_y, info
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--data", type=Path, required=True, help="Root directory under which the patient directories are stored"
+        "--data",
+        type=Path,
+        required=True,
+        help="Path to the CAMUS root directory, under which the patient directories are stored",
     )
     parser.add_argument(
-        "--output_template",
+        "--output",
         type=Path,
-        default="camus_subfold_{}.h5",
-        help="Path template for saving cross validation configurations to HDF5 files",
+        default="camus.h5",
+        help="Path to the HDF5 file to generate, containing all the raw image data and cross-validation metadata",
+    )
+    parser.add_argument(
+        "--image_size",
+        type=Tuple[int, int],
+        default=(image_size, image_size),
+        help="Target height and width at which to resize the image and groundtruth",
     )
     parser.add_argument(
         "-s",
@@ -263,9 +286,15 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    dataset_generator = CrossValidationDatasetGenerator(
-        args.data, args.output_template, args.sequence, args.register, labels=args.labels
+    CrossValidationDatasetGenerator()(
+        args.data,
+        args.output,
+        target_image_size=args.image_size,
+        sequence=args.sequence,
+        register=args.register,
+        labels=args.labels,
     )
 
-    with Pool() as pool:
-        pool.map(dataset_generator.create_subfold_dataset, range(1, 11))
+
+if __name__ == "__main__":
+    main()
