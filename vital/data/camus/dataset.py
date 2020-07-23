@@ -32,6 +32,7 @@ class Camus(VisionDataset):
     def __init__(
         self,
         path: Path,
+        fold: int,
         image_set: Subset,
         labels: Sequence[Label],
         use_sequence: bool = False,
@@ -44,6 +45,7 @@ class Camus(VisionDataset):
         """
         Args:
             path: path to the HDF5 dataset.
+            fold: ID of the cross-validation fold to use.
             image_set: select the subset of images to use from the enumeration.
             labels: labels of the segmentation classes to take into account.
             use_sequence: whether to use the complete sequence between ED and ES for each view.
@@ -57,16 +59,18 @@ class Camus(VisionDataset):
                               (only applied when `predict` is `False`, i.e. in train/validation mode).
         """
         super().__init__(path, transforms=transforms, transform=transform, target_transform=target_transform)
+        self.fold = fold
         self.image_set = image_set.value
         self.labels = labels
         self.use_sequence = use_sequence
         self.use_sequence_index = use_sequence_index
+        self.predict = predict
 
         with h5py.File(path, "r") as f:
             self.registered_dataset = f.attrs[CamusTags.registered]
             self.dataset_with_sequence = f.attrs[CamusTags.full_sequence]
         if self.use_sequence and not self.dataset_with_sequence:
-            raise ValueError(
+            raise RuntimeError(
                 "Request to use complete sequences, but the dataset only contains cardiac phase end instants. "
                 "Should specify `no_sequence` flag, or generate a new dataset with sequences."
             )
@@ -75,7 +79,7 @@ class Camus(VisionDataset):
         self.labels_to_remove = [label for label in Label if label not in self.labels]
 
         # Determine whether to return data in a format suitable for training or inference
-        if predict:
+        if self.predict:
             self.item_list = self._get_patient_paths()
             self.getter = self._get_test_item
         else:
@@ -98,7 +102,10 @@ class Camus(VisionDataset):
             paths to the patients, from the requested ``image_set``, inside the HDF5 file.
         """
         with h5py.File(self.root, "r") as dataset:
-            patient_paths = [f"{self.image_set}/{patient_id}" for patient_id in dataset[self.image_set].keys()]
+            patient_paths = [
+                patient_path_byte.decode()
+                for patient_path_byte in dataset[f"cross_validation/fold_{self.fold}/{self.image_set}"]
+            ]
         return patient_paths
 
     def _get_instant_paths(self) -> List[Tuple[str, int]]:
@@ -136,11 +143,11 @@ class Camus(VisionDataset):
         Returns:
             data for training on a train/val item.
         """
-        set_patient_view_key, instant = self.item_list[index]
+        patient_view_key, instant = self.item_list[index]
 
         with h5py.File(self.root, "r") as dataset:
             # Collect and process data
-            view_imgs, view_gts = self._get_data(dataset, set_patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
+            view_imgs, view_gts = self._get_data(dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
             img = view_imgs[instant]
             gt = self._process_target_data(view_gts[instant])
 
@@ -172,18 +179,16 @@ class Camus(VisionDataset):
         views = {}
         with h5py.File(self.root, "r") as dataset:
             for view in dataset[self.item_list[index]]:
-                set_patient_view_key = f"{self.item_list[index]}/{view}"
+                patient_view_key = f"{self.item_list[index]}/{view}"
                 view = View(view)
 
                 # Collect and process data
-                proc_imgs, proc_gts = Camus._get_data(
-                    dataset, set_patient_view_key, CamusTags.img_proc, CamusTags.gt_proc
-                )
+                proc_imgs, proc_gts = Camus._get_data(dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
                 proc_gts = self._process_target_data(proc_gts)
 
                 # Indicate indices of instants with manually annotated segmentations in view sequences
                 instants_with_gt = {
-                    instant: Camus._get_metadata(dataset, set_patient_view_key, instant.value) for instant in Instant
+                    instant: Camus._get_metadata(dataset, patient_view_key, instant.value) for instant in Instant
                 }
 
                 # Only keep instants with manually annotated groundtruths if we do not use the whole sequence
@@ -206,27 +211,36 @@ class Camus(VisionDataset):
         The additional data returned by ``get_patient_data`` should be useful during evaluation
         (e.g. to save along with the predictions).
 
+        Notes:
+            - This method should only be used on datasets in `predict` mode. This is because items correspond to
+              patients in those datasets, `get_patient_data` works in pair with directly indexing the dataset to fetch
+              data about the ith patient (i.e. the index means the same for both methods). For datasets not in `predict`
+              mode, where items don't correspond to patients, the `index` parameter makes no sense.
+
         Args:
             index: index of the patient in the test set's ``item_list``.
 
         Returns:
             data about a patient.
         """
+        if not self.predict:
+            raise RuntimeError("Method `get_patient_data` should only be used on datasets in `predict` mode.")
+
         with h5py.File(self.root, "r") as dataset:
-            patient_data = PatientData(id=self.item_list[index].split("/")[1])
+            patient_data = PatientData(id=self.item_list[index])
             for view in dataset[self.item_list[index]]:
-                set_patient_view_key = f"{self.item_list[index]}/{view}"
+                patient_view_key = f"{self.item_list[index]}/{view}"
                 view = View(view)
 
                 # Collect data
-                gts = self._process_target_data(Camus._get_data(dataset, set_patient_view_key, CamusTags.gt))
+                gts = self._process_target_data(Camus._get_data(dataset, patient_view_key, CamusTags.gt))
 
                 # Collect metadata
-                info = Camus._get_metadata(dataset, set_patient_view_key, CamusTags.info)
+                info = Camus._get_metadata(dataset, patient_view_key, CamusTags.info)
 
                 # Indicate indices of instants with manually annotated segmentations in view sequences
                 instants_with_gt = {
-                    instant: Camus._get_metadata(dataset, set_patient_view_key, instant.value) for instant in Instant
+                    instant: Camus._get_metadata(dataset, patient_view_key, instant.value) for instant in Instant
                 }
 
                 # Only keep instants with manually annotated groundtruths if we do not use the whole sequence
@@ -241,7 +255,7 @@ class Camus(VisionDataset):
                 registering_parameters = None
                 if self.registered_dataset:
                     registering_parameters = {
-                        reg_step: Camus._get_metadata(dataset, set_patient_view_key, reg_step)
+                        reg_step: Camus._get_metadata(dataset, patient_view_key, reg_step)
                         for reg_step in CamusRegisteringTransformer.registering_steps
                     }
 
@@ -268,32 +282,32 @@ class Camus(VisionDataset):
 
     @staticmethod
     @squeeze
-    def _get_data(file: h5py.File, set_patient_view_key: str, *data_tags: str) -> List[np.ndarray]:
-        """Fetches the requested data for a specific set/patient/view dataset from the HDF5 file.
+    def _get_data(file: h5py.File, patient_view_key: str, *data_tags: str) -> List[np.ndarray]:
+        """Fetches the requested data for a specific patient/view dataset from the HDF5 file.
 
         Args:
             file: the HDF5 dataset file.
-            set_patient_view_key: the `set/patient/view` access path of the desired view group.
+            patient_view_key: the `patient/view` access path of the desired view group.
             *data_tags: names of the datasets to fetch from the view.
 
         Returns:
             dataset content for each tag passed in the parameters.
         """
-        set_patient_view = file[set_patient_view_key]
-        return [set_patient_view[data_tag][()] for data_tag in data_tags]
+        patient_view = file[patient_view_key]
+        return [patient_view[data_tag][()] for data_tag in data_tags]
 
     @staticmethod
     @squeeze
-    def _get_metadata(file: h5py.File, set_patient_view_key: str, *metadata_tags: str) -> List[np.ndarray]:
-        """Fetches the requested metadata for a specific set/patient/view dataset from the HDF5 file.
+    def _get_metadata(file: h5py.File, patient_view_key: str, *metadata_tags: str) -> List[np.ndarray]:
+        """Fetches the requested metadata for a specific patient/view dataset from the HDF5 file.
 
         Args:
             file: the HDF5 dataset file.
-            set_patient_view_key: the `set/patient/view` access path of the desired view group.
+            patient_view_key: the `patient/view` access path of the desired view group.
             *metadata_tags: names of attributes to fetch from the view.
 
         Returns:
             attribute values for each tag passed in the parameters.
         """
-        set_patient_view = file[set_patient_view_key]
-        return [set_patient_view.attrs[attr_tag] for attr_tag in metadata_tags]
+        patient_view = file[patient_view_key]
+        return [patient_view.attrs[attr_tag] for attr_tag in metadata_tags]

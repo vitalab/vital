@@ -27,6 +27,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
     def setup(self, stage: Literal["fit", "test"]) -> None:
         common_args = {
             "path": self.hparams.dataset_path,
+            "fold": self.hparams.fold,
             "labels": self.hparams.labels,
             "use_sequence": self.hparams.use_sequence,
             "use_sequence_index": self.data_params.use_sequence_index,
@@ -66,6 +67,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
     def add_data_manager_args(cls, parser: ArgumentParser) -> ArgumentParser:
         parser = super().add_data_manager_args(parser)
         parser.add_argument("dataset_path", type=Path, help="Path to the HDF5 dataset")
+        parser.add_argument("--fold", type=int, default=5, help="ID of the cross-validation fold to use")
         parser.add_argument(
             "--labels",
             type=Label.from_name,

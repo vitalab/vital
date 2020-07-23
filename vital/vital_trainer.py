@@ -23,7 +23,7 @@ class VitalTrainer(ABC):
         parser = ArgumentParser()
         parser = cls._add_generic_args(parser)
 
-        # Add Lightning trainer arguments to the parser (overriding some values with our own defaults)
+        # Add Lightning trainer arguments to the parser
         parser = Trainer.add_argparse_args(parser)
 
         # Override generic defaults with trainer-specific defaults
@@ -40,7 +40,7 @@ class VitalTrainer(ABC):
         cls._configure_logging(hparams)
 
         # Run target system
-        cls.run_system(cls._parse_and_check_args(parser))
+        cls.run_system(hparams)
 
     @classmethod
     def run_system(cls, hparams: Namespace):
@@ -54,22 +54,17 @@ class VitalTrainer(ABC):
 
         if hparams.pretrained:  # Load pretrained model if checkpoint is provided
             model = system_cls.load_from_checkpoint(hparams.pretrained)
-        else:
-            if hparams.predict:  # If we try to skip training and go straight to testing
-                raise ValueError(
-                    "Trainer set to skip training (`--predict` flag) without a pretrained model provided. \n"
-                    "Please allow model to train (remove `--predict` flag) or "
-                    "provide a pretrained model (through `--pretrained` parameter)."
-                )
-            else:  # If we have to train and then test the system
-                model = system_cls(hparams)
-                trainer.fit(model)
 
-                # Copy best model checkpoint to a fixed path
-                best_model_path = cls._define_best_model_save_path(hparams)
-                copy2(str(trainer.checkpoint_callback.best_model_path), str(best_model_path))
+        if hparams.train:
+            model = system_cls(hparams)
+            trainer.fit(model)
 
-        trainer.test(model)
+            # Copy best model checkpoint to a fixed path
+            best_model_path = cls._define_best_model_save_path(hparams)
+            copy2(str(trainer.checkpoint_callback.best_model_path), str(best_model_path))
+
+        if hparams.test:
+            trainer.test(model)
 
     @classmethod
     def _configure_logging(cls, hparams: Namespace):
@@ -146,8 +141,11 @@ class VitalTrainer(ABC):
         # save/load parameters
         parser.add_argument("--pretrained", type=Path, help="Path to Lightning module checkpoints to restore system")
 
-        # evaluation parameters
-        parser.add_argument("--predict", action="store_true", help="Skip training and do test phase")
+        # run parameters
+        parser.add_argument(
+            "--skip_train", dest="train", action="store_false", help="Skip training and do test/evaluation phase"
+        )
+        parser.add_argument("--skip_test", dest="test", action="store_false", help="Skip test/evaluation phase")
 
         # resource-use parameters
         parser.add_argument(
@@ -171,6 +169,13 @@ class VitalTrainer(ABC):
             parsed and validated arguments to a system.
         """
         args = parser.parse_args()
+
+        if not args.train and not args.pretrained:
+            raise ValueError(
+                "Trainer set to skip training (`--skip_train` flag) without a pretrained model provided. \n"
+                "Please allow model to train (remove `--skip_train` flag) or "
+                "provide a pretrained model (through `--pretrained` parameter)."
+            )
 
         # If output dir is specified, cast it ot PurePath
         if args.default_root_dir is not None:
