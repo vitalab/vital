@@ -64,12 +64,13 @@ class Camus(VisionDataset):
         self.labels = labels
         self.use_sequence = use_sequence
         self.use_sequence_index = use_sequence_index
+        self.predict = predict
 
         with h5py.File(path, "r") as f:
             self.registered_dataset = f.attrs[CamusTags.registered]
             self.dataset_with_sequence = f.attrs[CamusTags.full_sequence]
         if self.use_sequence and not self.dataset_with_sequence:
-            raise ValueError(
+            raise RuntimeError(
                 "Request to use complete sequences, but the dataset only contains cardiac phase end instants. "
                 "Should specify `no_sequence` flag, or generate a new dataset with sequences."
             )
@@ -78,7 +79,7 @@ class Camus(VisionDataset):
         self.labels_to_remove = [label for label in Label if label not in self.labels]
 
         # Determine whether to return data in a format suitable for training or inference
-        if predict:
+        if self.predict:
             self.item_list = self._get_patient_paths()
             self.getter = self._get_test_item
         else:
@@ -210,12 +211,21 @@ class Camus(VisionDataset):
         The additional data returned by ``get_patient_data`` should be useful during evaluation
         (e.g. to save along with the predictions).
 
+        Notes:
+            - This method should only be used on datasets in `predict` mode. This is because items correspond to
+              patients in those datasets, `get_patient_data` works in pair with directly indexing the dataset to fetch
+              data about the ith patient (i.e. the index means the same for both methods). For datasets not in `predict`
+              mode, where items don't correspond to patients, the `index` parameter makes no sense.
+
         Args:
             index: index of the patient in the test set's ``item_list``.
 
         Returns:
             data about a patient.
         """
+        if not self.predict:
+            raise RuntimeError("Method `get_patient_data` should only be used on datasets in `predict` mode.")
+
         with h5py.File(self.root, "r") as dataset:
             patient_data = PatientData(id=self.item_list[index])
             for view in dataset[self.item_list[index]]:
