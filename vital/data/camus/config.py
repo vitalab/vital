@@ -23,7 +23,7 @@ class Instant(DataTag):
 
 @parameters
 class CamusTags(Tags):
-    """Class to gather the tags referring to CAMUS specific result data, from both the training and result datasets.
+    """Class to gather the tags referring to CAMUS specific data, from both the training and result datasets.
 
     Args:
         registered: name of the tag indicating whether the dataset was registered.

@@ -62,7 +62,7 @@ class CrossValidationDatasetGenerator:
         # Save parameters useful in downstream functions inside the object
         # This is done to avoid overly long function signatures in low-level functions
         self.data = data
-        self.flags = {f"{CamusTags.full_sequence}": sequence, f"{CamusTags.registered}": register}
+        self.flags = {CamusTags.full_sequence: sequence, CamusTags.registered: register}
         self.labels_to_remove = [] if labels is None else [label for label in Label if label not in labels]
         self.registering_transformer = CamusRegisteringTransformer(
             num_classes=Label.count(), crop_shape=target_image_size
