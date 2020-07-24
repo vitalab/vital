@@ -47,16 +47,16 @@ class CrossValidationDatasetGenerator:
         register: bool = False,
         labels: Sequence[Label] = None,
     ) -> None:
-        """Organizes the raw CAMUS image data in a single HDF5 file, with the metadata of the lists of patients to use
-        for cross-validation experiments.
+        """Organizes the CAMUS data in a single HDF5 file, along with the metadata for cross-validation experiments.
 
         Args:
-            data: path to the CAMUS root directory, under which the patient directories are stored.
-            output: path to the HDF5 file to generate, containing all the raw image data and cross-validation metadata.
+            data: Path to the CAMUS root directory, under which the patient directories are stored.
+            output: Path to the HDF5 file to generate, containing all the raw image data and cross-validation metadata.
             folds: IDs of the folds for which to include metadata in the generated HDF5 file.
-            sequence: whether to augment the dataset by adding the data for the full sequence between ED and ES.
-            register: enable/disable registering.
-            labels: labels of the segmentation classes to include.
+            target_image_size: Target height and width at which to resize the image and groundtruth.
+            sequence: Whether to augment the dataset by adding the data for the full sequence between ED and ES.
+            register: Enable/disable registering.
+            labels: Labels of the segmentation classes to include.
         """
         # Save parameters useful in downstream functions inside the object
         # This is done to avoid overly long function signatures in low-level functions
@@ -99,9 +99,9 @@ class CrossValidationDatasetGenerator:
         """Reads patient ids for a subset of a cross-validation configuration.
 
         Args:
-            data: path to the CAMUS root directory, under which the patient directories are stored.
-            fold: the ID of the test set for the cross-validation configuration.
-            subset: name of the subset for which to fetch patient IDs for the cross-validation configuration.
+            data: Path to the CAMUS root directory, under which the patient directories are stored.
+            fold: ID of the test set for the cross-validation configuration.
+            subset: Name of the subset for which to fetch patient IDs for the cross-validation configuration.
 
         Returns:
             IDs of the patients that are included in the subset of the fold.
@@ -157,20 +157,20 @@ class CrossValidationDatasetGenerator:
     ) -> Tuple[np.ndarray, np.ndarray, List[Real], Dict[Instant, int]]:
         """Fetches the data for a specific view of a patient.
 
-        If ``self.use_sequence`` is True, augments the dataset with sequence between the ED and ES instants.
+        If ``self.use_sequence`` is ``True``, augments the dataset with sequence between the ED and ES instants.
         Otherwise, returns the view data as is.
 
         Args:
-            patient_id: patient id formatted to match the identifiers in the mhd files' names.
-            view: the view for which to fetch the patient's data.
+            patient_id: Patient ID formatted to match the identifiers in the mhd files' names.
+            view: View for which to fetch the patient's data.
 
         Returns:
-            - sequence of ultrasound images acquired between ED and ES. The trend is that the first images are closer
+            - Sequence of ultrasound images acquired between ED and ES. The trend is that the first images are closer
               to ED, and the last images are closer to ES.
-            - segmentations interpolated between ED and ES. The trend is that the first segmentations are closer to ED,
+            - Segmentations interpolated between ED and ES. The trend is that the first segmentations are closer to ED,
               and the last segmentations are closer to ES.
-            - metadata concerning the sequence.
-            - mapping between the instants with manually validated groundtruths and the index where they appear in the
+            - Metadata concerning the sequence.
+            - Mapping between the instants with manually validated groundtruths and the index where they appear in the
               sequence.
         """
         view_info_fn = self.data.joinpath(patient_id, f"Info_{view.value}.cfg")
@@ -212,16 +212,16 @@ class CrossValidationDatasetGenerator:
         """Fetches additional reference segmentations, interpolated between ED and ES instants.
 
         Args:
-            patient_id: patient id formatted to match the identifiers in the mhd files' names.
-            view: the view for which to fetch the patient's data.
-            instants_with_gt: mapping between instant keys and the indices of their groundtruths in the sequence.
+            patient_id: Patient id formatted to match the identifiers in the mhd files' names.
+            view: View for which to fetch the patient's data.
+            instants_with_gt: Mapping between instant keys and the indices of their groundtruths in the sequence.
 
         Returns:
-            - sequence of ultrasound images acquired between ED and ES. The trend is that the first images are
+            - Sequence of ultrasound images acquired between ED and ES. The trend is that the first images are
               closer to ED, and the last images are closer to ES.
-            - segmentations interpolated between ED and ES. The trend is that the first segmentations are closer to
+            - Segmentations interpolated between ED and ES. The trend is that the first segmentations are closer to
               ED, and the last segmentations are closer to ES.
-            - metadata concerning the sequence.
+            - Metadata concerning the sequence.
         """
         patient_folder = self.data.joinpath(patient_id)
         sequence_fn_template = f"{patient_id}_{view.value}_sequence{{}}.mhd"
@@ -247,6 +247,7 @@ class CrossValidationDatasetGenerator:
 
 
 def main():
+    """Run the script."""
     from argparse import ArgumentParser
 
     parser = ArgumentParser()

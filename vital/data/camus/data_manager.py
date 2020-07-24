@@ -11,11 +11,18 @@ from vital.systems.vital_system import SystemDataManagerMixin
 
 
 class CamusSystemDataManagerMixin(SystemDataManagerMixin):
-    use_da: bool = False  # whether the system applies Data Augmentation (DA) by default.
-    use_sequence: bool = False  # whether the system uses complete sequences by default.
-    use_sequence_index: bool = False  # whether the system requires instants' normalized indices in the sequences.
+    """Implementation of the mixin handling the training/validation/testing phases for the CAMUS dataset."""
+
+    use_da: bool = False  #: Whether the system applies Data Augmentation (DA) by default
+    use_sequence: bool = False  #: Whether the system uses complete sequences by default
+    use_sequence_index: bool = False  #: Whether the system requires instants' normalized indices in the sequences
 
     def __init__(self, hparams: Namespace):
+        """Handles initializing parameters related to the nature of the data.
+
+        Args:
+            hparams: Namespace of arguments parsed from the CLI.
+        """
         super().__init__(hparams)
         self.data_params = DataParameters(
             in_shape=(image_size, image_size, in_channels),
@@ -24,7 +31,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
         )
         self.labels = [str(label) for label in self.hparams.labels]
 
-    def setup(self, stage: Literal["fit", "test"]) -> None:
+    def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
         common_args = {
             "path": self.hparams.dataset_path,
             "fold": self.hparams.fold,
@@ -38,7 +45,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             Subset.TEST: Camus(image_set=Subset.TEST, predict=True, **common_args),
         }
 
-    def train_dataloader(self) -> DataLoader:
+    def train_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(
             self.dataset[Subset.TRAIN],
             batch_size=self.hparams.batch_size,
@@ -47,7 +54,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             pin_memory=self.device.type == "cuda",
         )
 
-    def val_dataloader(self) -> DataLoader:
+    def val_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(
             self.dataset[Subset.VALID],
             batch_size=self.hparams.batch_size,
@@ -55,7 +62,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             pin_memory=self.device.type == "cuda",
         )
 
-    def test_dataloader(self) -> DataLoader:
+    def test_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(
             self.dataset[Subset.TEST],
             batch_size=None,
@@ -64,7 +71,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
         )
 
     @classmethod
-    def add_data_manager_args(cls, parser: ArgumentParser) -> ArgumentParser:
+    def add_data_manager_args(cls, parser: ArgumentParser) -> ArgumentParser:  # noqa: D102
         parser = super().add_data_manager_args(parser)
         parser.add_argument("dataset_path", type=Path, help="Path to the HDF5 dataset")
         parser.add_argument("--fold", type=int, default=5, help="ID of the cross-validation fold to use")

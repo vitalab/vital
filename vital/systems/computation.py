@@ -24,22 +24,18 @@ class SupervisedComputationMixin(SystemComputationMixin, ABC):
         raise NotImplementedError
 
     @prefix("train", exclude="loss")
-    def training_step(self, *args, **kwargs) -> Dict[str, Tensor]:
+    def training_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
         return self.trainval_step(*args, **kwargs)
 
     @prefix("val")
-    def validation_step(self, *args, **kwargs) -> Dict[str, Tensor]:
+    def validation_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
         return self.trainval_step(*args, **kwargs)
 
     def trainval_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:
-        """Handles logging and displaying metrics in the progress bar for both training and validation loops, assuming
-        the behavior should be the same.
+        """Reduces all outputs by averaging them, and forwards them to be both logged and displayed in the progress bar.
 
-        By default, marks all outputs (accumulated over the steps) for ``progress_bar`` and ``log``.
-
-        For models where the outputs in training and validation are different, then override ``training_epoch_end`` and
-        ``validation_epoch_end`` directly (in which case the default implementation of ``trainval_epoch_end`` won't be
-        called).
+        In cases where metrics from either training or validation need to handled in a special case (e.g. `train loss`),
+        you can simply override ``training_epoch_end`` or ``validation_epoch_end`` to avoid this method being called.
         """
         metric_names = outputs[0].keys()
         reduced_metrics = {
@@ -47,13 +43,13 @@ class SupervisedComputationMixin(SystemComputationMixin, ABC):
         }
         return {"progress_bar": reduced_metrics, "log": reduced_metrics.copy()}
 
-    def training_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:
+    def training_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:  # noqa: D102
         out = self.trainval_epoch_end(outputs)
-        # No need to add ``train_loss`` to the progress bar, as it's displayed automatically by Lightning as ``loss``
+        # No need to add 'train_loss' to the progress bar, as it's displayed automatically by Lightning as 'loss'
         del out["progress_bar"]["loss"]
-        # Log ``loss`` rather as ``train_loss``, to be consistent with other metrics (and validation)
+        # Log 'loss' rather as 'train_loss', to be consistent with other metrics (and validation)
         out["log"]["train_loss"] = out["log"].pop("loss")
         return out
 
-    def validation_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:
+    def validation_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:  # noqa: D102
         return self.trainval_epoch_end(outputs)

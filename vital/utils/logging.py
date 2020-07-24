@@ -9,9 +9,9 @@ def configure_logging(
     """Configures a standardized way of logging for the library.
 
     Args:
-        level: minimal level of events to log.
-        filename: path to the file loggers should write to, if wanted.
-        print_to_console: whether the loggers should display the messages to the console.
+        level: Minimal level of events to log.
+        filename: Path to the file loggers should write to, if wanted.
+        print_to_console: Whether the loggers should display the messages to the console.
     """
     handlers = []
     if filename:

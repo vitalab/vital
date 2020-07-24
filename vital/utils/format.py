@@ -5,12 +5,12 @@ def to_onehot(y: np.ndarray, num_classes: int = None, channel_axis: int = -1, dt
     """Converts a class vector (integers) to binary class matrix.
 
     Args:
-        y: class vector to be converted into a matrix
+        y: Class vector to be converted into a matrix
             (integers from 0 to num_classes).
-        num_classes: total number of classes.
-        channel_axis: index of the channel axis to expand.
+        num_classes: Total number of classes.
+        channel_axis: Index of the channel axis to expand.
         dtype: The data type expected by the input, as a string
-            (`float32`, `float64`, `int32`...)
+            (`float32`, `float64`, `int32`...).
 
     Returns:
         A binary matrix representation of the input.
@@ -36,11 +36,11 @@ def to_categorical(y: np.ndarray, channel_axis: int = -1, dtype: str = "uint8") 
     """Converts a binary class matrix to class vector (integers).
 
     Args:
-        y: matrix to be converted into a class vector
+        y: Matrix to be converted into a class vector
             (pixel-wise binary vectors of length num_classes).
-        channel_axis: index of the channel axis to expand.
+        channel_axis: Index of the channel axis to expand.
         dtype: The data type expected by the input, as a string
-            (`float32`, `float64`, `int32`...)
+            (`float32`, `float64`, `int32`...).
 
     Returns:
         A class vector representation of the input.

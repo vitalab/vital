@@ -15,10 +15,8 @@ class VitalTrainer(ABC):
     """Abstract trainer that runs the main training/val loop, etc... using Lightning Trainer."""
 
     @classmethod
-    def main(cls):
-        """Sets-up the CLI for the Lightning modules trainable through this trainer and calls the main training/val
-        loop.
-        """
+    def main(cls) -> None:
+        """Sets-up the CLI for the ``LightningModule``s runnable through this trainer and runs the requested system."""
         # Initialize the parser with our own generic arguments
         parser = ArgumentParser()
         parser = cls._add_generic_args(parser)
@@ -43,11 +41,11 @@ class VitalTrainer(ABC):
         cls.run_system(hparams)
 
     @classmethod
-    def run_system(cls, hparams: Namespace):
+    def run_system(cls, hparams: Namespace) -> None:
         """Handles the training/validation loop.
 
         Args:
-            hparams: arguments parsed from the CLI.
+            hparams: Arguments parsed from the CLI.
         """
         trainer = Trainer.from_argparse_args(hparams)
         system_cls = cls._get_selected_system(hparams)
@@ -67,12 +65,14 @@ class VitalTrainer(ABC):
             trainer.test(model)
 
     @classmethod
-    def _configure_logging(cls, hparams: Namespace):
-        """Hook to allow for overriding the default logging behavior, and possibly customizing it according to user
-        arguments passed to the CLI.
+    def _configure_logging(cls, hparams: Namespace) -> None:
+        """Callback that defines the default logging behavior.
+
+        It can be overridden to customize the logging behavior, e.g. to adjust to some CLI arguments defined by the
+        user.
 
         Args:
-            hparams: arguments parsed from the CLI.
+            hparams: Arguments parsed from the CLI.
         """
         configure_logging(print_to_console=True)
 
@@ -81,10 +81,10 @@ class VitalTrainer(ABC):
         """Defines the fixed path (w.r.t to the system to run) where to copy the best model checkpoint after training.
 
         Args:
-            hparams: arguments parsed from the CLI.
+            hparams: Arguments parsed from the CLI.
 
         Returns:
-            fixed path (w.r.t to the system to run) where to copy the best model checkpoint after training.
+            Fixed path (w.r.t to the system to run) where to copy the best model checkpoint after training.
         """
         system_cls = cls._get_selected_system(hparams)
         return hparams.default_root_dir.joinpath(f"{system_cls.__name__}.ckpt")
@@ -97,10 +97,10 @@ class VitalTrainer(ABC):
         pinpoint a single ``VitalSystem`` to run.
 
         Args:
-            parser: parser object to which system-specific arguments will be added.
+            parser: Parser object to which system-specific arguments will be added.
 
         Returns:
-            parser object to which system-specific arguments have been added.
+            Parser object to which system-specific arguments have been added.
         """
         raise NotImplementedError
 
@@ -109,10 +109,10 @@ class VitalTrainer(ABC):
         """Allows for overriding generic default trainer attributes with trainer-specific defaults.
 
         Args:
-            parser: parser object that already possesses trainer attributes.
+            parser: Parser object that already possesses trainer attributes.
 
         Returns:
-            parser object with overridden default trainer attributes.
+            Parser object with overridden default trainer attributes.
         """
         return parser
 
@@ -121,10 +121,10 @@ class VitalTrainer(ABC):
         """Identify, through the parameters specified in the CLI, the type of the Lightning module chosen by the user.
 
         Args:
-            hparams: arguments parsed from the CLI.
+            hparams: Arguments parsed from the CLI.
 
         Returns:
-            type of the Lightning module selected by the user to be run.
+            Type of the Lightning module selected by the user to be run.
         """
         raise NotImplementedError
 
@@ -133,10 +133,10 @@ class VitalTrainer(ABC):
         """Adds generic custom arguments for running a system to a parser object.
 
         Args:
-            parser: parser object to which generic custom arguments will be added.
+            parser: Parser object to which generic custom arguments will be added.
 
-        Returns
-            parser object to which generic custom arguments have been added.
+        Returns:
+            Parser object to which generic custom arguments have been added.
         """
         # save/load parameters
         parser.add_argument("--pretrained", type=Path, help="Path to Lightning module checkpoints to restore system")
@@ -163,10 +163,14 @@ class VitalTrainer(ABC):
         """Parse args, making custom checks on the values of the parameters in the process.
 
         Args:
-            parser: complete parser object for which to make custom checks on the values of the parameters.
+            parser: Complete parser object for which to make custom checks on the values of the parameters.
 
         Returns:
-            parsed and validated arguments to a system.
+            Parsed and validated arguments for a system run.
+
+        Raises:
+            ValueError: If invalid combinations of arguments are specified by the user.
+                - ``--skip_train`` flag is active without a ``--pretrained`` checkpoint being provided.
         """
         args = parser.parse_args()
 
@@ -177,7 +181,7 @@ class VitalTrainer(ABC):
                 "provide a pretrained model (through `--pretrained` parameter)."
             )
 
-        # If output dir is specified, cast it ot PurePath
+        # If output dir is specified, cast it os Path
         if args.default_root_dir is not None:
             args.default_root_dir = Path(args.default_root_dir)
 

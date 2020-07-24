@@ -10,22 +10,27 @@ from vital.modules.layers import conv3x3_activation, conv3x3_bn_activation
 class CamusUnet(nn.Module):
     """U-Net model fine-tuned for the CAMUS dataset.
 
-    This is inspired by the original U-Net work: https://arxiv.org/abs/1505.04597 but was slightly modified.
+    This is inspired by the original U-Net work (link in the refs) but was slightly modified.
 
-    The input size, the number and types of layers are different. The number of feature maps per
-    layer is also different. It provided better results than a standard U-Net when applied on the CAMUS dataset.
-    (link to the paper: https://ieeexplore.ieee.org/document/8649738)
+    The input size, the number and types of layers are different. The number of feature maps per layer is also
+    different. It provided better results than a standard U-Net when applied on the CAMUS dataset (link in the refs).
+
+    References:
+        - Paper that introduced the U-Net model: https://arxiv.org/abs/1505.04597
+        - Paper that fine-tuned the U-Net model for the CAMUS dataset: https://ieeexplore.ieee.org/document/8649738
     """
 
-    def __init__(self, in_channels: int, out_channels: int, init_channels: int, use_batchnorm: bool = True):
+    def __init__(
+        self, in_channels: int, out_channels: int, init_channels: int, use_batchnorm: bool = True
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            in_channels: number of channels of the input image to segment.
-            out_channels: number of channels of the segmentation to predict.
-            init_channels: number of output feature maps from the first layer, used to compute the number of feature
-                           maps in following layers.
-            use_batchnorm: whether to use batch normalization between the convolution and activation layers in the
-                           convolutional blocks.
+            in_channels: Number of channels of the input image to segment.
+            out_channels: Number of channels of the segmentation to predict.
+            init_channels: Number of output feature maps from the first layer, used to compute the number of feature
+                maps in following layers.
+            use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
+                convolutional blocks.
         """
         super().__init__()
         self.encoder = _UnetEncoder(in_channels, init_channels, use_batchnorm=use_batchnorm)
@@ -37,13 +42,13 @@ class CamusUnet(nn.Module):
         """Defines a convolutional block that maintains the spatial resolution of the feature maps.
 
         Args:
-            in_channels: number of input channels to the convolutional block.
-            out_channels: number of channels to output by the convolutional block.
-            use_batchnorm: whether to use batch normalization between the convolution and activation layers in the
-                           convolutional blocks.
+            in_channels: Number of input channels to the convolutional block.
+            out_channels: Number of channels to output by the convolutional block.
+            use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
+                convolutional blocks.
 
         Returns:
-            a convolutional block that maintains the spatial resolution of the feature maps.
+            Convolutional block that maintains the spatial resolution of the feature maps.
         """
         if use_batchnorm:
             conv_block = conv3x3_bn_activation
@@ -62,10 +67,10 @@ class CamusUnet(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            x: (N, ``in_channels``, H, W), input image to segment.
+            x: (N, ``in_channels``, H, W), Input image to segment.
 
         Returns:
-            y_hat: (N, ``out_channels``, H, W), raw, unnormalized scores for each class in the input's segmentation.
+            (N, ``out_channels``, H, W), Raw, unnormalized scores for each class in the input's segmentation.
         """
         x, *connected_features = self.encoder(x)
         x = self.bottleneck(x)
@@ -75,14 +80,14 @@ class CamusUnet(nn.Module):
 class _UnetEncoder(nn.Module):
     """Module making up the encoder half of the U-Net model fine-tuned for the CAMUS dataset."""
 
-    def __init__(self, in_channels: int, init_channels: int, use_batchnorm: bool = True):
+    def __init__(self, in_channels: int, init_channels: int, use_batchnorm: bool = True):  # noqa: D205,D212,D415
         """
         Args:
-            in_channels: number of channels of the input image to segment.
-            init_channels: number of output feature maps from the first layer, used to compute the number of feature
-                           maps in following layers.
-            use_batchnorm: whether to use batch normalization between the convolution and activation layers in the
-                           convolutional blocks.
+            in_channels: Number of channels of the input image to segment.
+            init_channels: Number of output feature maps from the first layer, used to compute the number of feature
+                maps in following layers.
+            use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
+                convolutional blocks.
         """
         super().__init__()
         self.use_batchnorm = use_batchnorm
@@ -97,13 +102,13 @@ class _UnetEncoder(nn.Module):
         """Defines a convolutional block that downsamples by a factor of 2 the spatial resolution of the feature maps.
 
         Args:
-            in_channels: number of input channels to the convolutional block.
-            out_channels: number of channels to output by the convolutional block.
-            use_batchnorm: whether to use batch normalization between the convolution and activation layers in the
-                           convolutional blocks.
+            in_channels: Number of input channels to the convolutional block.
+            out_channels: Number of channels to output by the convolutional block.
+            use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
+                convolutional blocks.
 
         Returns:
-            a convolutional block that downsamples by a factor of 2 the spatial resolution of the feature maps.
+            Convolutional block that downsamples by a factor of 2 the spatial resolution of the feature maps.
         """
         return (
             CamusUnet._block(in_channels, out_channels, use_batchnorm=self.use_batchnorm),
@@ -114,11 +119,11 @@ class _UnetEncoder(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            x: (N, ``in_channels``, H, W), input image to segment.
+            x: (N, ``in_channels``, H, W), Input image to segment.
 
         Returns:
-            features: (N, ``init_channels`` * 4, H // 10, W // 10), extracted features with the lowest spatial
-                      resolution, before they have passed through the bottleneck block.
+            (N, ``init_channels`` * 4, H // 10, W // 10), Extracted features with the lowest spatial resolution, before
+            they have passed through the bottleneck block.
         """
         features = []
         features.append(self.encoder1(x))
@@ -133,14 +138,14 @@ class _UnetEncoder(nn.Module):
 class _UnetDecoder(nn.Module):
     """Module making up the decoder half of the U-Net model fine-tuned for the CAMUS dataset."""
 
-    def __init__(self, out_channels: int, init_channels: int, use_batchnorm: bool = True):
+    def __init__(self, out_channels: int, init_channels: int, use_batchnorm: bool = True):  # noqa: D205,D212,D415
         """
         Args:
-            out_channels: number of channels of the segmentation to predict.
-            init_channels: number of output feature maps from the first layer, used to compute the number of feature
-                           maps in following layers.
-            use_batchnorm: whether to use batch normalization between the convolution and activation layers in the
-                           convolutional blocks.
+            out_channels: Number of channels of the segmentation to predict.
+            init_channels: Number of output feature maps from the first layer, used to compute the number of feature
+                maps in following layers.
+            use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
+                convolutional blocks.
         """
         super().__init__()
         self.use_batchnorm = use_batchnorm
@@ -156,13 +161,13 @@ class _UnetDecoder(nn.Module):
         """Defines a convolutional block that upsamples by a factor of 2 the spatial resolution of the feature maps.
 
         Args:
-            in_channels: number of input channels to the convolutional block.
-            out_channels: number of channels to output by the convolutional block.
-            use_batchnorm: whether to use batch normalization between the convolution and activation layers in the
-                           convolutional blocks.
+            in_channels: Number of input channels to the convolutional block.
+            out_channels: Number of channels to output by the convolutional block.
+            use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
+                convolutional blocks.
 
         Returns:
-            a convolutional block that upsamples by a factor of 2 the spatial resolution of the feature maps.
+            Convolutional block that upsamples by a factor of 2 the spatial resolution of the feature maps.
         """
         return (
             nn.Upsample(scale_factor=2, mode="nearest"),
@@ -173,11 +178,11 @@ class _UnetDecoder(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            x: (N, ``init_channels`` * 4, H // 10, W // 10), extracted features with the lowest spatial
-               resolution, before they have passed through the bottleneck block.
+            x: (N, ``init_channels`` * 4, H // 10, W // 10), Extracted features with the lowest spatial resolution,
+                before they have passed through the bottleneck block.
 
         Returns:
-            y_hat: (N, ``out_channels``, H, W), raw, unnormalized scores for each class in the input's segmentation.
+            (N, ``out_channels``, H, W), Raw, unnormalized scores for each class in the input's segmentation.
         """
         features = self.upsample5(x)
         features = self.decoder5(torch.cat((features, connected_features[4]), dim=1))

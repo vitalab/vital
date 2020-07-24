@@ -14,41 +14,48 @@ from vital.utils.image.transform import resize_image
 class LocalizationNet(nn.Module):
     """Generalization of the LU-Net model, initially implemented for the CAMUS dataset.
 
-    # TODO Add reference to paper describing the network
-
     This implementation generalizes the idea of the network beyond its U-Net roots. It makes it applicable to any
     segmentation model, given that it complies to the following interface:
-        - Implemented as an nn.Module (therefore callable for making predictions)
+        - Implemented as an ``nn.Module`` (therefore callable for making predictions)
         - Accepts the following kwargs in its constructor:
-            - in_channels
-            - out_channels
+            - ``in_channels``
+            - ``out_channels``
         - Provides the following attributes:
-            - encoder
-            - bottleneck
-            - decoder
+            - ``encoder``
+            - ``bottleneck``
+            - ``decoder``
         - When ``encoder`` is called, returns either a single tensor to be passed to the bottleneck, or a tuple of
           tensors, where the expected input for the bottleneck is the first element of the tuple.
+
+    References:
+        - Paper describing the original LU-Net model using a UNet base: http://arxiv.org/abs/2004.02043
     """
 
     def __init__(
-        self, segmentation_cls: Type[nn.Module], in_shape: Tuple[int, ...], out_shape: Tuple[int, ...], **kwargs
-    ):
+        self,
+        segmentation_cls: Type[nn.Module],
+        in_shape: Tuple[int, ...],
+        out_shape: Tuple[int, ...],
+        **segmentation_cls_kwargs,
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            segmentation_cls: class of the module to use as a base segmentation model for the LocalizationNet.
-            data_shape: information about the shape of the expected input and output.
-            **kwargs: arguments to initialize an instance of ``segmentation_cls``.
+            segmentation_cls: Class of the module to use as a base segmentation model for the LocalizationNet.
+            data_shape: Information about the shape of the expected input and output.
+            **segmentation_cls_kwargs: Arguments to initialize an instance of ``segmentation_cls``.
         """
         super().__init__()
         self.in_shape = in_shape
         self.out_shape = out_shape
         self.global_segmentation_module = segmentation_cls(
-            in_channels=in_shape[-1], out_channels=out_shape[-1], **kwargs
+            in_channels=in_shape[-1], out_channels=out_shape[-1], **segmentation_cls_kwargs
         )
         self.localized_segmentation_module = segmentation_cls(
-            in_channels=in_shape[-1], out_channels=out_shape[-1], **kwargs
+            in_channels=in_shape[-1], out_channels=out_shape[-1], **segmentation_cls_kwargs
         )
-        segmentation_module = segmentation_cls(in_channels=out_shape[-1], out_channels=out_shape[-1], **kwargs)
+        segmentation_module = segmentation_cls(
+            in_channels=out_shape[-1], out_channels=out_shape[-1], **segmentation_cls_kwargs
+        )
         self.segmentation_encoder = segmentation_module.encoder
         self.segmentation_bottleneck = segmentation_module.bottleneck
 
@@ -80,14 +87,13 @@ class LocalizationNet(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            x: (N, ``in_channels``, H, W), input image to segment.
+            x: (N, ``in_channels``, H, W), Input image to segment.
 
         Returns:
-            global_y_hat: (N, ``out_channels``, H, W), raw, unnormalized scores for each class in the first, global
-                          segmentation.
-            roi_bbox_hat: (N, 4), coordinates of the bbox around the ROI.
-            localized_y_hat: (N, ``out_channels``, H, W), raw, unnormalized scores for each class in the second
-                             segmentation, localized in the cropped ROI.
+            - (N, ``out_channels``, H, W), Raw, unnormalized scores for each class in the first, global segmentation.
+            - (N, 4), Coordinates of the bbox around the ROI.
+            - (N, ``out_channels``, H, W), Raw, unnormalized scores for each class in the second segmentation, localized
+              in the cropped ROI.
         """
         # First segmentation module: Segment input image
         # Segmentation module trained to take as input the complete image, and to predict a rough segmentation from
@@ -119,10 +125,10 @@ class LocalizationNet(nn.Module):
         """Performs test-time inference on the input.
 
         Args:
-            x: (N, ``in_channels``, H, W), input image to segment.
+            x: (N, ``in_channels``, H, W), Input image to segment.
 
         Returns:
-            prediction: (N, ``out_channels``, H, W), input's segmentation, in one-hot format.
+            (N, ``out_channels``, H, W), Input's segmentation, in one-hot format.
         """
         _, roi_bbox_hat, localized_y_hat = self(x)
         y_hat = self._revert_crop(localized_y_hat.argmax(dim=1, keepdim=True), roi_bbox_hat).squeeze()  # (N, H, W)
@@ -133,11 +139,11 @@ class LocalizationNet(nn.Module):
         """Fits the localized segmentation back to its original position the image.
 
         Args:
-            localized_segmentation: (N, 1, H, W), segmentation of the content of the bbox around the ROI.
-            roi_bbox: (N, 4), normalized coordinates of the bbox around the ROI.
+            localized_segmentation: (N, 1, H, W), Segmentation of the content of the bbox around the ROI.
+            roi_bbox: (N, 4), Normalized coordinates of the bbox around the ROI.
 
         Returns:
-            segmentation: (N, 1, H, W), localized segmentation fitted to its original position in the image.
+            (N, 1, H, W), Localized segmentation fitted to its original position in the image.
         """
         # Clamp predicted normalized ROI bbox to ensure it won't end up out of range
         roi_bbox = roi_bbox.clamp(0, 1)

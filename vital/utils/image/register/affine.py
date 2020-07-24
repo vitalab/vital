@@ -18,18 +18,16 @@ RegisteringParameter = Union[Shift, Rotation, Zoom, Crop]
 
 
 class AffineRegisteringTransformer:
-    """Class that uses Keras' ImageDataGenerator to register image/segmentation pairs based on the structures in the
-    segmentations.
-    """
+    """Register image/segmentation pairs based on the structures in the segmentations."""
 
     registering_steps = ["shift", "rotation", "zoom", "crop"]
 
-    def __init__(self, num_classes: int, crop_shape: Tuple[int, int] = None):
+    def __init__(self, num_classes: int, crop_shape: Tuple[int, int] = None):  # noqa: D205,D212,D415
         """
         Args:
-            num_classes: number of classes in the dataset from which the image/segmentation pairs come from.
-            crop_shape: (only used if crop is active), (height, width) shape at which to resize the bbox around the ROI
-                        after crop.
+            num_classes: Number of classes in the dataset from which the image/segmentation pairs come from.
+            crop_shape: (height, width) Shape at which to resize the bbox around the ROI after crop.
+                This argument is only used if the `crop` registering step applies.
         """
         self.num_classes = num_classes
         self.crop_shape = crop_shape
@@ -53,7 +51,7 @@ class AffineRegisteringTransformer:
     @overload
     def register_batch(
         self, segmentations: np.ndarray, images: None
-    ) -> Tuple[Mapping[str, RegisteringParameter], np.ndarray]:
+    ) -> Tuple[Mapping[str, RegisteringParameter], np.ndarray]:  # noqa: D102
         pass
 
     def register_batch(
@@ -62,17 +60,16 @@ class AffineRegisteringTransformer:
         """Registers the segmentations (and images) based on the positioning of the structures in the segmentations.
 
         Args:
-            segmentations: segmentations to register based on the positioning of their structures.
-            images: images to register based on the positioning of the structures of their associated segmentation.
+            segmentations: Segmentations to register based on the positioning of their structures.
+            images: Images to register based on the positioning of the structures of their associated segmentation.
 
         Returns:
-            registering_parameters: parameters of the transformations applied to register the segmentations and
-                                    images.
-            registered_segmentations: registered segmentations.
-            registered_images: registered images (if ``images`` is not None).
+            - Parameters of the transformations applied to register the segmentations and images.
+            - Registered segmentations.
+            - Registered images (if `images` is not None).
 
-        # Raises:
-            ValueError: the provided images do not match the shape of the segmentations.
+        Raises:
+            ValueError: If the provided images do not match the shape of the segmentations.
         """
         registering_parameters = {step: [] for step in self.registering_steps}
         registered_segmentations, registered_images = [], []
@@ -108,7 +105,9 @@ class AffineRegisteringTransformer:
         return out
 
     @overload
-    def register(self, segmentation: np.ndarray, image: None) -> Tuple[Mapping[str, RegisteringParameter], np.ndarray]:
+    def register(
+        self, segmentation: np.ndarray, image: None
+    ) -> Tuple[Mapping[str, RegisteringParameter], np.ndarray]:  # noqa: D102
         pass
 
     def register(
@@ -117,14 +116,13 @@ class AffineRegisteringTransformer:
         """Registers the segmentation (and image) based on the positioning of the structures in the segmentation.
 
         Args:
-            segmentation: segmentation to register based on the positioning of its structures.
-            image: image to register based on the positioning of the structures of its associated segmentation.
+            segmentation: Segmentation to register based on the positioning of its structures.
+            image: Image to register based on the positioning of the structures of its associated segmentation.
 
         Returns:
-            registering_parameters: parameters of the transformation applied to register the image and
-                                    segmentation.
-            registered_segmentation: registered segmentation.
-            registered_image: registered image (if `image` is not None).
+            - Parameters of the transformation applied to register the image and segmentation.
+            - Registered segmentation.
+            - Registered image (if `image` is not None).
         """
         # Ensure that the input is in a supported format
         segmentation, original_segmentation_format = self._check_segmentation_format(segmentation)
@@ -156,12 +154,17 @@ class AffineRegisteringTransformer:
         """Undoes the registering on the segmentations using the parameters saved during the registration.
 
         Args:
-            segmentations: registered segmentations to restore to their original value.
-            registering_parameters: parameter names (should appear in `self.registering_steps`) and their values
-                                    applied to register each segmentation.
+            segmentations: Registered segmentations to restore to their original value.
+            registering_parameters: Parameter names (should appear in `self.registering_steps`) and their values applied
+                to register each segmentation.
 
         Returns:
-            categorical un-registered segmentations.
+            Categorical un-registered segmentations.
+
+        Raises:
+            ValueError:
+                - If any of the keys in ``registering_parameters`` isn't a registering step ``self`` supports.
+                - If the provided images do not match the shape of the segmentations.
         """
         # Check that provided parameters correspond to supported registering operations
         for parameter in registering_parameters.keys():
@@ -196,12 +199,12 @@ class AffineRegisteringTransformer:
         """Undoes the registering on the segmentation using the parameters saved during the registration.
 
         Args:
-            segmentation: registered segmentation to restore to its original value.
-            registering_parameters: parameter names (should appear in `self.registering_steps`) and their values
-                                    applied to register the segmentation.
+            segmentation: Registered segmentation to restore to its original value.
+            registering_parameters: Parameter names (should appear in `self.registering_steps`) and their values applied
+                to register the segmentation.
 
         Returns:
-            categorical un-registered segmentation.
+            Categorical un-registered segmentation.
         """
         # Get default registering parameters for steps that were not provided
         registering_parameters = dict(registering_parameters)
@@ -245,11 +248,11 @@ class AffineRegisteringTransformer:
         """Ensures that segmentation is in categorical format and of integer type.
 
         Args:
-            segmentation: segmentation of unknown shape and type.
+            segmentation: Segmentation of unknown shape and type.
 
         Returns:
-            segmentation: segmentation in categorical format and of integer type.
-            format: flags indicating the original shape of the segmentation.
+            - Segmentation in categorical format and of integer type.
+            - Flags indicating the original shape of the segmentation.
         """
         # Check if image is a categorical 2D array
         is_categorical_2d = segmentation.ndim == 2
@@ -267,11 +270,11 @@ class AffineRegisteringTransformer:
         """Ensures that image has a channels dimension.
 
         Args:
-            image: image of unknown shape and type.
+            image: Image of unknown shape and type.
 
         Returns:
-            image: image with channels dimension.
-            format: flag indicating the original shape of the segmentation.
+            - Image with channels dimension.
+            - Flag indicating the original shape of the segmentation.
         """
         # Check if image is a categorical 2D array
         is_2d = image.ndim == 2
@@ -286,11 +289,11 @@ class AffineRegisteringTransformer:
         """Restore a segmentation in categorical format to its original shape.
 
         Args:
-            segmentation: segmentation in categorical format and of integer type.
-            format: flags indicating the original shape of the segmentation.
+            segmentation: Segmentation in categorical format and of integer type.
+            format: Flags indicating the original shape of the segmentation.
 
         Returns:
-            segmentation in its original format.
+            Segmentation in its original format.
         """
         is_categorical_2d, is_categorical_3d = format  # Unpack original shape info
 
@@ -305,11 +308,11 @@ class AffineRegisteringTransformer:
         """Restore an image with channels dimension to its original shape.
 
         Args:
-            image: image with channels dimension.
-            is_2d: flag indicating the original shape of the segmentation.
+            image: Image with channels dimension.
+            is_2d: Flag indicating the original shape of the segmentation.
 
         Returns:
-            image in its original format.
+            Image in its original format.
         """
         is_2d = is_2d  # Unpack original shape info
         if is_2d:  # If the segmentation was originally categorical
@@ -323,12 +326,12 @@ class AffineRegisteringTransformer:
         """Extract the center of mass of a structure in a segmentation.
 
         Args:
-            segmentation: segmentation map for which to find the center of mass of a structure.
-            struct_label: label(s) identifying the structure for which to find the center of mass.
-            default_center: the default center of mass to use in case the structure is not present in the segmentation.
+            segmentation: Segmentation map for which to find the center of mass of a structure.
+            struct_label: Label(s) identifying the structure for which to find the center of mass.
+            default_center: Default center of mass to use in case the structure is not present in the segmentation.
 
         Returns:
-            center of mass of the structure in the segmentation.
+            Center of mass of the structure in the segmentation.
         """
         center = ndimage.measurements.center_of_mass(np.isin(to_categorical(segmentation), struct_label))
         if any(np.isnan(center)):
@@ -339,10 +342,10 @@ class AffineRegisteringTransformer:
         """Computes the pixel shift to apply along each axis to center the segmentation.
 
         Args:
-            segmentation: segmentation for which to compute shift parameters.
+            segmentation: Segmentation for which to compute shift parameters.
 
         Returns:
-             pixel shift to apply along each axis to center the segmentation.
+             Pixel shift to apply along each axis to center the segmentation.
         """
         return self._get_default_parameters(segmentation)["shift"]
 
@@ -350,10 +353,10 @@ class AffineRegisteringTransformer:
         """Computes the angle of the rotation to apply to align the segmentation along the desired axis.
 
         Args:
-            segmentation: segmentation for which to compute rotation parameters.
+            segmentation: Segmentation for which to compute rotation parameters.
 
         Returns:
-            angle of the rotation to apply to align the segmentation along the desired axis.
+            Angle of the rotation to apply to align the segmentation along the desired axis.
         """
         return self._get_default_parameters(segmentation)["rotation"]
 
@@ -361,12 +364,12 @@ class AffineRegisteringTransformer:
         """Computes the zoom to apply along each axis to fit the bounding box surrounding the segmented classes.
 
         Args:
-            segmentation: segmentation for which to compute zoom to fit parameters.
-            margin: ratio of image shape to ignore when computing zoom so as to leave empty border around the image
-                    when fitting.
+            segmentation: Segmentation for which to compute zoom to fit parameters.
+            margin: Ratio of image shape to ignore when computing zoom so as to leave empty border around the image when
+                fitting.
 
         Returns:
-            zoom to apply along each axis to fit the bounding box surrounding the segmented classes.
+            Zoom to apply along each axis to fit the bounding box surrounding the segmented classes.
         """
         return self._get_default_parameters(segmentation)["zoom"]
 
@@ -374,12 +377,12 @@ class AffineRegisteringTransformer:
         """Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 
         Args:
-            segmentation: segmentation for which to compute crop parameters.
-            margin: ratio by which to enlarge the bbox from the closest possible fit, so as to leave a
-                    slight margin at the edges of the bbox.
+            segmentation: Segmentation for which to compute crop parameters.
+            margin: Ratio by which to enlarge the bbox from the closest possible fit, so as to leave a slight margin at
+                the edges of the bbox.
 
         Returns:
-            original shape and coordinates of the bbox, in the following order:
+            Original shape and coordinates of the bbox, in the following order:
             height, width, row_min, col_min, row_max, col_max.
         """
         return self._get_default_parameters(segmentation)["crop"]
@@ -392,13 +395,13 @@ class AffineRegisteringTransformer:
         """Applies a pixel shift along each axis to center the segmentation (and image).
 
         Args:
-            segmentation: segmentation to center based on the positioning of its structures.
-            image: image to center based on the positioning of the structures of its associated segmentation.
+            segmentation: Segmentation to center based on the positioning of its structures.
+            image: Image to center based on the positioning of the structures of its associated segmentation.
 
         Returns:
-            pixel_shift_by_axis: pixel shift applied along each axis to center the segmentation.
-            segmentation: centered segmentation.
-            image: centered image (if `image` is not None).
+            - Pixel shift applied along each axis to center the segmentation.
+            - Centered segmentation.
+            - Centered image (if `image` is not None).
         """
         pixel_shift_by_axis = self._compute_shift_parameters(segmentation)
         shift_parameters = {"tx": pixel_shift_by_axis[0], "ty": pixel_shift_by_axis[1]}
@@ -415,13 +418,13 @@ class AffineRegisteringTransformer:
         """Applies a rotation to align the segmentation (and image) along the desired axis.
 
         Args:
-            segmentation: segmentation to rotate based on the positioning of its structures.
-            image: image to rotate based on the positioning of the structures of its associated segmentation.
+            segmentation: Segmentation to rotate based on the positioning of its structures.
+            image: Image to rotate based on the positioning of the structures of its associated segmentation.
 
         Returns:
-            rotation_angle: angle of the rotation applied to align the segmentation along the desired axis.
-            segmentation: rotated segmentation.
-            image: rotated image (if `image` is not None).
+            - Angle of the rotation applied to align the segmentation along the desired axis.
+            - Rotated segmentation.
+            - Rotated image (if `image` is not None).
         """
         rotation_angle = self._compute_rotation_parameters(segmentation)
         rotation_parameters = {"theta": rotation_angle}
@@ -438,13 +441,13 @@ class AffineRegisteringTransformer:
         """Applies a zoom along each axis to fit the segmentation (and image) to the area of interest.
 
         Args:
-            segmentation: segmentation to zoom to fit based on the positioning of its structures.
-            image: image to zoom to fit based on the positioning of the structures of its associated segmentation.
+            segmentation: Segmentation to zoom to fit based on the positioning of its structures.
+            image: Image to zoom to fit based on the positioning of the structures of its associated segmentation.
 
         Returns:
-            zoom_to_fit: zoom applied along each axis to fit the segmentation.
-            segmentation: fitted segmentation.
-            image: fitted image (if `image` is not None).
+            - Zoom applied along each axis to fit the segmentation.
+            - Fitted segmentation.
+            - Fitted image (if `image` is not None).
         """
         zoom_to_fit = self._compute_zoom_to_fit_parameters(segmentation)
         zoom_to_fit_parameters = {"zx": zoom_to_fit[0], "zy": zoom_to_fit[1]}
@@ -461,14 +464,13 @@ class AffineRegisteringTransformer:
         """Applies a zoom along each axis to fit the segmentation (and image) to the area of interest.
 
         Args:
-            segmentation: segmentation to crop based on the positioning of its structures.
-            image: image to crop based on the positioning of the structures of its associated segmentation.
+            segmentation: Segmentation to crop based on the positioning of its structures.
+            image: Image to crop based on the positioning of the structures of its associated segmentation.
 
         Returns:
-            crop_parameters: original shape (2) and crop coordinates (4) applied to get a bbox around the
-                             segmentation.
-            segmentation: cropped and resized segmentation.
-            image: cropped and resized image (if `image` is not None).
+            - Original shape (2) and crop coordinates (4) applied to get a bbox around the segmentation.
+            - Cropped and resized segmentation.
+            - Cropped and resized image (if `image` is not None).
         """
 
         def _crop(image: np.ndarray, bbox: tuple) -> np.ndarray:
@@ -508,12 +510,12 @@ class AffineRegisteringTransformer:
         """Restores a cropped region of an segmentation to its original size and location.
 
         Args:
-            segmentation: cropped region of the original segmentation, to replace in its original position in the
-                          segmentation.
-            crop_parameters: original shape (2) and crop coordinates (4) applied to get a bbox around the segmentation.
+            segmentation: Cropped region of the original segmentation, to replace in its original position in the
+                segmentation.
+            crop_parameters: Original shape (2) and crop coordinates (4) applied to get a bbox around the segmentation.
 
         Returns:
-            segmentation where the cropped region was resized and placed in its original position.
+            Segmentation where the cropped region was resized and placed in its original position.
         """
         # Extract shape before crop and crop coordinates from crop parameters
         og_shape = np.hstack((crop_parameters[:2], segmentation.shape[-1]))
@@ -541,13 +543,12 @@ class AffineRegisteringTransformer:
         """Applies transformations on an image.
 
         Args:
-            image: image to transform.
-            transform_parameters: parameters describing the transformation to apply.
-                                  Must follow the format required by Keras' ImageDataGenerator
-                                  (see `ImageDataGenerator.apply_transform`).
+            image: Image to transform.
+            transform_parameters: Parameters describing the transformation to apply.
+                Must follow the format required by Keras' ImageDataGenerator (see `ImageDataGenerator.apply_transform`).
 
         Returns:
-            transformed image.
+            Transformed image.
         """
         return self.transformer.apply_transform(image, transform_parameters)
 
@@ -557,13 +558,12 @@ class AffineRegisteringTransformer:
         """Applies transformations on a segmentation.
 
         Args:
-            segmentation: segmentation to transform.
-            transform_parameters: parameters describing the transformation to apply.
-                                  Must follow the format required by Keras' ImageDataGenerator
-                                  (see `ImageDataGenerator.apply_transform`).
+            segmentation: Segmentation to transform.
+            transform_parameters: Parameters describing the transformation to apply.
+                Must follow the format required by Keras' ImageDataGenerator (see `ImageDataGenerator.apply_transform`).
 
         Returns:
-            transformed segmentation.
+            Transformed segmentation.
         """
         segmentation = self.transformer.apply_transform(segmentation, transform_parameters)
 

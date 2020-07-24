@@ -3,17 +3,16 @@ from typing import Any, Callable, Dict, Mapping, Sequence, TypeVar, Union
 
 
 def prefix(prefix: str, exclude: Union[str, Sequence[str]] = None):
-    """Decorator for functions that return a mapping of keys and values, where we would want to add a common prefix to
-    the keys used.
+    """Decorator for functions that return a mapping with string keys, to add a prefix to the keys.
 
     Args:
-        prefix: prefix to add to the current keys in the mapping. To note that the prefix will be separated by an
-                underscore (``_``) from the current keys.
-        exclude: keys to exclude from the prefix addition. These will remain unchanged in the new mapping.
+        prefix: Prefix to add to the current keys in the mapping. To note that the prefix will be separated by an
+            underscore (`_`) from the current keys.
+        exclude: Keys to exclude from the prefix addition. These will remain unchanged in the new mapping.
 
     Returns:
-        functions where the keys of the mapping returned have been prepended with ``prefix``, except for the keys listed
-        in ``exclude``, that are left as-is.
+        Function where the keys of the mapping returned have been prepended with `prefix`, except for the keys listed in
+        `exclude`, that are left as-is.
     """
     if exclude is None:
         exclude = []
@@ -37,10 +36,10 @@ def squeeze(fn: Callable[..., Sequence[Item]]) -> Callable[..., Union[Item, Sequ
     """Decorator for functions that return sequences of possibly one item, where we would want the lone item directly.
 
     Args:
-        fn: a function that returns a sequence.
+        fn: Function that returns a sequence.
 
     Returns:
-        a function that returns a sequence, or directly an item if the sequence only contains one item.
+        Function that returns a sequence, or directly an item if the sequence only contains one item.
     """
 
     @wraps(fn)
