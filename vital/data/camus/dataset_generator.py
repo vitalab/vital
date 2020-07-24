@@ -1,4 +1,3 @@
-import argparse
 import os
 from functools import reduce
 from numbers import Real
@@ -248,7 +247,9 @@ class CrossValidationDatasetGenerator:
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
     parser.add_argument(
         "--data",
         type=Path,
