@@ -11,13 +11,13 @@ def bbox(segmentation: Union[np.ndarray, Tensor], labels: SemanticStructureId, b
     """Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 
     Args:
-        segmentation: (H, W) segmentation in which to identify the coordinates of the bbox.
-        labels: labels of the classes that are part of the ROI.
-        bbox_margin: ratio by which to enlarge the bbox from the closest possible fit, so as to leave a slight margin
-                     at the edges of the bbox.
+        segmentation: (H, W) Segmentation in which to identify the coordinates of the bbox.
+        labels: Labels of the classes that are part of the ROI.
+        bbox_margin: Ratio by which to enlarge the bbox from the closest possible fit, so as to leave a slight margin at
+            the edges of the bbox.
 
     Returns:
-        coordinates of the bbox, in the following order: row_min, col_min, row_max, col_max.
+        Coordinates of the bbox, in the following order: row_min, col_min, row_max, col_max.
     """
     # Only keep ROI from the groundtruth
     roi_mask = np.isin(segmentation, labels)

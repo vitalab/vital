@@ -10,15 +10,17 @@ from vital.modules.layers import reparameterize
 class Autoencoder(nn.Module):
     """Module making up a fully convolutional autoencoder."""
 
-    def __init__(self, image_size: Tuple[int, int], channels: int, blocks: int, init_channels: int, latent_dim: int):
+    def __init__(
+        self, image_size: Tuple[int, int], channels: int, blocks: int, init_channels: int, latent_dim: int
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            image_size: size of the output segmentation groundtruth for each axis.
-            channels: number of channels of the image to reconstruct.
-            blocks: number of upsampling transposed convolution blocks to use.
-            init_channels: number of output feature maps from the first layer, used to compute the number of feature
-                           maps in following layers.
-            latent_dim: number of dimensions in the latent space.
+            image_size: Size of the output segmentation groundtruth for each axis.
+            channels: Number of channels of the image to reconstruct.
+            blocks: Number of upsampling transposed convolution blocks to use.
+            init_channels: Number of output feature maps from the first layer, used to compute the number of feature
+                maps in following layers.
+            latent_dim: Number of dimensions in the latent space.
         """
         super().__init__()
         self.encoder = Encoder(
@@ -40,11 +42,11 @@ class Autoencoder(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            y: (N, ``channels``, H, W), input to reconstruct.
+            y: (N, ``channels``, H, W), Input to reconstruct.
 
         Returns:
-            y_hat: (N, ``channels``, H, W), raw, unnormalized scores for each class in the input's reconstruction.
-            z: (N, ``latent_dim``), encoding of the input in the latent space.
+            - (N, ``channels``, H, W), Raw, unnormalized scores for each class in the input's reconstruction.
+            - (N, ``latent_dim``), Encoding of the input in the latent space.
         """
         z = self.encoder(y)
         return self.decoder(z), z
@@ -53,15 +55,17 @@ class Autoencoder(nn.Module):
 class VariationalAutoencoder(nn.Module):
     """Module making up a fully convolutional variational autoencoder."""
 
-    def __init__(self, image_size: Tuple[int, int], channels: int, blocks: int, init_channels: int, latent_dim: int):
+    def __init__(
+        self, image_size: Tuple[int, int], channels: int, blocks: int, init_channels: int, latent_dim: int
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            image_size: size of the output segmentation groundtruth for each axis.
-            channels: number of channels of the image to reconstruct.
-            blocks: number of upsampling transposed convolution blocks to use.
-            init_channels: number of output feature maps from the first layer, used to compute the number of feature
-                           maps in following layers.
-            latent_dim: number of dimensions in the latent space.
+            image_size: Size of the output segmentation groundtruth for each axis.
+            channels: Number of channels of the image to reconstruct.
+            blocks: Number of upsampling transposed convolution blocks to use.
+            init_channels: Number of output feature maps from the first layer, used to compute the number of feature
+                maps in following layers.
+            latent_dim: Number of dimensions in the latent space.
         """
         super().__init__()
         self.encoder = Encoder(
@@ -84,15 +88,15 @@ class VariationalAutoencoder(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            y: (N, ``channels``, H, W), input to reconstruct.
+            y: (N, ``channels``, H, W), Input to reconstruct.
 
         Returns:
-            y_hat: (N, ``channels``, H, W), raw, unnormalized scores for each class in the input's reconstruction.
-            z: (N, ``latent_dim``), sampled encoding of the input in the latent space.
-            mu: (N, ``latent_dim``), mean of the predicted distribution of the input in the latent space,
-                used to sample ``z``.
-            logvar: (N, ``latent_dim``), log variance of the predicted distribution of the input in the latent space,
-                used to sample ``z``.
+            - (N, ``channels``, H, W), Raw, unnormalized scores for each class in the input's reconstruction.
+            - (N, ``latent_dim``), Sampled encoding of the input in the latent space.
+            - (N, ``latent_dim``), Mean of the predicted distribution of the input in the latent space, used to sample
+              ``z``.
+            - (N, ``latent_dim``), Log variance of the predicted distribution of the input in the latent space, used to
+              sample ``z``.
         """
         mu, logvar = self.encoder(y)
         z = reparameterize(mu, logvar)

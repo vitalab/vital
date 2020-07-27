@@ -19,17 +19,17 @@ class Encoder(nn.Module):
         init_channels: int,
         latent_dim: int,
         output_distribution: bool = False,
-    ):
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            image_size: size of the input segmentation groundtruth for each axis.
-            in_channels: number of channels of the image to reconstruct.
-            blocks: number of downsampling convolution blocks to use.
-            init_channels: number of output feature maps from the first layer, used to compute the number of feature
-                           maps in following layers.
-            latent_dim: number of dimensions in the latent space.
-            output_distribution: whether to add a second head at the end to output ``logvar`` along with the default
-                                 ``mu`` head.
+            image_size: Size of the input segmentation groundtruth for each axis.
+            in_channels: Number of channels of the image to reconstruct.
+            blocks: Number of downsampling convolution blocks to use.
+            init_channels: Number of output feature maps from the first layer, used to compute the number of feature
+                maps in following layers.
+            latent_dim: Number of dimensions in the latent space.
+            output_distribution: Whether to add a second head at the end to output ``logvar`` along with the default
+                ``mu`` head.
         """
         super().__init__()
         self.output_distribution = output_distribution
@@ -69,15 +69,14 @@ class Encoder(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            y: (N, ``channels``, H, W), input to reconstruct.
+            y: (N, ``channels``, H, W), Input to reconstruct.
 
         Returns:
             if not ``output_distribution``:
-                z: (N, ``latent_dim``), encoding of the input in the latent space.
+                - (N, ``latent_dim``), Encoding of the input in the latent space.
             if ``output_distribution``:
-                mu: (N, ``latent_dim``), mean of the predicted distribution of the input in the latent space.
-                logvar: (N, ``latent_dim``), log variance of the predicted distribution of the input in the latent
-                        space.
+                - (N, ``latent_dim``), Mean of the predicted distribution of the input in the latent space.
+                - (N, ``latent_dim``), Log variance of the predicted distribution of the input in the latent space.
         """
         features = self.input2features(y)
         features = torch.flatten(features, 1)

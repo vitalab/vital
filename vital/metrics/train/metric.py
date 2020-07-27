@@ -4,7 +4,7 @@ from vital.metrics.train.functionnal import dice_score
 
 
 class DiceCoefficient(nn.Module):
-    """Computes a differentiable version of the dice_score coefficient."""
+    """Computes a differentiable version of the dice coefficient."""
 
     def __init__(
         self,
@@ -12,13 +12,13 @@ class DiceCoefficient(nn.Module):
         nan_score: float = 0.0,
         no_fg_score: float = 0.0,
         reduction: str = "elementwise_mean",
-    ):
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            include_background: whether to also compute dice_score for the background.
-            nan_score: score to return, if a NaN occurs during computation (denom zero).
-            no_fg_score: score to return, if no foreground pixel was found in target.
-            reduction: a method for reducing accuracies over labels (default: takes the mean)
+            include_background: Whether to also compute dice for the background.
+            nan_score: Score to return, if a NaN occurs during computation (denom zero).
+            no_fg_score: Score to return, if no foreground pixel was found in target.
+            reduction: Method for reducing accuracies over labels (default: takes the mean).
                 Available reduction methods:
                 - elementwise_mean: takes the mean
                 - none: pass array
@@ -34,11 +34,11 @@ class DiceCoefficient(nn.Module):
         """Actual metric computation.
 
         Args:
-            input: (N, C, H, W), raw, unnormalized scores for each class.
-            target: (N, H, W), where each value is 0 <= targets[i] <= C-1.
+            input: (N, C, H, W), Raw, unnormalized scores for each class.
+            target: (N, H, W), Groundtruth labels, where each value is 0 <= targets[i] <= C-1.
 
         Return:
-            (1,) or (C,), the calculated dice_score coefficient, average/summed or by labels.
+            (1,) or (C,), Calculated dice coefficient, average/sum or by labels.
         """
         return dice_score(
             input=input,

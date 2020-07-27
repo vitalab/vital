@@ -15,28 +15,28 @@ def summary_info(
 ) -> Tuple[str, Tuple[int, int]]:
     """Computes info to display a summary of a network to the console, similar to `model.summary()` in Keras.
 
-    Implementation taken from: https://github.com/sksq96/pytorch-summary
-
     Modifications:
         - Modified parameters to force `device` to be specified
         - Added support for modules with multiple outputs
         - Minor coding standards improvements
         - Added docstring and type hints
 
+    References:
+        - Implementation inspired by https://github.com/sksq96/pytorch-summary.
+
     Args:
-        model: network for which to print the summary.
-        input_size: shape of the input to the network's `forward` function.
-                    Can be multiple inputs, in which the input size should be a list of tuples, each indicating the
-                    shape of one input.
-        device: device on which the model is located.
-        batch_size: value to use for the batch size when printing the input/output shape of the model's layers.
-        dtypes: data types of the input to the model. Defaults to `FloatTensor` if not specified.
+        model: Network for which to print the summary.
+        input_size: Shape of the input to the network's `forward` function. Can be multiple inputs, in which the input
+            size should be a list of tuples, each indicating the shape of one input.
+        device: Device on which the model is located.
+        batch_size: Value to use for the batch size when printing the input/output shape of the model's layers.
+        dtypes: Data types of the input to the model. Defaults to `FloatTensor` if not specified.
 
     Returns:
-        - model summary string
-        - information about the parameters
-            - total number of parameters
-            - total number of trainable parameters
+        - Model summary string
+        - Information about the parameters
+            - Total number of parameters
+            - Total number of trainable parameters
     """
     if dtypes is None:
         dtypes = [torch.FloatTensor] * len(input_size)

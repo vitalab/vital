@@ -5,7 +5,8 @@ from torch import Tensor, nn
 
 
 class _InitialBlock(nn.Module):
-    """
+    """Implementation of the input block of the ENet model.
+
     The initial block is composed of two branches:
         1. a main branch which performs a regular convolution with stride 2.
         2. an extension branch which performs max-pooling. Doing both operations in parallel and concatenating their
@@ -21,15 +22,15 @@ class _InitialBlock(nn.Module):
         padding: int = 0,
         bias: bool = False,
         relu: bool = True,
-    ):
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            in_channels: the number of input channels.
-            out_channels: the number output channels.
-            kernel_size: the kernel size of the filters used in the convolution layer.
-            padding: zero-padding added to both sides of the input.
+            in_channels: Number of input channels.
+            out_channels: Number output channels.
+            kernel_size: Kernel size of the filters used in the convolution layer.
+            padding: Zero-padding added to both sides of the input.
             bias: Adds a learnable bias to the output if ``True``.
-            relu: When ``True`` ReLU is used as the activation function; otherwise, PReLU is used.
+            relu: When ``True``, ReLU is used as the activation function; otherwise, PReLU is used.
         """
         super().__init__()
 
@@ -90,21 +91,23 @@ class _RegularBottleneck(nn.Module):
         dropout: float = 0.0,
         bias: bool = False,
         relu: bool = True,
-    ):
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            channels: the number of input and output channels.
-            internal_ratio: a scale factor applied to ``channels`` used to compute the number of channels after the
-                            projection. eg. given ``channels`` equal to 128 and internal_ratio equal to 2 the number of
-                            channels after the projection is 64.
-            kernel_size: the kernel size of the filters used in the convolution layer described above in item 2 of the
-                         extension branch.
-            padding: zero-padding added to both sides of the input.
-            dilation: spacing between kernel elements for the convolution described in item 2 of the extension branch
-            asymmetric: flags if the convolution described in item 2 of the extension branch is asymmetric or not.
-            dropout: probability of an element to be zeroed (e.g. 0 means no dropout).
+            channels: Number of input and output channels.
+            internal_ratio: Scale factor applied to ``channels`` used to compute the number of channels after the
+                projection.
+
+                e.g. given ``channels`` equal to 128 and internal_ratio equal to 2 the number of channels
+                after the projection is 64.
+            kernel_size: Kernel size of the filters used in the convolution layer described above in item 2 of the
+                extension branch.
+            padding: Zero-padding added to both sides of the input.
+            dilation: Spacing between kernel elements for the convolution described in item 2 of the extension branch.
+            asymmetric: Flags if the convolution described in item 2 of the extension branch is asymmetric or not.
+            dropout: Probability of an element to be zeroed (e.g. 0 means no dropout).
             bias: Adds a learnable bias to the output if ``True``.
-            relu: When ``True`` ReLU is used as the activation function; otherwise, PReLU is used.
+            relu: When ``True``, ReLU is used as the activation function; otherwise, PReLU is used.
         """
         super().__init__()
 
@@ -232,22 +235,24 @@ class _DownsamplingBottleneck(nn.Module):
         dropout: float = 0.0,
         bias: bool = False,
         relu: bool = True,
-    ):
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            in_channels: the number of input channels.
-            out_channels: the number of output channels.
-            internal_ratio: a scale factor applied to ``channels`` used to compute the number of channels after the
-                            projection. eg. given ``channels`` equal to 128 and internal_ratio equal to 2 the number of
-                            channels after the projection is 64.
-            kernel_size: the kernel size of the filters used in the convolution layer described above in item 2 of the
-                         extension branch.
-            padding: zero-padding added to both sides of the input.
-            return_indices: if ``True``, will return the max indices along with the outputs. Useful when unpooling
-                            later.
-            dropout: probability of an element to be zeroed (e.g. 0 means no dropout).
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            internal_ratio: Scale factor applied to ``channels`` used to compute the number of channels after the
+                projection.
+
+                e.g. given ``channels`` equal to 128 and internal_ratio equal to 2 the number of channels after the
+                projection is 64.
+            kernel_size: Kernel size of the filters used in the convolution layer described above in item 2 of the
+                extension branch.
+            padding: Zero-padding added to both sides of the input.
+            return_indices: If ``True``, will return the max indices along with the outputs. Useful when unpooling
+                later.
+            dropout: Probability of an element to be zeroed (e.g. 0 means no dropout).
             bias: Adds a learnable bias to the output if ``True``.
-            relu: When ``True`` ReLU is used as the activation function; otherwise, PReLU is used.
+            relu: When ``True``, ReLU is used as the activation function; otherwise, PReLU is used.
         """
         super().__init__()
 
@@ -336,8 +341,7 @@ class _DownsamplingBottleneck(nn.Module):
 
 
 class _UpsamplingBottleneck(nn.Module):
-    """The upsampling bottlenecks upsample the feature map resolution using max pooling indices stored from the
-    corresponding downsampling bottleneck.
+    """Upsampling bottleneck using max pooling indices stored from corresponding downsampling bottlenecks.
 
     Main branch:
         1. 1x1 convolution with stride 1 that decreases the number of channels by ``internal_ratio``, also called a
@@ -361,20 +365,22 @@ class _UpsamplingBottleneck(nn.Module):
         dropout: float = 0.0,
         bias: bool = False,
         relu: bool = True,
-    ):
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            in_channels: the number of input channels.
-            out_channels: the number of output channels.
-            internal_ratio: a scale factor applied to ``in_channels`` used to compute the number of channels after the
-                            projection. eg. given ``in_channels`` equal to 128 and ``internal_ratio`` equal to 2 the
-                            number of channels after the projection is 64.
-            kernel_size: the kernel size of the filters used in the convolution layer described above in item 2 of the
-                         extension branch.
-            padding: zero-padding added to both sides of the input.
-            dropout: probability of an element to be zeroed (e.g. 0 means no dropout).
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            internal_ratio: Scale factor applied to ``in_channels`` used to compute the number of channels after the
+                projection.
+
+                e.g. given ``in_channels`` equal to 128 and ``internal_ratio`` equal to 2 the number of channels after
+                the projection is 64.
+            kernel_size: Kernel size of the filters used in the convolution layer described above in item 2 of the
+                extension branch.
+            padding: Zero-padding added to both sides of the input.
+            dropout: Probability of an element to be zeroed (e.g. 0 means no dropout).
             bias: Adds a learnable bias to the output if ``True``.
-            relu: When ``True`` ReLU is used as the activation function; otherwise, PReLU is used.
+            relu: When ``True``, ReLU is used as the activation function; otherwise, PReLU is used.
         """
         super().__init__()
 
@@ -455,7 +461,11 @@ class _UpsamplingBottleneck(nn.Module):
 
 
 class Enet(nn.Module):
-    """Generate the ENet model."""
+    """Implementation of the ENet model.
+
+    References:
+        - Paper that introduced the model: http://arxiv.org/abs/1606.02147
+    """
 
     def __init__(
         self,
@@ -465,19 +475,19 @@ class Enet(nn.Module):
         dropout: float = 0.1,
         encoder_relu: bool = True,
         decoder_relu: bool = True,
-    ):
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            in_channels: the number of channels in the input images.
-            out_channels: the number of classes to segment.
-            init_channels: number of output feature maps from the first layer, used to compute the number of feature
-                           maps in following layers.
-            dropout: probability of an element to be zeroed (e.g. 0 means no dropout).
-                     NOTE: In the initial block, the dropout probability is divided by 10.
-            encoder_relu: When ``True`` ReLU is used as the activation function in the encoder blocks/layers;
-                          otherwise, PReLU is used.
-            decoder_relu:  When ``True`` ReLU is used as the activation function in the decoder blocks/layers;
-                           otherwise, PReLU is used.
+            in_channels: Number of channels in the input images.
+            out_channels: Number of classes to segment.
+            init_channels: Number of output feature maps from the first layer, used to compute the number of feature
+                maps in following layers.
+            dropout: Probability of an element to be zeroed (e.g. 0 means no dropout).
+                NOTE: In the initial block, the dropout probability is divided by 10.
+            encoder_relu: When ``True`` ReLU is used as the activation function in the encoder blocks/layers; otherwise,
+                PReLU is used.
+            decoder_relu: When ``True`` ReLU is used as the activation function in the decoder blocks/layers; otherwise,
+                PReLU is used.
         """
         super().__init__()
 
@@ -560,10 +570,10 @@ class Enet(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            x: (N, ``in_channels``, H, W), input image to segment.
+            x: (N, ``in_channels``, H, W), Input image to segment.
 
         Returns:
-            y_hat: (N, ``out_channels``, H, W), raw, unnormalized scores for each class in the input's segmentation.
+            (N, ``out_channels``, H, W), Raw, unnormalized scores for each class in the input's segmentation.
         """
         # Initial block
         x = self.initial_block(x)

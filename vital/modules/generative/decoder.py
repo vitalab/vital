@@ -13,15 +13,15 @@ class Decoder(nn.Module):
 
     def __init__(
         self, image_size: Tuple[int, int], out_channels: int, blocks: int, init_channels: int, latent_dim: int
-    ):
+    ):  # noqa: D205,D212,D415
         """
         Args:
-            image_size: size of the output segmentation groundtruth for each axis.
-            out_channels: number of channels of the image to reconstruct.
-            blocks: number of upsampling transposed convolution blocks to use.
-            init_channels: number of output feature maps from the last layer before the classifier, used to compute the
-                           number of feature maps in preceding layers.
-            latent_dim: number of dimensions in the latent space.
+            image_size: Size of the output segmentation groundtruth for each axis.
+            out_channels: Number of channels of the image to reconstruct.
+            blocks: Number of upsampling transposed convolution blocks to use.
+            init_channels: Number of output feature maps from the last layer before the classifier, used to compute the
+                number of feature maps in preceding layers.
+            latent_dim: Number of dimensions in the latent space.
         """
         super().__init__()
 
@@ -67,10 +67,10 @@ class Decoder(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            z: (N, ``latent_dim``), encoding of the input in the latent space.
+            z: (N, ``latent_dim``), Encoding of the input in the latent space.
 
         Returns:
-            y_hat: (N, ``channels``, H, W), raw, unnormalized scores for each class in the input's reconstruction.
+            (N, ``channels``, H, W), Raw, unnormalized scores for each class in the input's reconstruction.
         """
         features = self.encoding2features(z)
         features = self.features2output(features.view((-1, *self.feature_shape)))

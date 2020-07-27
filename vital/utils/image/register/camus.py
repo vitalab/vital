@@ -9,23 +9,26 @@ from vital.utils.image.register.affine import AffineRegisteringTransformer, Crop
 
 
 class CamusRegisteringTransformer(AffineRegisteringTransformer):
-    """Class that allows to register CAMUS dataset's image/segmentation pairs by implementing algorithms for finding
-    the affine registering parameters. These parameters are obtained based on the content of the segmentation maps and
-    not the input MRI image. The goal of this registration is to shift the centroid of the epicardium in the middle
-    of the image and rotate the image so the major axis of the left ventricle is vertically aligned.
+    """Class that allows to register CAMUS dataset's image/segmentation pairs.
+
+    The goal of this registration is to shift the centroid of the epicardium in the middle of the image and rotate the
+    image so the major axis of the left ventricle is vertically aligned.
+
+    It inherits the image transformation utilities from `AffineRegisteringTransformer`, and only has to implement the
+    algorithsm for finding the affine registering parameters. These parameters are obtained based on the content of the
+    segmentation maps and not the input MRI image.
     """
 
     registering_steps = ["shift", "rotation", "crop"]
 
     def _compute_shift_parameters(self, segmentation: np.ndarray) -> Shift:
-        """Computes the pixel shift to apply along each axis to center the segmentation around the epicardium
-        structure.
+        """Computes the pixel shift along each axis to center the segmentation around the epicardium structure.
 
         Args:
-            segmentation: segmentation for which to compute shift parameters.
+            segmentation: Segmentation for which to compute shift parameters.
 
         Returns:
-            pixel shift to apply along each axis to center the segmentation around the epicardium structure.
+            Pixel shift along each axis to center the segmentation around the epicardium structure.
         """
         # Find the bottom limit of the atrium
         # (using a bounding box encompassing all segmentation classes)
@@ -43,15 +46,13 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
         return rows_shift, columns_shift
 
     def _compute_rotation_parameters(self, segmentation: np.ndarray) -> Rotation:
-        """Computes the angle of the rotation to apply to align the segmentation so that the major axis of the left
-        ventricle ellipse is perfectly vertical.
+        """Computes the rotation to align the major axis of the left ventricle ellipse with the vertical axis.
 
         Args:
-            segmentation: segmentation for which to compute rotation parameters.
+            segmentation: Segmentation for which to compute rotation parameters.
 
         Returns:
-            angle of the rotation to apply to align the segmentation so that the major axis of the left ventricle is
-            perfectly vertical.
+            Angle of the rotation to align the major axis of the left ventricle with the vertical axis.
         """
         left_ventricle_mask = segmentation[..., Label.ENDO.value]
         if np.any(left_ventricle_mask):  # If the left ventricle is present in the image
@@ -70,16 +71,15 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
         return rotation_angle
 
     def _compute_crop_parameters(self, segmentation: np.ndarray, margin: float = 0.05) -> Crop:
-        """Computes the coordinates of a square bounding box (bbox) around all segmented classes, crops the bbox and
-        resizes it to a predefined target shape.
+        """Computes the coordinates of an isotropic bounding box around all segmented classes.
 
         Args:
-            segmentation: segmentation for which to compute crop parameters.
-            margin: ratio by which to enlarge the bbox from the closest possible fit, so as to leave a slight margin at
-                    the edges of the bbox.
+            segmentation: Segmentation for which to compute crop parameters.
+            margin: Ratio by which to enlarge the bbox from the closest possible fit, so as to leave a slight margin at
+                the edges of the bbox.
 
         Returns:
-            original shape and coordinates of the bbox, in the following order:
+            Original shape and coordinates of the bbox, in the following order:
             height, width, row_min, col_min, row_max, col_max.
         """
         # Get the best fitting bbox around the segmented structures
@@ -100,15 +100,15 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
     # Uncomment following function to enable "zoom to fit" registration step
     #
     # def _compute_zoom_to_fit_parameters(self, segmentation: np.ndarray, margin: float = 0.1) -> Zoom:
-    #     """Computes the zoom to apply along each axis to fit the bounding box surrounding the segmented classes.
+    #     """Computes the zoom along each axis to fit the bounding box surrounding the segmented classes.
     #
     #     Args:
-    #         segmentation: segmentation for which to compute zoom to fit parameters.
-    #         margin: ratio of image shape to ignore when computing zoom so as to leave empty border around the image
-    #                 when fitting.
+    #         segmentation: Segmentation for which to compute zoom to fit parameters.
+    #         margin: Ratio of image shape to ignore when computing zoom so as to leave empty border around the image
+    #             when fitting.
     #
     #     Returns:
-    #         zoom to apply along each axis to fit the bounding box surrounding the segmented classes.
+    #         Zoom along each axis to fit the bounding box surrounding the segmented classes.
     #     """
     #     # Find dimensions of the bounding box encompassing all segmentation classes
     #     segmentation_mask = (

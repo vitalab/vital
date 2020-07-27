@@ -62,6 +62,7 @@ pre-commit install
 > - [isort](https://github.com/timothycrosley/isort): [`pyproject.toml`](./pyproject.toml), `[tool.isort]` section
 > - [black](https://github.com/psf/black): [`pyproject.toml`](./pyproject.toml), `[tool.black]` section
 > - [flake8](https://gitlab.com/pycqa/flake8): [`setup.cfg`](./setup.cfg), `[flake8]` section
+> - [pydocstyle](https://github.com/pycqa/pydocstyle): [`setup.cfg`](./setup.cfg), `[pydocstyle]` section
 >
 > However, be advised that `isort` must be configured slightly differently in each project. The `src_paths` tag
 > should thus reflect the package directory name of the current project, in place of `vital`.

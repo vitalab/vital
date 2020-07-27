@@ -7,16 +7,15 @@ import SimpleITK
 
 
 def load_mhd(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[Number, ...], ...]]:
-    """This function loads a mhd image and returns the image and its metadata.
+    """Loads a mhd image and returns the image and its metadata.
 
     Args:
-        filepath: path to the image.
+        filepath: Path to the image.
 
     Returns:
-        - ([N], H, W), image array.
-        - collection of metadata.
+        - ([N], H, W), Image array.
+        - Collection of metadata.
     """
-
     # load image and save info
     image = SimpleITK.ReadImage(str(filepath))
     info = (image.GetSize(), image.GetOrigin(), image.GetSpacing(), image.GetDirection())
