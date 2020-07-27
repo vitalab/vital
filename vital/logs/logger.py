@@ -11,27 +11,26 @@ from vital.logs.utils.itertools import IterableResult, Result
 class Logger:
     """Abstract class used for logging results during the evaluation phase."""
 
-    IterableResultT: Type[IterableResult[Result]]  # Iterable over which the logs are generated.
-    Log: Type = None  # Type of the data returned by logging a single result, if any.
-    desc: str  # Description of the logger. Used in e.g. progress bar, logs file name, etc.
+    IterableResultT: Type[IterableResult[Result]]  #: Iterable over which the logs are generated.
+    Log: Type = None  #: Type of the data returned by logging a single result, if any.
+    desc: str  #: Description of the logger. Used in e.g. progress bar, logs file name, etc.
 
-    def __init__(self, output_name_template: str = None, **iterable_result_params):
+    def __init__(self, output_name_template: str = None, **iterable_result_params):  # noqa: D205,D212,D415
         """
         Args:
-            output_name_template: name template for the aggregated log, if the logger produces an aggregated log.
-            iterable_result_params: parameters to configure the iterable over the results. Can be None if the logger
-                                    will only be used to write logs (and not called).
+            output_name_template: Name template for the aggregated log, if the logger produces an aggregated log.
+            iterable_result_params: Parameters to configure the iterable over the results. Can be ``None`` if the logger
+                will only be used to write logs (and not called).
         """
         self.iterable_result_params = iterable_result_params
         self.output_name_template = output_name_template
 
-    def __call__(self, results_path: Path, output_folder: Path):
-        """ Iterates over a set of results and logs the result of the evaluation to a format defined by the
-        implementation of the abstract class.
+    def __call__(self, results_path: Path, output_folder: Path) -> None:
+        """Iterates over a set of results and logs the result of the evaluation to a logger-specifc format.
 
         Args:
-            results_path: root path of the results to log.
-            output_folder: path where to save the logs.
+            results_path: Root path of the results to log.
+            output_folder: Path where to save the logs.
         """
         self.output_folder = output_folder
         self.output_folder.mkdir(parents=True, exist_ok=True)
@@ -63,24 +62,24 @@ class Logger:
                 )
 
     def _log_result(self, result: Result) -> Optional[Tuple[str, "Log"]]:
-        """ Generates a log (either writing to a file or computing a result to aggregate) for a single result.
+        """Generates a log (either writing to a file or computing a result to aggregate) for a single result.
 
         Args:
-            result: data structure holding all the information relevant to generate a log for a single result.
+            result: Data structure holding all the information relevant to generate a log for a single result.
 
         Returns:
-            - identifier of the result for which the logs where generated.
-            - generated log for the result, to aggregate with logs generated for other results.
-            or None
+            If not ``None``:
+            - Identifier of the result for which the logs where generated.
+            - Generated log for the result, to aggregate with logs generated for other results.
         """
         raise NotImplementedError
 
-    def aggregate_logs(self, logs: Mapping[str, "Log"], output_path: Path):
-        """ Collects the logs aggregated from all the results, and performs operations on the aggregated logs.
+    def aggregate_logs(self, logs: Mapping[str, "Log"], output_path: Path) -> None:
+        """Collects the logs aggregated from all the results, and performs operations on the aggregated logs.
 
         Args:
-            logs: mapping between each result in the iterable results and their log.
-            output_path: path where to write the results of the operations on the aggregated logs..
+            logs: Mapping between each result in the iterable results and their log.
+            output_path: Path where to write the results of the operations on the aggregated logs.
         """
         if self.Log is None:
             pass
@@ -89,32 +88,36 @@ class Logger:
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
-        """ Creates parser with support for generic logger and iterable arguments.
+        """Creates parser with support for generic logger and iterable arguments.
 
         Returns:
-           parser object with support for generic logger and iterable arguments.
+           Parser object with support for generic logger and iterable arguments.
         """
         parser = ArgumentParser()
         parser.add_argument("--results_path", type=Path, required=True, help="Path to a HDF5 file of results to log")
         parser.add_argument(
             "--output_folder", type=Path, default="logs", help="Path to the directory in which to save the logs"
         )
-        cls.IterableResultT.add_args(parser)
+        parser = cls.IterableResultT.add_args(parser)
         return parser
 
     @classmethod
-    def add_data_selection_args(cls, parser: ArgumentParser, choices: Sequence[str]):
-        """ Adds data selection arguments to a parser.
+    def add_data_selection_args(cls, parser: ArgumentParser, choices: Sequence[str]) -> ArgumentParser:
+        """Adds data selection arguments to a parser.
 
         Args:
-           parser: parser object for which to add arguments handling data selection.
-           choices: tags of the data the logger can be called on. The first tag in the list is the default choice.
+           parser: Parser object for which to add arguments handling data selection.
+           choices: Tags of the data the logger can be called on. The first tag in the list is the default choice.
+
+        Returns:
+            Parser object with support for arguments handling data selection.
         """
         parser.add_argument("--data", type=str, default=choices[0], choices=choices, help="Results data to log.")
+        return parser
 
     @classmethod
     def main(cls):
-        """Generic main that handles CLI and logger calling for use in loggers that could be executable scripts"""
+        """Generic main that handles CLI and logger calling for use in loggers that could be executable scripts."""
         parser = cls.build_parser()
         kwargs = vars(parser.parse_args())
 

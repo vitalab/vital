@@ -1,3 +1,6 @@
+# Disable flak8 entirely because this file was mostly copied over from external sources and
+# the quality of the codebase and documentation is not up to par with the project's standards
+# flake8: noqa
 import math
 from numbers import Real
 from typing import Mapping, Sequence, Tuple
@@ -11,14 +14,14 @@ from vital.utils.image.transform import resize_image
 def compute_left_ventricle_volumes(
     segmentations: Mapping[str, np.ndarray], voxelspacings: Mapping[str, Tuple[Real, Real]]
 ) -> Tuple[Real, Real]:
-    """ Computes the ED and ES volumes of the left ventricle from 2 orthogonal 2D segmentations (2CH and 4CH).
+    """Computes the ED and ES volumes of the left ventricle from 2 orthogonal 2D segmentations (2CH and 4CH).
 
     Args:
-        segmentations: segmentations as a 3d array of [ED, EV] for each view.
-        voxelspacings: the size of the segmentations' voxels along each (height, width) dimension (in mm) for each view.
+        segmentations: Segmentations as a 3d array of [ED, EV] for each view.
+        voxelspacings: Size of the segmentations' voxels along each (height, width) dimension (in mm) for each view.
 
     Returns:
-        the left ventricle ED and ES volumes.
+        Left ventricle ED and ES volumes.
     """
     step_sizes = []
     diameters = {"ED": [], "ES": []}
@@ -35,14 +38,14 @@ def compute_left_ventricle_volumes(
 
 
 def _compute_left_ventricle_volume_by_instant(diameters: Sequence[np.ndarray], step_size: Real) -> Real:
-    """ Calculate left ventricle volume using Biplane Simpson's method.
+    """Compute left ventricle volume using Biplane Simpson's method.
 
     Args:
-        diameters: diameters for each view.
+        diameters: Diameters for each view.
         step_size:
 
     Returns:
-        left ventricle volume (in millilitres).
+        Left ventricle volume (in millilitres).
     """
     diameters_2ch, diameters_4ch = diameters
 
@@ -104,12 +107,10 @@ def _compute_diameters(segmentation: np.ndarray, voxelspacing: Tuple[Real, Real]
     """
 
     Args:
-        segmentation: binary segmentation of the structure for which to find the diameter.
-        voxelspacing: the size of the segmentations' voxels along each (height, width) dimension (in mm).
+        segmentation: Binary segmentation of the structure for which to find the diameter.
+        voxelspacing: Size of the segmentations' voxels along each (height, width) dimension (in mm).
 
     Returns:
-        -
-        -
     """
 
     # Make image isotropic, have same spacing in both directions.

@@ -14,23 +14,24 @@ class MetricsLogger(Logger):
     """Abstract class that computes metrics on the results and saves them to csv."""
 
     Log = Mapping[str, Real]
-    data_choices: Sequence[str]  # tags of the data on which to compute metrics.
+    data_choices: Sequence[str]  #: Tags of the data on which to compute metrics
 
-    def __init__(self, data: str, **kwargs):
+    def __init__(self, data: str, **kwargs):  # noqa: D205,D212,D415
         """
         Args:
-            data: tag of the data on which to compute metrics.
+            data: Tag of the data on which to compute metrics.
+            **kwargs: Additional parameters to pass along to ``super().__init__()``.
         """
         super().__init__(output_name_template=f"{{}}_{data}_{self.desc}.csv", **kwargs)
         self.data = data
 
     @classmethod
-    def aggregate_logs(cls, logs: Mapping[str, Log], output_path: Path):
-        """ Writes the computed metrics, with the aggregated results at the top, to csv format.
+    def aggregate_logs(cls, logs: Mapping[str, Log], output_path: Path) -> None:
+        """Writes the computed metrics, with the aggregated results at the top, to csv format.
 
         Args:
-            logs: mapping between each result in the iterable results and their metrics' values.
-            output_path: the name of the metrics' csv file to be produced as output.
+            logs: Mapping between each result in the iterable results and their metrics' values.
+            output_path: Name of the metrics' csv file to be produced as output.
         """
         df_metrics = pd.DataFrame.from_dict(logs, orient="index")
 
@@ -44,23 +45,23 @@ class MetricsLogger(Logger):
 
     @classmethod
     def _aggregate_metrics(cls, metrics: pd.DataFrame) -> pd.DataFrame:
-        """ Computes global statistics on the metrics computed over each result.
+        """Computes global statistics on the metrics computed over each result.
 
         Args:
-            metrics: metrics computed over each result.
+            metrics: Metrics computed over each result.
 
         Returns:
-            global statistics on the metrics computed over each result.
+            Global statistics on the metrics computed over each result.
         """
         return metrics.agg(["mean", "std"])
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
-        """ Creates parser with support for generic metrics and iterable logger arguments.
+        """Creates parser with support for generic metrics and iterable logger arguments.
 
         Returns:
-          parser object with support for generic metrics and iterable logger arguments.
+            Parser object with support for generic metrics and iterable logger arguments.
         """
         parser = super().build_parser()
-        super().add_data_selection_args(parser, choices=cls.data_choices)
+        parser = super().add_data_selection_args(parser, choices=cls.data_choices)
         return parser

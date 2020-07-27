@@ -1,12 +1,20 @@
 import inspect
 
 
-def custom_dir(c, add):
+def _custom_dir(c, add):
     return dir(type(c)) + list(c.__dict__.keys()) + add
 
 
 def delegate_inheritance(to=None, keep=False):
-    "Decorator: replace `**kwargs` in signature with params from `to`"
+    """Replaces ``**kwargs`` in signature with params from ``to``.
+
+    Args:
+        to: Decorated object.
+        keep: If ``True``, keeps ``**kwargs``, with its values, as part of the signature.
+
+    Returns:
+        Decorated object where ``**kwargs`` in signature is replaced with params from ``to``.
+    """
 
     def _f(f):
         if to is None:
@@ -31,16 +39,16 @@ def delegate_inheritance(to=None, keep=False):
 
 
 class DelegateComposition:
-    "Base class for attr accesses in `self._xtra` passed down to `self.default`"
+    """Base class for attr accesses in ``self._xtra`` passed down to ``self.default``."""
 
     @property
     def _xtra(self):
         return [o for o in dir(self.default) if not o.startswith("_")]
 
-    def __getattr__(self, k):
+    def __getattr__(self, k):  # noqa: D105
         if k in self._xtra:
             return getattr(self.default, k)
         raise AttributeError(k)
 
-    def __dir__(self):
-        return custom_dir(self, self._xtra)
+    def __dir__(self):  # noqa: D105
+        return _custom_dir(self, self._xtra)
