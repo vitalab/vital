@@ -5,7 +5,7 @@ from typing import Mapping, Sequence
 
 import pandas as pd
 
-from vital.logs.logger import Logger
+from vital.loggers.logger import Logger
 from vital.utils.delegate import delegate_inheritance
 
 

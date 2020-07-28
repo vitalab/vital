@@ -22,7 +22,7 @@ To help you follow along with the organization of the repository, here is a summ
 - [data](vital/data): utilities to process and interface with common medical image datasets, from processing raw image
 files (e.g. `.mhd` or `nii.gz`) to implementations of torchvision's `VisionDataset`.
 
-- [logs](vital/logs): generic utilities for logging results during the evaluation phase.
+- [loggers](vital/loggers): generic utilities for logging results during the evaluation phase.
 
 - [metrics](vital/metrics): common metrics that are not part of the traditional libraries, whether those metrics are
 losses for training (see [train](vital/metrics/train)) or scores to evaluate the systems' performance (see

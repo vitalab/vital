@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import umap
 
-from vital.logs.logger import Logger
+from vital.loggers.logger import Logger
 from vital.utils.delegate import delegate_inheritance
 
 logger = logging.getLogger(__name__)
