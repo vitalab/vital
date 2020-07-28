@@ -9,8 +9,8 @@ class DataParameters:
     """Class for defining parameters related to the nature of the data.
 
     Args:
-        in_shape: shape of the input data (e.g. height, width, channels).
-        out_shape: shape of the target data (e.g. height, width, channels).
+        in_shape: Shape of the input data (e.g. height, width, channels).
+        out_shape: Shape of the target data (e.g. height, width, channels).
     """
 
     in_shape: Tuple[int, ...]
