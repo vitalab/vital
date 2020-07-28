@@ -27,11 +27,11 @@ jobs:
       - name: Install code formatting packages
         run: pip install isort black flake8 flake8-docstrings
 
-      - name: Run Black
-        run: black --config=./pyproject.toml --check .
-
       - name: Run isort
         run: isort --settings-path=./pyproject.toml --check-only .
+
+      - name: Run Black
+        run: black --config=./pyproject.toml --check .
 
       - name: Run flake8
         run: flake8 --config=./setup.cfg .
