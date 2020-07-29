@@ -26,8 +26,8 @@ class ViewData:
     Args:
         gt: Unprocessed groundtruths, used as reference when evaluating models' scores.
         info: Images' metadata.
-        instants_with_gt: Mapping between instants that have manually annotated segmentations and their indices in the
-            view.
+        instants_with_gt: Mapping between labels of instants that have manually annotated segmentations and their
+            indices in the view.
         registering: Parameters applied originally to register the images and groundtruths.
     """
 
