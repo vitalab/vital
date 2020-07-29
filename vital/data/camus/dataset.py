@@ -115,10 +115,6 @@ class Camus(VisionDataset):
     def __len__(self):  # noqa: D105
         return len(self.item_list)
 
-    def get_num_classes(self) -> int:
-        """Counts the number of segmentation classes present in the dataset."""
-        return len(self.labels)
-
     def _get_patient_paths(self) -> List[str]:
         """Lists paths to the patients, from the requested ``self.image_set``, inside the HDF5 file.
 
