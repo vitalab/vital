@@ -33,7 +33,7 @@ class CrossValidationDatasetGenerator:
 
     _subset_names_in_data: Dict[Subset, Literal["training", "validation", "testing"]] = {
         Subset.TRAIN: "training",
-        Subset.VALID: "validation",
+        Subset.VAL: "validation",
         Subset.TEST: "testing",
     }
 
