@@ -49,14 +49,14 @@ class DataTag(Enum):
 class Subset(DataTag):
     """Enumeration to gather tags referring to commonly used subsets of a whole dataset.
 
-    Args:
-        train: ID of the training subset.
-        valid: ID of the validation subset.
-        test: ID of the testing subset.
+    Attributes:
+        TRAIN: Label of the training subset.
+        VAL: Label of the validation subset.
+        TEST: Label of the testing subset.
     """
 
     TRAIN = "train"
-    VALID = "valid"
+    VAL = "val"
     TEST = "test"
 
 

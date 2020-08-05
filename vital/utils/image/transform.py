@@ -44,18 +44,34 @@ def remove_labels(segmentation: np.ndarray, labels_to_remove: Sequence[int], fil
     return seg
 
 
-def segmentation_to_tensor(segmentation: np.ndarray, dtype: str = "int64") -> Tensor:
+def segmentation_to_tensor(segmentation: np.ndarray, flip_channels: bool = False, dtype: str = "int64") -> Tensor:
     """Converts a segmentation map to a tensor, including reordering the dimensions.
 
     Args:
-        segmentation: (H, W, [C]), Segmentation map to convert to a tensor.
+        segmentation: ([N], H, W, [C]), Segmentation map to convert to a tensor.
+        flip_channels: If ``True``, assumes that the input is in `channels_last` mode and will automatically convert it
+            to `channels_first` mode. If ``False``, leaves the ordering of dimensions untouched.
         dtype: Data type expected for the converted tensor, as a string
             (`float32`, `float64`, `int32`...).
 
     Returns:
-        ([C], H, W), Segmentation map converted to a tensor.
+        ([N], [C], H, W), Segmentation map converted to a tensor.
+
+    Raises:
+        ValueError: When reordering from `channels_last` to `channel_first`, the segmentation provided is neither 2D nor
+            3D (only shapes supported when reordering channels).
     """
-    if len(segmentation.shape) == 3:  # If there is a specific channel dimension
-        # Change format from channel last (H, W, C) to channel first (C, H, W)
-        segmentation = segmentation.transpose((2, 0, 1))
+    if flip_channels:  # If there is a specific channel dimension
+        if len(segmentation.shape) == 3:  # If it is a single segmentation
+            dim_to_transpose = (2, 0, 1)
+        elif len(segmentation.shape) == 4:  # If there is a batch dimension to keep first
+            dim_to_transpose = (0, 3, 1, 2)
+        else:
+            raise ValueError(
+                "Segmentation to convert to tensor is expected to be a single segmentation (2D), "
+                "or a batch of segmentations (3D): \n"
+                f"The segmentation to convert is {len(segmentation.shape)}D."
+            )
+        # Change format from `channel_last`, i.e. ([N], H, W, C), to `channel_first`, i.e. ([N], C, H, W)
+        segmentation = segmentation.transpose(dim_to_transpose)
     return torch.from_numpy(segmentation.astype(dtype))

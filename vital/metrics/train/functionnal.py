@@ -50,19 +50,15 @@ def tversky_score(
             scores[i - bg] += no_fg_score
             continue
 
-        # Derivable version of the usual TP, FP and FN stats
+        # Differentiable version of the usual TP, FP and FN stats
         class_pred = pred[:, i, ...]
         tp = (class_pred * (target == i)).sum()
         fp = (class_pred * (target != i)).sum()
         fn = ((1 - class_pred) * (target == i)).sum()
 
         denom = tp + (beta * fp) + ((1 - beta) * fn)
-
-        if torch.isclose(denom, torch.zeros_like(denom)).any():
-            # nan result
-            score_cls = nan_score
-        else:
-            score_cls = tp / denom
+        # nan result
+        score_cls = tp / denom if torch.is_nonzero(denom) else nan_score
 
         scores[i - bg] += score_cls
     return reduce(scores, reduction=reduction)

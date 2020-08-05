@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import List, Sequence, Tuple, Union
+from typing import Dict, List, Sequence, Tuple, Union
 
 import numpy as np
 import torch
@@ -44,7 +44,7 @@ def summary_info(
     summary_str = ""
 
     def register_hook(module: nn.Module) -> None:
-        def hook(module: nn.Module, input: Tuple[torch.Tensor], output: torch.Tensor) -> None:
+        def hook(module: nn.Module, input: Tuple[torch.Tensor], output: Union[torch.Tensor, Tuple, List, Dict]) -> None:
             class_name = str(module.__class__).split(".")[-1].split("'")[0]
             module_idx = len(summary)
 
@@ -52,6 +52,8 @@ def summary_info(
             summary[m_key] = OrderedDict()
             summary[m_key]["input_shape"] = list(input[0].size())
             summary[m_key]["input_shape"][0] = batch_size
+            if isinstance(output, dict):
+                output = list(output.values())
             if isinstance(output, (list, tuple)):
                 summary[m_key]["output_shape"] = [[-1] + list(o.size())[1:] for o in output]
             else:

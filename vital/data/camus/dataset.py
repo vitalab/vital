@@ -23,8 +23,8 @@ class DataParameters(vital.utils.parameters.DataParameters):
     """Extension of the generic ``DataParameters`` dataclass for CAMUS-specific parameters.
 
     Args:
-        in_shape: (height, width, channels) shape of the input data.
-        out_shape: (height, width, channels) shape of the target data.
+        in_shape: (height, width, channels) Shape of the input data.
+        out_shape: (height, width, channels) Shape of the target data.
         use_sequence_index: Whether to use instants' normalized indices in the sequence.
     """
 
@@ -101,7 +101,7 @@ class Camus(VisionDataset):
         Notes:
             - When in ``predict`` mode (i.e. for test-time inference), an item corresponds to the views' ultrasound
               images and groundtruth segmentations for a patient.
-            - When not in ``predict`` mode (i.e. during training), an item corresponds to a image/segmentation pair for
+            - When not in ``predict`` mode (i.e. during training), an item corresponds to an image/segmentation pair for
               a single frame.
 
         Args:
@@ -114,10 +114,6 @@ class Camus(VisionDataset):
 
     def __len__(self):  # noqa: D105
         return len(self.item_list)
-
-    def get_num_classes(self) -> int:
-        """Counts the number of segmentation classes present in the dataset."""
-        return len(self.labels)
 
     def _get_patient_paths(self) -> List[str]:
         """Lists paths to the patients, from the requested ``self.image_set``, inside the HDF5 file.

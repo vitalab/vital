@@ -39,6 +39,9 @@ class VitalSystem(pl.LightningModule, ABC):
         #: Collection of hyperparameters configuring the system
         self.hparams = hparams
 
+        # Ensure output directory exists
+        self.hparams.default_root_dir.mkdir(parents=True, exist_ok=True)
+
     def save_model_summary(self, system_input_shape: Tuple[int, ...]) -> None:
         """Saves a summary of the model in a format similar to Keras' summary.
 

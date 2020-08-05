@@ -21,11 +21,13 @@ The dataset itself is available from the [challenge web page](https://www.creati
 ### Cross validation
 Once you have downloaded the dataset and extracted its content from the archive:
 ```bash
-# generate the cross validation subfold HDF5 files
-# (by default in the current working directory)
-# NOTE: this step could take quite a bit of time (up to a few hours)
-python cross_validation_dataset_generator.py \
-  --data {path to the extracted data}
+# list cross validation HDF5 dataset generation options
+python dataset_generator.py -h
+
+# generate the cross validation HDF5 dataset with default options
+# NOTE: this command could take a bit of time to finish
+#       (up to 2 hours depending on the chosen options)
+python dataset_generator.py {path to the extracted data}
 ```
-Once you've finished generating the cross validation subfolds, any of the generated HDF5 files can be used through the
+Once you've finished generating the cross validation dataset, it can be used through the
 [CAMUS `VisionDataset` interface](dataset.py) to train and evaluate models.

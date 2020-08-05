@@ -32,7 +32,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
         self.labels = [str(label) for label in self.hparams.labels]
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
-        common_args = {
+        common_kwargs = {
             "path": self.hparams.dataset_path,
             "fold": self.hparams.fold,
             "labels": self.hparams.labels,
@@ -40,9 +40,9 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             "use_sequence_index": self.data_params.use_sequence_index,
         }
         self.dataset = {
-            Subset.TRAIN: Camus(image_set=Subset.TRAIN, **common_args),
-            Subset.VALID: Camus(image_set=Subset.VALID, **common_args),
-            Subset.TEST: Camus(image_set=Subset.TEST, predict=True, **common_args),
+            Subset.TRAIN: Camus(image_set=Subset.TRAIN, **common_kwargs),
+            Subset.VAL: Camus(image_set=Subset.VAL, **common_kwargs),
+            Subset.TEST: Camus(image_set=Subset.TEST, predict=True, **common_kwargs),
         }
 
     def train_dataloader(self) -> DataLoader:  # noqa: D102
@@ -56,7 +56,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
 
     def val_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(
-            self.dataset[Subset.VALID],
+            self.dataset[Subset.VAL],
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.workers,
             pin_memory=self.device.type == "cuda",
