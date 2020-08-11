@@ -20,5 +20,12 @@ class IterableResult(Iterable[Result], Sized, ABC):
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Adds arguments required to configure the iterable results to logger's CLI."""
+        """Adds arguments required to configure the iterable results to logger's CLI.
+
+        Args:
+            parser: Parser object for which to add arguments for filtering results on which to iterate.
+
+        Returns:
+            Parser object with support for arguments for filtering results on which to iterate.
+        """
         return parser
