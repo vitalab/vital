@@ -47,19 +47,27 @@ class VitalTrainer(ABC):
         Args:
             hparams: Arguments parsed from the CLI.
         """
-        trainer = Trainer.from_argparse_args(hparams)
         system_cls = cls._get_selected_system(hparams)
 
-        if hparams.pretrained:  # Load pretrained model if checkpoint is provided
-            model = system_cls.load_from_checkpoint(hparams.pretrained)
+        if hparams.resume:
+            trainer = Trainer.resume_from_checkpoint(hparams.checkpoint)
+        else:
+            trainer = Trainer.from_argparse_args(hparams)
+
+        if hparams.checkpoint:  # Load pretrained model if checkpoint is provided
+            model = system_cls.load_from_checkpoint(hparams.checkpoint)
+        else:
+            model = system_cls(hparams)
 
         if hparams.train:
-            model = system_cls(hparams)
             trainer.fit(model)
 
             # Copy best model checkpoint to a fixed path
             best_model_path = cls._define_best_model_save_path(hparams)
             copy2(str(trainer.checkpoint_callback.best_model_path), str(best_model_path))
+
+            # Ensure we use the best weights (and not the latest ones) by loading back the best model
+            model = system_cls.load_from_checkpoint(str(best_model_path))
 
         if hparams.test:
             trainer.test(model)
@@ -139,7 +147,12 @@ class VitalTrainer(ABC):
             Parser object to which generic custom arguments have been added.
         """
         # save/load parameters
-        parser.add_argument("--pretrained", type=Path, help="Path to Lightning module checkpoints to restore system")
+        parser.add_argument("--checkpoint", type=Path, help="Path to Lightning module checkpoints to restore system")
+        parser.add_argument(
+            "--resume",
+            action="store_true",
+            help="Disregard any other CLI configuration and restore exact state from the checkpoint",
+        )
 
         # run parameters
         parser.add_argument(
@@ -170,16 +183,24 @@ class VitalTrainer(ABC):
 
         Raises:
             ValueError: If invalid combinations of arguments are specified by the user.
-                - ``--skip_train`` flag is active without a ``--pretrained`` checkpoint being provided.
+                - ``--skip_train`` flag is active without a ``--checkpoint`` being provided.
+                - ``--resume`` flag is active without a ``--checkpoint`` being provided.
         """
         args = parser.parse_args()
 
-        if not args.train and not args.pretrained:
-            raise ValueError(
-                "Trainer set to skip training (`--skip_train` flag) without a pretrained model provided. \n"
-                "Please allow model to train (remove `--skip_train` flag) or "
-                "provide a pretrained model (through `--pretrained` parameter)."
-            )
+        if not args.checkpoint:
+            if not args.train:
+                raise ValueError(
+                    "Trainer set to skip training (`--skip_train` flag) without a checkpoint provided. \n"
+                    "Either allow model to train (remove `--skip_train` flag) or "
+                    "provide a pretrained model (through `--checkpoint` parameter)."
+                )
+            if args.resume:
+                raise ValueError(
+                    "Cannot use flag `--resume` without a checkpoint from which to resume. \n"
+                    "Either allow the model to start over (remove `--resume` flag) or "
+                    "provide a saved checkpoint (through `--checkpoint` flag)"
+                )
 
         # If output dir is specified, cast it os Path
         if args.default_root_dir is not None:
