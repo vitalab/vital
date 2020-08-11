@@ -15,15 +15,20 @@ class Logger:
     Log: Type = None  #: Type of the data returned by logging a single result, if any.
     desc: str  #: Description of the logger. Used in e.g. progress bar, logs file name, etc.
 
-    def __init__(self, output_name_template: str = None, **iterable_result_params):  # noqa: D205,D212,D415
+    def __init__(
+        self, output_name_template: str = None, debug: bool = False, **iterable_result_params
+    ):  # noqa: D205,D212,D415
         """
         Args:
             output_name_template: Name template for the aggregated log, if the logger produces an aggregated log.
+            debug: If ``True``, disables multiprocessing when collecting logs for each result; otherwise, enables
+                multiprocessing.
             iterable_result_params: Parameters to configure the iterable over the results. Can be ``None`` if the logger
                 will only be used to write logs (and not called).
         """
-        self.iterable_result_params = iterable_result_params
         self.output_name_template = output_name_template
+        self.debug = debug
+        self.iterable_result_params = iterable_result_params
 
     def __call__(self, results_path: Path, output_folder: Path) -> None:
         """Iterates over a set of results and logs the result of the evaluation to a logger-specifc format.
@@ -38,28 +43,42 @@ class Logger:
         results = self.IterableResultT(results_path=results_path, **self.iterable_result_params)
 
         if self.Log is not None:  # If the logger returns data for each result to be aggregated in a single log
-            with Pool() as pool:
+            if self.debug:
                 logs = dict(
-                    tqdm(
-                        pool.imap(self._log_result, results),
-                        total=len(results),
-                        unit=results.desc,
-                        desc=f"Collecting {results_path.stem} data for {self.desc}",
+                    self._log_result(result)
+                    for result in tqdm(
+                        results, unit=results.desc, desc=f"Collecting {results_path.stem} data for {self.desc}",
                     )
                 )
+            else:
+                with Pool() as pool:
+                    logs = dict(
+                        tqdm(
+                            pool.imap(self._log_result, results),
+                            total=len(results),
+                            unit=results.desc,
+                            desc=f"Collecting {results_path.stem} data for {self.desc}",
+                        )
+                    )
             output_path = output_folder.joinpath(self.output_name_template.format(results_path.stem))
             tqdm.write(f"Aggregating {results_path.stem} {self.desc} in {output_path} ...")
             self.aggregate_logs(logs, output_path)
         else:  # If the logger writes the log as side-effects as it iterates over the results
-            with Pool() as pool:
-                list(
-                    tqdm(
-                        pool.imap(self._log_result, results),
-                        total=len(results),
-                        unit=results.desc,
-                        desc=f"Logging {results_path.stem} {self.desc} to {output_folder}",
+            if self.debug:
+                for result in tqdm(
+                    results, unit=results.desc, desc=f"Logging {results_path.stem} {self.desc} to {output_folder}"
+                ):
+                    self._log_result(result)
+            else:
+                with Pool() as pool:
+                    list(
+                        tqdm(
+                            pool.imap(self._log_result, results),
+                            total=len(results),
+                            unit=results.desc,
+                            desc=f"Logging {results_path.stem} {self.desc} to {output_folder}",
+                        )
                     )
-                )
 
     def _log_result(self, result: Result) -> Optional[Tuple[str, "Log"]]:
         """Generates a log (either writing to a file or computing a result to aggregate) for a single result.
@@ -97,6 +116,9 @@ class Logger:
         parser.add_argument("--results_path", type=Path, required=True, help="Path to a HDF5 file of results to log")
         parser.add_argument(
             "--output_folder", type=Path, default="logs", help="Path to the directory in which to save the logs"
+        )
+        parser.add_argument(
+            "--debug", action="store_true", help="Run logger in debug mode, which disables multiprocessing"
         )
         parser = cls.IterableResultT.add_args(parser)
         return parser
