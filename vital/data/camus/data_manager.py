@@ -1,6 +1,6 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from typing import Literal
+from typing import Dict, Literal, Union
 
 from torch.utils.data import DataLoader
 
@@ -17,16 +17,17 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
     use_sequence: bool = False  #: Whether the system uses complete sequences by default
     use_sequence_index: bool = False  #: Whether the system requires instants' normalized indices in the sequences
 
-    def __init__(self, hparams: Namespace):
+    def __init__(self, hparams: Union[Dict, Namespace]):
         """Handles initializing parameters related to the nature of the data.
 
         Args:
-            hparams: Namespace of arguments parsed from the CLI.
+            hparams: If created straight from CL input, a ``Namespace`` of arguments parsed from the CLI.
+                Otherwise (when loaded from checkpoints), a ``Dict`` of deserialized hyperparameters.
         """
         super().__init__(hparams)
         self.data_params = DataParameters(
             in_shape=(image_size, image_size, in_channels),
-            out_shape=(image_size, image_size, len(hparams.labels)),
+            out_shape=(image_size, image_size, len(self.hparams.labels)),
             use_sequence_index=self.use_sequence_index,
         )
         self.labels = [str(label) for label in self.hparams.labels]

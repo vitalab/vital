@@ -1,10 +1,11 @@
 from abc import ABC
 from argparse import ArgumentParser, Namespace
-from typing import Dict, List, Literal, Mapping, Tuple, Union
+from typing import Dict, List, Literal, Mapping, Union
 
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.core.decorators import auto_move_data
+from pytorch_lightning.core.memory import ModelSummary
 from torch import Tensor, nn
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
@@ -34,7 +35,12 @@ class VitalSystem(pl.LightningModule, ABC):
     #: Mapping between subsets of the data (e.g. train) and their torch ``Dataset`` handle
     dataset: Mapping[Subset, Dataset]
 
-    def __init__(self, hparams: Namespace):
+    def __init__(self, hparams: Union[Dict, Namespace]):  # noqa: D205,D212,D415
+        """
+        Args:
+            hparams: If created straight from CL input, a ``Namespace`` of arguments parsed from the CLI.
+                Otherwise (when loaded from checkpoints), a ``Dict`` of deserialized hyperparameters.
+        """
         super().__init__()
         #: Collection of hyperparameters configuring the system
         self.hparams = hparams
@@ -42,18 +48,21 @@ class VitalSystem(pl.LightningModule, ABC):
         # Ensure output directory exists
         self.hparams.default_root_dir.mkdir(parents=True, exist_ok=True)
 
-    def save_model_summary(self, system_input_shape: Tuple[int, ...]) -> None:
-        """Saves a summary of the model in a format similar to Keras' summary.
+    def summarize(self, mode: str = ModelSummary.MODE_DEFAULT) -> ModelSummary:
+        """Adds saving a Keras-style summary of the model to the base PL summary routine.
 
-        Will not be printed if PL weights' summary was disable.
-        This is done to avoid possible device incompatibilities in clusters.
+        The Keras-style summary is saved to a ``summary.txt`` file, inside the ``default_root_dir`` directory.
 
-        Args:
-            system_input_shape: Shape of the input data the system should expect when using the dataset.
+        Notes:
+            - Requires the ``example_input_array`` property to be set for the module.
+            - Will not be printed if PL weights' summary was disabled (``mode == None``). This is done to avoid possible
+              device incompatibilities in clusters.
         """
-        with open(str(self.hparams.default_root_dir.joinpath("summary.txt")), "w") as f:
-            summary_str, _ = summary_info(self.module, system_input_shape, self.device)
-            f.write(summary_str)
+        if mode is not None:
+            with open(str(self.hparams.default_root_dir.joinpath("summary.txt")), "w") as f:
+                summary_str, _ = summary_info(self.module, self.example_input_array.shape[1:], self.device)
+                f.write(summary_str)
+        return super().summarize(mode)
 
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
         return torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
