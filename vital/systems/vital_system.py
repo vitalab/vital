@@ -35,7 +35,12 @@ class VitalSystem(pl.LightningModule, ABC):
     #: Mapping between subsets of the data (e.g. train) and their torch ``Dataset`` handle
     dataset: Mapping[Subset, Dataset]
 
-    def __init__(self, hparams: Namespace):
+    def __init__(self, hparams: Union[Dict, Namespace]):  # noqa: D205,D212,D415
+        """
+        Args:
+            hparams: If created straight from CL input, a ``Namespace`` of arguments parsed from the CLI.
+                Otherwise (when loaded from checkpoints), a ``Dict`` of deserialized hyperparameters.
+        """
         super().__init__()
         #: Collection of hyperparameters configuring the system
         self.hparams = hparams
