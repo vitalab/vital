@@ -50,7 +50,7 @@ class VitalTrainer(ABC):
         system_cls = cls._get_selected_system(hparams)
 
         if hparams.resume:
-            trainer = Trainer.resume_from_checkpoint(hparams.checkpoint)
+            trainer = Trainer(resume_from_checkpoint=hparams.checkpoint)
         else:
             trainer = Trainer.from_argparse_args(hparams)
 
