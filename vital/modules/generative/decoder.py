@@ -5,14 +5,20 @@ from typing import Tuple
 
 from torch import Tensor, nn
 
-from vital.modules.layers import conv3x3_activation, conv_transpose2x2_activation
+from vital.modules.layers import conv3x3_bn_activation, conv_transpose2x2_bn_activation
 
 
 class Decoder(nn.Module):
     """Module making up the decoder half of a convolutional autoencoder."""
 
     def __init__(
-        self, image_size: Tuple[int, int], out_channels: int, blocks: int, init_channels: int, latent_dim: int
+        self,
+        image_size: Tuple[int, int],
+        out_channels: int,
+        blocks: int,
+        init_channels: int,
+        latent_dim: int,
+        use_batchnorm: bool = True,
     ):  # noqa: D205,D212,D415
         """
         Args:
@@ -22,8 +28,11 @@ class Decoder(nn.Module):
             init_channels: Number of output feature maps from the last layer before the classifier, used to compute the
                 number of feature maps in preceding layers.
             latent_dim: Number of dimensions in the latent space.
+            use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
+                convolutional blocks.
         """
         super().__init__()
+        batchnorm_desc = "_bn" if use_batchnorm else ""
 
         # Projection from encoding to bottleneck
         self.feature_shape = (init_channels, image_size[0] // 2 ** (blocks + 1), image_size[1] // 2 ** (blocks + 1))
@@ -42,21 +51,23 @@ class Decoder(nn.Module):
         for idx, block_idx in enumerate(reversed(range(blocks))):
             block_out_channels = init_channels * 2 ** block_idx
             self.features2output.add_module(
-                f"conv_transpose_elu{idx}",
-                conv_transpose2x2_activation(
-                    in_channels=block_in_channels, out_channels=block_out_channels, activation="ELU"
+                f"conv_transpose{batchnorm_desc}_elu{idx}",
+                conv_transpose2x2_bn_activation(
+                    in_channels=block_in_channels, out_channels=block_out_channels, bn=use_batchnorm, activation="ELU"
                 ),
             )
             self.features2output.add_module(
-                f"conv_elu{idx}",
-                conv3x3_activation(in_channels=block_out_channels, out_channels=block_out_channels, activation="ELU"),
+                f"conv{batchnorm_desc}_elu{idx}",
+                conv3x3_bn_activation(
+                    in_channels=block_out_channels, out_channels=block_out_channels, bn=use_batchnorm, activation="ELU"
+                ),
             )
             block_in_channels = block_out_channels
 
         self.features2output.add_module(
-            f"conv_transpose_elu{blocks}",
-            conv_transpose2x2_activation(
-                in_channels=block_in_channels, out_channels=block_in_channels, activation="ELU"
+            f"conv_transpose{batchnorm_desc}_elu{blocks}",
+            conv_transpose2x2_bn_activation(
+                in_channels=block_in_channels, out_channels=block_in_channels, bn=use_batchnorm, activation="ELU"
             ),
         )
 
