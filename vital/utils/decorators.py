@@ -2,7 +2,9 @@ from functools import wraps
 from typing import Any, Callable, Dict, Mapping, Sequence, TypeVar, Union
 
 
-def prefix(prefix: str, exclude: Union[str, Sequence[str]] = None):
+def prefix(
+    prefix: str, exclude: Union[str, Sequence[str]] = None
+) -> Callable[[Callable[..., Mapping[str, Any]]], Callable[..., Dict[str, Any]]]:
     """Decorator for functions that return a mapping with string keys, to add a prefix to the keys.
 
     Args:
