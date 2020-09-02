@@ -16,5 +16,5 @@ dependencies:
   - pytorch-lightning>=0.8
   - cudatoolkit=10.1
   - pip:
-      - keras # Used by `utils/image/register.py` for its image processing utilities (w/o backend)
+      - keras_preprocessing # Used by `utils/image/register.py` for its image processing utilities (w/o backend)
       - git+https://github.com/longcw/RoIAlign.pytorch
