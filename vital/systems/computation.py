@@ -1,11 +1,13 @@
 from abc import ABC
-from typing import Dict, List
+from argparse import ArgumentParser
+from typing import Dict
 
-import torch
+from pytorch_lightning import TrainResult
+from pytorch_lightning.core.step_result import EvalResult
 from torch import Tensor
 
 from vital.systems.vital_system import SystemComputationMixin
-from vital.utils.decorators import prefix
+from vital.utils.format import prefix
 
 
 class SupervisedComputationMixin(SystemComputationMixin, ABC):
@@ -15,6 +17,13 @@ class SupervisedComputationMixin(SystemComputationMixin, ABC):
         - Handling of identical train/val step results (metrics logging and printing)
     """
 
+    _logging_flags = ["on_step", "on_epoch", "logger", "prog_bar"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._train_logging_flags = {flag: flag in self.hparams.train_logging_flags for flag in self._logging_flags}
+        self._val_logging_flags = {flag: flag in self.hparams.val_logging_flags for flag in self._logging_flags}
+
     def trainval_step(self, *args, **kwargs) -> Dict[str, Tensor]:
         """Handles steps for both training and validation loops, assuming the behavior should be the same.
 
@@ -23,33 +32,35 @@ class SupervisedComputationMixin(SystemComputationMixin, ABC):
         """
         raise NotImplementedError
 
-    @prefix("train", exclude="loss")
-    def training_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
-        return self.trainval_step(*args, **kwargs)
+    def training_step(self, *args, **kwargs) -> TrainResult:  # noqa: D102
+        output = prefix(self.trainval_step(*args, **kwargs), "train_")
+        result = TrainResult(minimize=output["train_loss"])
+        result.log_dict(output, **self._train_logging_flags)
+        return result
 
-    @prefix("val")
-    def validation_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
-        return self.trainval_step(*args, **kwargs)
+    def validation_step(self, *args, **kwargs) -> EvalResult:  # noqa: D102
+        output = prefix(self.trainval_step(*args, **kwargs), "val_")
+        result = EvalResult(checkpoint_on=output["val_loss"])
+        result.log_dict(output, **self._val_logging_flags)
+        return result
 
-    def trainval_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:
-        """Reduces all outputs by averaging them, and forwards them to be both logged and displayed in the progress bar.
-
-        In cases where metrics from either training or validation need to handled in a special case (e.g. `train loss`),
-        you can simply override ``training_epoch_end`` or ``validation_epoch_end`` to avoid this method being called.
-        """
-        metric_names = outputs[0].keys()
-        reduced_metrics = {
-            metric_name: torch.stack([output[metric_name] for output in outputs]).mean() for metric_name in metric_names
-        }
-        return {"progress_bar": reduced_metrics, "log": reduced_metrics.copy()}
-
-    def training_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:  # noqa: D102
-        out = self.trainval_epoch_end(outputs)
-        # No need to add 'train_loss' to the progress bar, as it's displayed automatically by Lightning as 'loss'
-        del out["progress_bar"]["loss"]
-        # Log 'loss' rather as 'train_loss', to be consistent with other metrics (and validation)
-        out["log"]["train_loss"] = out["log"].pop("loss")
-        return out
-
-    def validation_epoch_end(self, outputs: List[Dict[str, Tensor]]) -> Dict[str, Dict[str, Tensor]]:  # noqa: D102
-        return self.trainval_epoch_end(outputs)
+    @classmethod
+    def add_computation_args(cls, parser: ArgumentParser) -> ArgumentParser:  # noqa: D102
+        parser = super().add_computation_args(parser)
+        parser.add_argument(
+            "--train_logging_flags",
+            type=str,
+            nargs="+",
+            choices=cls._logging_flags,
+            default=["on_step", "logger"],
+            help="Options to use for logging the training metrics. \nThe options apply to all training metrics)",
+        )
+        parser.add_argument(
+            "--val_logging_flags",
+            type=str,
+            nargs="+",
+            choices=cls._logging_flags,
+            default=["on_epoch", "logger"],
+            help="Options to use for logging the validation metrics. \nThe options apply to all validation metrics)",
+        )
+        return parser
