@@ -47,7 +47,7 @@ class Logger:
                 logs = dict(
                     self._log_result(result)
                     for result in tqdm(
-                        results, unit=results.desc, desc=f"Collecting {results_path.stem} data for {self.desc}",
+                        results, unit=results.desc, desc=f"Collecting {results_path.stem} data for {self.desc}"
                     )
                 )
             else:
