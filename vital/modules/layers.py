@@ -106,7 +106,7 @@ def _build_sequential(fn: Callable[..., Sequence[Tuple[str, nn.Module]]]) -> Cal
 @_add_activation
 @_add_batchnorm("2d")
 def conv_transpose2x2_bn_activation(
-    in_channels: int, out_channels: int, stride: int = 2, padding: int = 0,
+    in_channels: int, out_channels: int, stride: int = 2, padding: int = 0
 ) -> List[Tuple[str, nn.Module]]:
     """2x2 transpose convolution with padding followed by optionals batch normalization and activation."""
     return [
@@ -118,7 +118,7 @@ def conv_transpose2x2_bn_activation(
 @_add_activation
 @_add_batchnorm("2d")
 def conv3x3_bn_activation(
-    in_channels: int, out_channels: int, stride: int = 1, padding: int = 1,
+    in_channels: int, out_channels: int, stride: int = 1, padding: int = 1
 ) -> List[Tuple[str, nn.Module]]:
     """3x3 convolution with padding followed by optionals batch normalization and activation."""
     return [("conv", nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=padding))]
