@@ -102,7 +102,7 @@ def summary_info(
     for layer in summary:
         # input_shape, output_shape, trainable, nb_params
         line_new = "{:>20}  {:>25} {:>15}".format(
-            layer, str(summary[layer]["output_shape"]), "{0:,}".format(summary[layer]["nb_params"]),
+            layer, str(summary[layer]["output_shape"]), "{0:,}".format(summary[layer]["nb_params"])
         )
         total_params += summary[layer]["nb_params"]
 
