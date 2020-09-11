@@ -48,23 +48,22 @@ class LocalizationNet(nn.Module):
         self.in_shape = in_shape
         self.out_shape = out_shape
         self.global_segmentation_module = segmentation_cls(
-            in_channels=in_shape[-1], out_channels=out_shape[-1], **segmentation_cls_kwargs
+            in_channels=in_shape[0], out_channels=out_shape[0], **segmentation_cls_kwargs
         )
         self.localized_segmentation_module = segmentation_cls(
-            in_channels=in_shape[-1], out_channels=out_shape[-1], **segmentation_cls_kwargs
+            in_channels=in_shape[0], out_channels=out_shape[0], **segmentation_cls_kwargs
         )
         segmentation_module = segmentation_cls(
-            in_channels=out_shape[-1], out_channels=out_shape[-1], **segmentation_cls_kwargs
+            in_channels=out_shape[0], out_channels=out_shape[0], **segmentation_cls_kwargs
         )
         self.segmentation_encoder = segmentation_module.encoder
         self.segmentation_bottleneck = segmentation_module.bottleneck
 
-        self.crop_resize = CropAndResize(*in_shape[:2])
+        self.crop_resize = CropAndResize(*in_shape[1:])
 
         # Compute forward pass with dummy data to compute the output shape of the feature extractor module
         # used by the ROI bbox module (batch_size of 2 for batchnorm)
-        input_size = (out_shape[-1], *out_shape[:2])
-        x = torch.rand(2, *input_size).type(torch.float)
+        x = torch.rand(2, *out_shape, dtype=torch.float)
         features = self.segmentation_encoder(x)
         if isinstance(features, Tuple):  # In case of multiple tensors returned by the encoder
             features = features[0]  # Extract expected bottleneck input
@@ -132,7 +131,7 @@ class LocalizationNet(nn.Module):
         """
         _, roi_bbox_hat, localized_y_hat = self(x)
         y_hat = self._revert_crop(localized_y_hat.argmax(dim=1, keepdim=True), roi_bbox_hat).squeeze()  # (N, H, W)
-        y_hat = F.one_hot(y_hat.squeeze(), num_classes=self.out_shape[-1])  # (N, H, W, ``out_channels``)
+        y_hat = F.one_hot(y_hat.squeeze(), num_classes=self.out_shape[0])  # (N, H, W, ``out_channels``)
         return y_hat.permute(0, 3, 1, 2)  # (N, ``out_channels``, H, W)
 
     def _revert_crop(self, localized_segmentation: Tensor, roi_bbox: Tensor) -> Tensor:
@@ -149,8 +148,8 @@ class LocalizationNet(nn.Module):
         roi_bbox = roi_bbox.clamp(0, 1)
 
         # Change ROI bbox from normalized between 0 and 1 to absolute pixel coordinates
-        roi_bbox[:, (0, 2)] = torch.round(roi_bbox[:, (0, 2)] * self.in_shape[0])  # Height
-        roi_bbox[:, (1, 3)] = torch.round(roi_bbox[:, (1, 3)] * self.in_shape[1])  # Width
+        roi_bbox[:, (0, 2)] = torch.round(roi_bbox[:, (0, 2)] * self.in_shape[1])  # Height
+        roi_bbox[:, (1, 3)] = torch.round(roi_bbox[:, (1, 3)] * self.in_shape[2])  # Width
         roi_bbox = roi_bbox.int()
 
         # Fit the localized segmentation at its original location in the image, one item at a time
