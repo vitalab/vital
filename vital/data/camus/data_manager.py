@@ -56,7 +56,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             self.dataset[Subset.TRAIN],
             batch_size=self.hparams.batch_size,
             shuffle=True,
-            num_workers=self.hparams.workers,
+            num_workers=self.hparams.num_workers,
             pin_memory=self.device.type == "cuda",
         )
 
@@ -64,7 +64,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
         return DataLoader(
             self.dataset[Subset.VAL],
             batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.workers,
+            num_workers=self.hparams.num_workers,
             pin_memory=self.device.type == "cuda",
         )
 
@@ -72,7 +72,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
         return DataLoader(
             self.dataset[Subset.TEST],
             batch_size=None,
-            num_workers=self.hparams.workers,
+            num_workers=self.hparams.num_workers,
             pin_memory=self.device.type == "cuda",
         )
 
