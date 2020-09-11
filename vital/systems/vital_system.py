@@ -4,9 +4,8 @@ from typing import Dict, List, Literal, Mapping, Union
 
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning.core.decorators import auto_move_data
 from pytorch_lightning.core.memory import ModelSummary
-from torch import Tensor, nn
+from torch import Tensor
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
 
@@ -25,28 +24,29 @@ class VitalSystem(pl.LightningModule, ABC):
         - CLI for generic arguments
     """
 
-    # Fields to initialize in implementation of ``VitalSystem``
-    #: Network instance called by ``VitalSystem`` for computations
-    module: nn.Module
-
     # Fields to initialize in implementation of ``DataManagerMixin``
     #: Collection of parameters related to the nature of the data
     data_params: DataParameters
     #: Mapping between subsets of the data (e.g. train) and their torch ``Dataset`` handle
     dataset: Mapping[Subset, Dataset]
 
-    def __init__(self, hparams: Union[Dict, Namespace]):  # noqa: D205,D212,D415
+    def __init__(self, hparams: Union[Dict, Namespace], data_params: DataParameters):  # noqa: D205,D212,D415
         """
         Args:
             hparams: If created straight from CL input, a ``Namespace`` of arguments parsed from the CLI.
                 Otherwise (when loaded from checkpoints), a ``Dict`` of deserialized hyperparameters.
+            data_params: Provided by the implementation of ``DataManagerMixin`` when it calls its parent's ``__init__``.
         """
         super().__init__()
         #: Collection of hyperparameters configuring the system
         self.hparams = hparams
+        self.data_params = data_params
 
         # Ensure output directory exists
         self.hparams.default_root_dir.mkdir(parents=True, exist_ok=True)
+
+        # By default, assumes the provided data shape is in channel-first format
+        self.example_input_array = torch.randn((self.hparams.batch_size, *self.data_params.in_shape))
 
     def summarize(self, mode: str = ModelSummary.MODE_DEFAULT) -> ModelSummary:
         """Adds saving a Keras-style summary of the model to the base PL summary routine.
@@ -60,7 +60,7 @@ class VitalSystem(pl.LightningModule, ABC):
         """
         if mode is not None:
             with open(str(self.hparams.default_root_dir.joinpath("summary.txt")), "w") as f:
-                summary_str, _ = summary_info(self.module, self.example_input_array.shape[1:], self.device)
+                summary_str, _ = summary_info(self, self.example_input_array)
                 f.write(summary_str)
         return super().summarize(mode)
 
@@ -126,10 +126,6 @@ class SystemDataManagerMixin(VitalSystem, ABC):
 
 class SystemComputationMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the training/validation/testing phases."""
-
-    @auto_move_data
-    def forward(self, *args, **kwargs):  # noqa: D102
-        return self.module(*args, **kwargs)
 
     def training_step(self, *args, **kwargs) -> Union[int, Dict[str, Union[Tensor, Dict[str, Tensor]]]]:  # noqa: D102
         raise NotImplementedError

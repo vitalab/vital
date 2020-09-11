@@ -65,17 +65,19 @@ class Tags:
     """Class to gather the tags referring to the different type of data stored.
 
     Args:
+        id: Tag referring to an identifier (not necessarily unique) associated to the data.
         img: Tag referring to images.
         gt: Tag referring to groundtruths, used as reference when evaluating models' scores.
-        regression: Tag referring to a continuous value associated to the input of the input.
+        aux: Tag referring to additional (auxiliary) information associated to the input.
         pred: Tag referring to original predictions.
         post_pred: Tag referring to post processed predictions.
         encoding: Tag referring to an encoding of the system's input.
     """
 
+    id: str = "id"
     img: str = "img"
     gt: str = "gt"
-    regression: str = "reg"
+    aux: str = "aux"
     pred: str = "pred"
     post_pred: str = "post_pred"
     encoding: str = "encoding"
