@@ -1,7 +1,8 @@
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from pathlib import Path
-from typing import Dict, Literal, Union
+from typing import Literal
 
+from pytorch_lightning.utilities import AttributeDict
 from torch.utils.data import DataLoader
 
 from vital.data.camus.config import Label, image_size, in_channels
@@ -15,20 +16,25 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
 
     use_da: bool = False  #: Whether the system applies Data Augmentation (DA) by default
     use_sequence: bool = False  #: Whether the system uses complete sequences by default
-    use_sequence_index: bool = False  #: Whether the system requires instants' normalized indices in the sequences
 
-    def __init__(self, hparams: Union[Dict, Namespace]):
+    def __init__(self, *args, **kwargs):
         """Handles initializing parameters related to the nature of the data.
 
         Args:
-            hparams: If created straight from CL input, a ``Namespace`` of arguments parsed from the CLI.
-                Otherwise (when loaded from checkpoints), a ``Dict`` of deserialized hyperparameters.
+            *args: Positional arguments to pass to the parent's constructor.
+            **kwargs: Keyword arguments to pass to the parent's constructor.
         """
-        super().__init__(hparams)
-        self.data_params = DataParameters(
-            in_shape=(image_size, image_size, in_channels),
-            out_shape=(image_size, image_size, len(self.hparams.labels)),
-            use_sequence_index=self.use_sequence_index,
+        # TOFIX Hacky and ugly initialization until decoupling to `LightningDataModule`
+        (hparams,) = args
+        if isinstance(hparams, dict):
+            hparams = AttributeDict(hparams)
+        super().__init__(
+            *args,
+            data_params=DataParameters(
+                in_shape=(in_channels, image_size, image_size),
+                out_shape=(len(hparams.labels), image_size, image_size),
+            ),
+            **kwargs,
         )
         self.labels = [str(label) for label in self.hparams.labels]
 
@@ -38,7 +44,6 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             "fold": self.hparams.fold,
             "labels": self.hparams.labels,
             "use_sequence": self.hparams.use_sequence,
-            "use_sequence_index": self.data_params.use_sequence_index,
         }
         self.dataset = {
             Subset.TRAIN: Camus(image_set=Subset.TRAIN, **common_kwargs),
@@ -51,7 +56,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             self.dataset[Subset.TRAIN],
             batch_size=self.hparams.batch_size,
             shuffle=True,
-            num_workers=self.hparams.workers,
+            num_workers=self.hparams.num_workers,
             pin_memory=self.device.type == "cuda",
         )
 
@@ -59,7 +64,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
         return DataLoader(
             self.dataset[Subset.VAL],
             batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.workers,
+            num_workers=self.hparams.num_workers,
             pin_memory=self.device.type == "cuda",
         )
 
@@ -67,7 +72,7 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
         return DataLoader(
             self.dataset[Subset.TEST],
             batch_size=None,
-            num_workers=self.hparams.workers,
+            num_workers=self.hparams.num_workers,
             pin_memory=self.device.type == "cuda",
         )
 

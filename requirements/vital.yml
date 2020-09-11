@@ -1,8 +1,7 @@
 name: vital
 channels:
-  - pytorch
-  - defaults
   - conda-forge
+  - defaults
 dependencies:
   - python>=3.8
   - pip
@@ -18,8 +17,8 @@ dependencies:
   - holoviews
   - bokeh
   - tqdm
-  - pytorch
-  - torchvision
+  - pytorch::pytorch
+  - pytorch::torchvision
   - pytorch-lightning>=0.8
   - cudatoolkit=10.1
   - pip:

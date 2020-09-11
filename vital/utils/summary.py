@@ -1,17 +1,14 @@
 from collections import OrderedDict
+from functools import reduce
+from operator import mul
 from typing import Dict, List, Sequence, Tuple, Union
 
-import numpy as np
 import torch
 from torch import nn
 
 
 def summary_info(
-    model: nn.Module,
-    input_size: Union[List[Tuple[int, ...]], Tuple[int, ...]],
-    device: torch.device,
-    batch_size: int = -1,
-    dtypes=None,
+    model: nn.Module, example_input_array: Union[torch.Tensor, Sequence[torch.Tensor]], batch_size: int = -1
 ) -> Tuple[str, Tuple[int, int]]:
     """Computes info to display a summary of a network to the console, similar to `model.summary()` in Keras.
 
@@ -28,9 +25,7 @@ def summary_info(
         model: Network for which to print the summary.
         input_size: Shape of the input to the network's `forward` function. Can be multiple inputs, in which the input
             size should be a list of tuples, each indicating the shape of one input.
-        device: Device on which the model is located.
         batch_size: Value to use for the batch size when printing the input/output shape of the model's layers.
-        dtypes: Data types of the input to the model. Defaults to `FloatTensor` if not specified.
 
     Returns:
         - Model summary string
@@ -38,9 +33,6 @@ def summary_info(
             - Total number of parameters
             - Total number of trainable parameters
     """
-    if dtypes is None:
-        dtypes = [torch.FloatTensor] * len(input_size)
-
     summary_str = ""
 
     def register_hook(module: nn.Module) -> None:
@@ -72,11 +64,10 @@ def summary_info(
             hooks.append(module.register_forward_hook(hook))
 
     # multiple inputs to the network
-    if isinstance(input_size, tuple):
-        input_size = [input_size]
-
-    # batch_size of 2 for batchnorm
-    x = [torch.rand(2, *in_size).type(dtype).to(device=device) for in_size, dtype in zip(input_size, dtypes)]
+    if isinstance(example_input_array, Sequence):  # If the network has multiple inputs
+        inputs = example_input_array
+    else:  # If the network has a single input
+        inputs = [example_input_array]
 
     # create properties
     summary = OrderedDict()
@@ -86,7 +77,7 @@ def summary_info(
     model.apply(register_hook)
 
     # make a forward pass
-    model(*x)
+    model(*inputs)
 
     # remove these hooks
     for h in hooks:
@@ -111,14 +102,15 @@ def summary_info(
         if not isinstance(summary[layer]["output_shape"][0], Sequence):
             output_size = [output_size]
 
-        total_output += sum(np.prod(out_size) for out_size in output_size)
+        total_output += sum(reduce(mul, out_size) for out_size in output_size)
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"]:
                 trainable_params += summary[layer]["nb_params"]
         summary_str += line_new + "\n"
 
     # assume 4 bytes/number (float on cuda).
-    total_input_size = abs(np.prod(sum(input_size, ())) * batch_size * 4.0 / (1024 ** 2.0))
+    total_input = sum(reduce(mul, input.shape[1:]) for input in inputs)
+    total_input_size = abs(total_input * batch_size * 4.0 / (1024 ** 2.0))
     total_output_size = abs(2.0 * total_output * 4.0 / (1024 ** 2.0))  # x2 for gradients
     total_params_size = abs(total_params * 4.0 / (1024 ** 2.0))
     total_size = total_params_size + total_output_size + total_input_size

@@ -25,10 +25,9 @@ class DataParameters(vital.utils.parameters.DataParameters):
     Args:
         in_shape: (height, width, channels) Shape of the input data.
         out_shape: (height, width, channels) Shape of the target data.
-        use_sequence_index: Whether to use instants' normalized indices in the sequence.
     """
 
-    use_sequence_index: bool
+    pass
 
 
 class Camus(VisionDataset):
@@ -41,7 +40,6 @@ class Camus(VisionDataset):
         image_set: Subset,
         labels: Sequence[Label],
         use_sequence: bool = False,
-        use_sequence_index: bool = False,
         predict: bool = False,
         transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
         transform: Callable[[Tensor], Tensor] = None,
@@ -54,7 +52,6 @@ class Camus(VisionDataset):
             image_set: Subset of images to use.
             labels: Labels of the segmentation classes to take into account.
             use_sequence: Whether to use the complete sequence between ED and ES for each view.
-            use_sequence_index: Whether to use instants' normalized indices in the sequence.
             predict: Whether to receive the data in a format fit for inference (``True``) or training (``False``).
             transforms: Function that takes in an input/target pair and transforms them in a corresponding way.
                 (only applied when `predict` is `False`, i.e. in train/validation mode)
@@ -72,7 +69,6 @@ class Camus(VisionDataset):
         self.image_set = image_set.value
         self.labels = labels
         self.use_sequence = use_sequence
-        self.use_sequence_index = use_sequence_index
         self.predict = predict
 
         with h5py.File(path, "r") as f:
@@ -154,7 +150,7 @@ class Camus(VisionDataset):
                             image_paths.append((f"{patient_path}/{view}", instant))
         return image_paths
 
-    def _get_train_item(self, index: int) -> Dict[str, Tensor]:
+    def _get_train_item(self, index: int) -> Dict[str, Union[str, Tensor]]:
         """Fetches data required for training on a train/val item (single image/groundtruth pair).
 
         Args:
@@ -180,12 +176,7 @@ class Camus(VisionDataset):
         if self.transforms:
             img, gt = self.transforms(img, gt)
 
-        item = {CamusTags.img: img, CamusTags.gt: gt}
-
-        if self.use_sequence_index:
-            item[CamusTags.regression] = sequence_idx
-
-        return item
+        return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.aux: sequence_idx}
 
     def _get_test_item(self, index: int) -> Dict[View, Tuple[Tensor, Tensor]]:
         """Fetches data required for inference on a test item (whole patient).

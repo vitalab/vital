@@ -162,7 +162,7 @@ class VitalTrainer(ABC):
 
         # resource-use parameters
         parser.add_argument(
-            "--workers",
+            "--num_workers",
             type=int,
             default=os.cpu_count() - 1,
             help="How many subprocesses to use for data loading. "
