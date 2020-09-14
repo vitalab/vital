@@ -5,7 +5,7 @@ from typing import Tuple, Union
 import torch
 from torch import Tensor, nn
 
-from vital.modules.layers import conv3x3_bn_activation
+from vital.modules.layers import conv2d_activation, conv2d_bn_activation
 
 
 class Encoder(nn.Module):
@@ -39,7 +39,13 @@ class Encoder(nn.Module):
         """
         super().__init__()
         self.output_distribution = output_distribution
-        batchnorm_desc = "_bn" if use_batchnorm else ""
+        if use_batchnorm:
+            conv_block = conv2d_bn_activation
+            batchnorm_desc = "_bn"
+        else:
+            conv_block = conv2d_activation
+            batchnorm_desc = ""
+        strided_conv_kwargs = {"stride": 2}
 
         # Downsampling convolution blocks
         self.input2features = nn.Sequential()
@@ -49,22 +55,16 @@ class Encoder(nn.Module):
 
             self.input2features.add_module(
                 f"strided_conv{batchnorm_desc}_{activation.lower()}{block_idx}",
-                conv3x3_bn_activation(
+                conv_block(
                     in_channels=block_in_channels,
                     out_channels=block_out_channels,
-                    stride=2,
-                    bn=use_batchnorm,
+                    conv_kwargs=strided_conv_kwargs,
                     activation=activation,
                 ),
             )
             self.input2features.add_module(
                 f"conv{batchnorm_desc}_{activation.lower()}{block_idx}",
-                conv3x3_bn_activation(
-                    in_channels=block_out_channels,
-                    out_channels=block_out_channels,
-                    bn=use_batchnorm,
-                    activation=activation,
-                ),
+                conv_block(in_channels=block_out_channels, out_channels=block_out_channels, activation=activation),
             )
 
             block_in_channels = block_out_channels
@@ -72,11 +72,10 @@ class Encoder(nn.Module):
         # Bottleneck block
         self.input2features.add_module(
             f"bottleneck_strided_conv{batchnorm_desc}_{activation.lower()}",
-            conv3x3_bn_activation(
+            conv_block(
                 in_channels=block_in_channels,
                 out_channels=init_channels,
-                stride=2,
-                bn=use_batchnorm,
+                conv_kwargs=strided_conv_kwargs,
                 activation=activation,
             ),
         )

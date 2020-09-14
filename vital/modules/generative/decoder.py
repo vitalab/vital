@@ -5,7 +5,12 @@ from typing import Tuple
 
 from torch import Tensor, nn
 
-from vital.modules.layers import conv3x3_bn_activation, conv_transpose2x2_bn_activation
+from vital.modules.layers import (
+    conv2d_activation,
+    conv2d_bn_activation,
+    convtranspose2d_activation,
+    convtranspose2d_bn_activation,
+)
 
 
 class Decoder(nn.Module):
@@ -35,7 +40,14 @@ class Decoder(nn.Module):
                 network.
         """
         super().__init__()
-        batchnorm_desc = "_bn" if use_batchnorm else ""
+        if use_batchnorm:
+            conv_block = conv2d_bn_activation
+            convtranspose_block = convtranspose2d_bn_activation
+            batchnorm_desc = "_bn"
+        else:
+            conv_block = conv2d_activation
+            convtranspose_block = convtranspose2d_activation
+            batchnorm_desc = ""
 
         # Projection from encoding to bottleneck
         self.feature_shape = (init_channels, image_size[0] // 2 ** (blocks + 1), image_size[1] // 2 ** (blocks + 1))
@@ -55,29 +67,19 @@ class Decoder(nn.Module):
             block_out_channels = init_channels * 2 ** block_idx
             self.features2output.add_module(
                 f"conv_transpose{batchnorm_desc}_{activation.lower()}{idx}",
-                conv_transpose2x2_bn_activation(
-                    in_channels=block_in_channels,
-                    out_channels=block_out_channels,
-                    bn=use_batchnorm,
-                    activation=activation,
+                convtranspose_block(
+                    in_channels=block_in_channels, out_channels=block_out_channels, activation=activation
                 ),
             )
             self.features2output.add_module(
                 f"conv{batchnorm_desc}_{activation.lower()}{idx}",
-                conv3x3_bn_activation(
-                    in_channels=block_out_channels,
-                    out_channels=block_out_channels,
-                    bn=use_batchnorm,
-                    activation=activation,
-                ),
+                conv_block(in_channels=block_out_channels, out_channels=block_out_channels, activation=activation),
             )
             block_in_channels = block_out_channels
 
         self.features2output.add_module(
             f"conv_transpose{batchnorm_desc}_{activation.lower()}{blocks}",
-            conv_transpose2x2_bn_activation(
-                in_channels=block_in_channels, out_channels=block_in_channels, bn=use_batchnorm, activation=activation
-            ),
+            convtranspose_block(in_channels=block_in_channels, out_channels=block_in_channels, activation=activation),
         )
 
         # Classifier
