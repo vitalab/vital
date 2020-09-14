@@ -19,6 +19,7 @@ class Decoder(nn.Module):
         init_channels: int,
         latent_dim: int,
         use_batchnorm: bool = True,
+        activation: str = "ELU",
     ):  # noqa: D205,D212,D415
         """
         Args:
@@ -30,6 +31,8 @@ class Decoder(nn.Module):
             latent_dim: Number of dimensions in the latent space.
             use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
                 convolutional blocks.
+            activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use across the
+                network.
         """
         super().__init__()
         batchnorm_desc = "_bn" if use_batchnorm else ""
@@ -40,7 +43,7 @@ class Decoder(nn.Module):
             OrderedDict(
                 [
                     ("bottleneck_fc", nn.Linear(latent_dim, reduce(mul, self.feature_shape))),
-                    ("bottleneck_elu", nn.ELU(inplace=True)),
+                    (f"bottleneck_{activation.lower()}", getattr(nn, activation)()),
                 ]
             )
         )
@@ -51,23 +54,29 @@ class Decoder(nn.Module):
         for idx, block_idx in enumerate(reversed(range(blocks))):
             block_out_channels = init_channels * 2 ** block_idx
             self.features2output.add_module(
-                f"conv_transpose{batchnorm_desc}_elu{idx}",
+                f"conv_transpose{batchnorm_desc}_{activation.lower()}{idx}",
                 conv_transpose2x2_bn_activation(
-                    in_channels=block_in_channels, out_channels=block_out_channels, bn=use_batchnorm, activation="ELU"
+                    in_channels=block_in_channels,
+                    out_channels=block_out_channels,
+                    bn=use_batchnorm,
+                    activation=activation,
                 ),
             )
             self.features2output.add_module(
-                f"conv{batchnorm_desc}_elu{idx}",
+                f"conv{batchnorm_desc}_{activation.lower()}{idx}",
                 conv3x3_bn_activation(
-                    in_channels=block_out_channels, out_channels=block_out_channels, bn=use_batchnorm, activation="ELU"
+                    in_channels=block_out_channels,
+                    out_channels=block_out_channels,
+                    bn=use_batchnorm,
+                    activation=activation,
                 ),
             )
             block_in_channels = block_out_channels
 
         self.features2output.add_module(
-            f"conv_transpose{batchnorm_desc}_elu{blocks}",
+            f"conv_transpose{batchnorm_desc}_{activation.lower()}{blocks}",
             conv_transpose2x2_bn_activation(
-                in_channels=block_in_channels, out_channels=block_in_channels, bn=use_batchnorm, activation="ELU"
+                in_channels=block_in_channels, out_channels=block_in_channels, bn=use_batchnorm, activation=activation
             ),
         )
 

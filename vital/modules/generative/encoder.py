@@ -19,6 +19,7 @@ class Encoder(nn.Module):
         init_channels: int,
         latent_dim: int,
         use_batchnorm: bool = True,
+        activation: str = "ELU",
         output_distribution: bool = False,
     ):  # noqa: D205,D212,D415
         """
@@ -31,6 +32,8 @@ class Encoder(nn.Module):
             latent_dim: Number of dimensions in the latent space.
             use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
                 convolutional blocks.
+            activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use across the
+                network.
             output_distribution: Whether to add a second head at the end to output ``logvar`` along with the default
                 ``mu`` head.
         """
@@ -45,19 +48,22 @@ class Encoder(nn.Module):
             block_out_channels = init_channels * 2 ** block_idx
 
             self.input2features.add_module(
-                f"strided_conv{batchnorm_desc}_elu{block_idx}",
+                f"strided_conv{batchnorm_desc}_{activation.lower()}{block_idx}",
                 conv3x3_bn_activation(
                     in_channels=block_in_channels,
                     out_channels=block_out_channels,
                     stride=2,
                     bn=use_batchnorm,
-                    activation="ELU",
+                    activation=activation,
                 ),
             )
             self.input2features.add_module(
-                f"conv{batchnorm_desc}_elu{block_idx}",
+                f"conv{batchnorm_desc}_{activation.lower()}{block_idx}",
                 conv3x3_bn_activation(
-                    in_channels=block_out_channels, out_channels=block_out_channels, bn=use_batchnorm, activation="ELU"
+                    in_channels=block_out_channels,
+                    out_channels=block_out_channels,
+                    bn=use_batchnorm,
+                    activation=activation,
                 ),
             )
 
@@ -65,9 +71,13 @@ class Encoder(nn.Module):
 
         # Bottleneck block
         self.input2features.add_module(
-            f"bottleneck_strided_conv{batchnorm_desc}_elu",
+            f"bottleneck_strided_conv{batchnorm_desc}_{activation.lower()}",
             conv3x3_bn_activation(
-                in_channels=block_in_channels, out_channels=init_channels, stride=2, bn=use_batchnorm, activation="ELU"
+                in_channels=block_in_channels,
+                out_channels=init_channels,
+                stride=2,
+                bn=use_batchnorm,
+                activation=activation,
             ),
         )
 
