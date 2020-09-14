@@ -4,7 +4,7 @@ from typing import Tuple
 import torch
 from torch import Tensor, nn
 
-from vital.modules.layers import conv3x3_bn_activation
+from vital.modules.layers import conv2d_activation, conv2d_bn_activation
 
 
 class CamusUnet(nn.Module):
@@ -50,11 +50,15 @@ class CamusUnet(nn.Module):
         Returns:
             Convolutional block that maintains the spatial resolution of the feature maps.
         """
+        if use_batchnorm:
+            conv_block = conv2d_bn_activation
+        else:
+            conv_block = conv2d_activation
         return nn.Sequential(
             OrderedDict(
                 [
-                    ("conv_block1", conv3x3_bn_activation(in_channels, out_channels, bn=use_batchnorm)),
-                    ("conv_block2", conv3x3_bn_activation(out_channels, out_channels, bn=use_batchnorm)),
+                    ("conv_block1", conv_block(in_channels, out_channels)),
+                    ("conv_block2", conv_block(out_channels, out_channels)),
                 ]
             )
         )

@@ -5,7 +5,7 @@ from typing import Tuple, Union
 import torch
 from torch import Tensor, nn
 
-from vital.modules.layers import conv3x3_bn_activation
+from vital.modules.layers import conv2d_activation, conv2d_bn_activation
 
 
 class Encoder(nn.Module):
@@ -19,6 +19,7 @@ class Encoder(nn.Module):
         init_channels: int,
         latent_dim: int,
         use_batchnorm: bool = True,
+        activation: str = "ELU",
         output_distribution: bool = False,
     ):  # noqa: D205,D212,D415
         """
@@ -31,12 +32,20 @@ class Encoder(nn.Module):
             latent_dim: Number of dimensions in the latent space.
             use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
                 convolutional blocks.
+            activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use across the
+                network.
             output_distribution: Whether to add a second head at the end to output ``logvar`` along with the default
                 ``mu`` head.
         """
         super().__init__()
         self.output_distribution = output_distribution
-        batchnorm_desc = "_bn" if use_batchnorm else ""
+        if use_batchnorm:
+            conv_block = conv2d_bn_activation
+            batchnorm_desc = "_bn"
+        else:
+            conv_block = conv2d_activation
+            batchnorm_desc = ""
+        strided_conv_kwargs = {"stride": 2}
 
         # Downsampling convolution blocks
         self.input2features = nn.Sequential()
@@ -45,29 +54,29 @@ class Encoder(nn.Module):
             block_out_channels = init_channels * 2 ** block_idx
 
             self.input2features.add_module(
-                f"strided_conv{batchnorm_desc}_elu{block_idx}",
-                conv3x3_bn_activation(
+                f"strided_conv{batchnorm_desc}_{activation.lower()}{block_idx}",
+                conv_block(
                     in_channels=block_in_channels,
                     out_channels=block_out_channels,
-                    stride=2,
-                    bn=use_batchnorm,
-                    activation="ELU",
+                    conv_kwargs=strided_conv_kwargs,
+                    activation=activation,
                 ),
             )
             self.input2features.add_module(
-                f"conv{batchnorm_desc}_elu{block_idx}",
-                conv3x3_bn_activation(
-                    in_channels=block_out_channels, out_channels=block_out_channels, bn=use_batchnorm, activation="ELU"
-                ),
+                f"conv{batchnorm_desc}_{activation.lower()}{block_idx}",
+                conv_block(in_channels=block_out_channels, out_channels=block_out_channels, activation=activation),
             )
 
             block_in_channels = block_out_channels
 
         # Bottleneck block
         self.input2features.add_module(
-            f"bottleneck_strided_conv{batchnorm_desc}_elu",
-            conv3x3_bn_activation(
-                in_channels=block_in_channels, out_channels=init_channels, stride=2, bn=use_batchnorm, activation="ELU"
+            f"bottleneck_strided_conv{batchnorm_desc}_{activation.lower()}",
+            conv_block(
+                in_channels=block_in_channels,
+                out_channels=init_channels,
+                conv_kwargs=strided_conv_kwargs,
+                activation=activation,
             ),
         )
 

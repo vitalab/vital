@@ -23,8 +23,8 @@ def summary_info(
 
     Args:
         model: Network for which to print the summary.
-        input_size: Shape of the input to the network's `forward` function. Can be multiple inputs, in which the input
-            size should be a list of tuples, each indicating the shape of one input.
+        example_input_array: Example of a tensor (or sequence of tensors) that ``model`` would take as input,
+            i.e. with a realistic shape but dummy data.
         batch_size: Value to use for the batch size when printing the input/output shape of the model's layers.
 
     Returns:

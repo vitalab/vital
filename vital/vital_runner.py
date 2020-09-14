@@ -11,8 +11,8 @@ from vital.systems.vital_system import VitalSystem
 from vital.utils.logging import configure_logging
 
 
-class VitalTrainer(ABC):
-    """Abstract trainer that runs the main training/val loop, etc... using Lightning Trainer."""
+class VitalRunner(ABC):
+    """Abstract runner that runs the main training/val loop, etc... using Lightning Trainer."""
 
     @classmethod
     def main(cls) -> None:
@@ -24,7 +24,7 @@ class VitalTrainer(ABC):
         # Add Lightning trainer arguments to the parser
         parser = Trainer.add_argparse_args(parser)
 
-        # Override generic defaults with trainer-specific defaults
+        # Override Lightning trainer defaults with trainer-specific defaults
         parser = cls._override_trainer_default(parser)
 
         # Add subparsers for all systems available through the trainer
@@ -42,7 +42,7 @@ class VitalTrainer(ABC):
 
     @classmethod
     def run_system(cls, hparams: Namespace) -> None:
-        """Handles the training/validation loop.
+        """Handles the training and evaluation of a model.
 
         Args:
             hparams: Arguments parsed from the CLI.
@@ -114,13 +114,13 @@ class VitalTrainer(ABC):
 
     @classmethod
     def _override_trainer_default(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Allows for overriding generic default trainer attributes with trainer-specific defaults.
+        """Allows for overriding Lightning trainer default attributes with runner-specific defaults.
 
         Args:
             parser: Parser object that already possesses trainer attributes.
 
         Returns:
-            Parser object with overridden default trainer attributes.
+            Parser object with overridden trainer attributes.
         """
         return parser
 
