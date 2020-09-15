@@ -7,9 +7,9 @@ from torch import Tensor, nn
 
 from vital.modules.layers import (
     conv2d_activation,
-    conv2d_bn_activation,
-    convtranspose2d_activation,
-    convtranspose2d_bn_activation,
+    conv2d_activation_bn,
+    conv_transpose2d_activation,
+    conv_transpose2d_activation_bn,
 )
 
 
@@ -23,8 +23,8 @@ class Decoder(nn.Module):
         blocks: int,
         init_channels: int,
         latent_dim: int,
-        use_batchnorm: bool = True,
         activation: str = "ELU",
+        use_batchnorm: bool = True,
     ):  # noqa: D205,D212,D415
         """
         Args:
@@ -34,19 +34,19 @@ class Decoder(nn.Module):
             init_channels: Number of output feature maps from the last layer before the classifier, used to compute the
                 number of feature maps in preceding layers.
             latent_dim: Number of dimensions in the latent space.
-            use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
-                convolutional blocks.
             activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use across the
                 network.
+            use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
+                convolutional blocks.
         """
         super().__init__()
         if use_batchnorm:
-            conv_block = conv2d_bn_activation
-            convtranspose_block = convtranspose2d_bn_activation
+            conv_block = conv2d_activation_bn
+            conv_transpose_block = conv_transpose2d_activation_bn
             batchnorm_desc = "_bn"
         else:
             conv_block = conv2d_activation
-            convtranspose_block = convtranspose2d_activation
+            conv_transpose_block = conv_transpose2d_activation
             batchnorm_desc = ""
 
         # Projection from encoding to bottleneck
@@ -66,20 +66,20 @@ class Decoder(nn.Module):
         for idx, block_idx in enumerate(reversed(range(blocks))):
             block_out_channels = init_channels * 2 ** block_idx
             self.features2output.add_module(
-                f"conv_transpose{batchnorm_desc}_{activation.lower()}{idx}",
-                convtranspose_block(
+                f"conv_transpose_{activation.lower()}{batchnorm_desc}_{idx}",
+                conv_transpose_block(
                     in_channels=block_in_channels, out_channels=block_out_channels, activation=activation
                 ),
             )
             self.features2output.add_module(
-                f"conv{batchnorm_desc}_{activation.lower()}{idx}",
+                f"conv_{activation.lower()}{batchnorm_desc}_{idx}",
                 conv_block(in_channels=block_out_channels, out_channels=block_out_channels, activation=activation),
             )
             block_in_channels = block_out_channels
 
         self.features2output.add_module(
-            f"conv_transpose{batchnorm_desc}_{activation.lower()}{blocks}",
-            convtranspose_block(in_channels=block_in_channels, out_channels=block_in_channels, activation=activation),
+            f"conv_transpose_{activation.lower()}{batchnorm_desc}_{blocks}",
+            conv_transpose_block(in_channels=block_in_channels, out_channels=block_in_channels, activation=activation),
         )
 
         # Classifier
