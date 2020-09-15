@@ -38,6 +38,29 @@ def _sequential(fn: Callable[..., Sequence[Tuple[str, nn.Module]]]) -> Callable[
 
 
 @_sequential
+def linear_activation(
+    in_features: int,
+    out_features: int,
+    lin_kwargs: Dict[str, Any] = None,
+    activation: str = "ReLU",
+    activation_kwargs: Dict[str, Any] = None,
+    dropout: float = None,
+) -> List[Tuple[str, nn.Module]]:
+    """Fully connected layer followed by activation and optional dropout."""
+    if lin_kwargs is None:
+        lin_kwargs = {}
+    if activation_kwargs is None:
+        activation_kwargs = {}
+    layers = [
+        ("lin", nn.Linear(in_features, out_features, **lin_kwargs)),
+        (activation.lower(), _get_nn_module(activation, **activation_kwargs)),
+    ]
+    if dropout:
+        layers.append(("dropout", nn.Dropout(dropout)))
+    return layers
+
+
+@_sequential
 def conv_transpose2d_activation(
     in_channels: int,
     out_channels: int,
