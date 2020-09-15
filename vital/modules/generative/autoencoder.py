@@ -24,8 +24,8 @@ class Autoencoder(nn.Module):
         blocks: int,
         init_channels: int,
         latent_dim: int,
-        use_batchnorm: bool = True,
         activation: str = "ELU",
+        use_batchnorm: bool = True,
     ):  # noqa: D205,D212,D415
         """
         Args:
@@ -35,10 +35,10 @@ class Autoencoder(nn.Module):
             init_channels: Number of output feature maps from the first layer, used to compute the number of feature
                 maps in following layers.
             latent_dim: Number of dimensions in the latent space.
-            use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
-                convolutional blocks.
             activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use across the
                 network.
+            use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
+                convolutional blocks.
         """
         super().__init__()
         self.encoder = Encoder(
@@ -47,8 +47,8 @@ class Autoencoder(nn.Module):
             blocks=blocks,
             init_channels=init_channels,
             latent_dim=latent_dim,
-            use_batchnorm=use_batchnorm,
             activation=activation,
+            use_batchnorm=use_batchnorm,
             output_distribution=self.output_distribution,
         )
         self.decoder = Decoder(
@@ -57,8 +57,8 @@ class Autoencoder(nn.Module):
             blocks=blocks,
             init_channels=init_channels,
             latent_dim=latent_dim,
-            use_batchnorm=use_batchnorm,
             activation=activation,
+            use_batchnorm=use_batchnorm,
         )
 
     def forward(self, x: Tensor) -> Dict[str, Tensor]:
