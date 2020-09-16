@@ -176,7 +176,7 @@ class Camus(VisionDataset):
         if self.transforms:
             img, gt = self.transforms(img, gt)
 
-        return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.aux: sequence_idx}
+        return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.attrs: sequence_idx}
 
     def _get_test_item(self, index: int) -> Dict[View, Tuple[Tensor, Tensor]]:
         """Fetches data required for inference on a test item (whole patient).

@@ -68,8 +68,8 @@ class Tags:
         id: Tag referring to an identifier (not necessarily unique) associated to the data.
         img: Tag referring to images.
         gt: Tag referring to groundtruths, used as reference when evaluating models' scores.
-        aux: Tag referring to additional (auxiliary) information associated to the input.
-            (e.g. timestamp in a temporal sequence, z position, etc.)
+        attrs: Tag referring to additional attributes associated to the input.
+            e.g. timestamp in a temporal sequence, z position, etc.
         pred: Tag referring to original predictions.
         post_pred: Tag referring to post processed predictions.
         encoding: Tag referring to an encoding of the system's input.
@@ -78,7 +78,7 @@ class Tags:
     id: str = "id"
     img: str = "img"
     gt: str = "gt"
-    aux: str = "aux"
+    attrs: str = "attrs"
     pred: str = "pred"
     post_pred: str = "post_pred"
-    encoding: str = "encoding"
+    encoding: str = "z"

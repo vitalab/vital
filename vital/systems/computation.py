@@ -10,7 +10,7 @@ from vital.systems.vital_system import SystemComputationMixin
 from vital.utils.format import prefix
 
 
-class SupervisedComputationMixin(SystemComputationMixin, ABC):
+class TrainValComputationMixin(SystemComputationMixin, ABC):
     """Abstract mixin for generic supervised train/val step.
 
     Implements useful generic utilities and boilerplate Lighting code:
