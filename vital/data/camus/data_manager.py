@@ -38,19 +38,20 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
             **kwargs,
         )
         self.labels = [str(label) for label in self.hparams.labels]
-
-    def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
-        common_kwargs = {
+        self.dataset: Dict[Subset, Camus] = {}
+        self._dataset_kwargs = {
             "path": self.hparams.dataset_path,
             "fold": self.hparams.fold,
             "labels": self.hparams.labels,
             "use_sequence": self.hparams.use_sequence,
         }
-        self.dataset: Dict[Subset, Camus] = {
-            Subset.TRAIN: Camus(image_set=Subset.TRAIN, **common_kwargs),
-            Subset.VAL: Camus(image_set=Subset.VAL, **common_kwargs),
-            Subset.TEST: Camus(image_set=Subset.TEST, predict=True, **common_kwargs),
-        }
+
+    def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
+        if stage == "fit":
+            self.dataset[Subset.TRAIN] = Camus(image_set=Subset.TRAIN, **self._dataset_kwargs)
+            self.dataset[Subset.VAL] = Camus(image_set=Subset.VAL, **self._dataset_kwargs)
+        if stage == "test":
+            self.dataset[Subset.TEST] = Camus(image_set=Subset.TEST, predict=True, **self._dataset_kwargs)
 
     def train_group_ids(self, level: Literal["patient", "view"] = "view") -> List[str]:
         """Lists the IDs of the different levels of groups/clusters samples in the training data can belong to.
@@ -63,7 +64,8 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
         Returns:
             IDs of the different levels of groups/clusters samples in the training data can belong to.
         """
-        return self.dataset[Subset.TRAIN].list_groups(level=level)
+        train_data = self.dataset.get(Subset.TRAIN, Camus(image_set=Subset.TRAIN, **self._dataset_kwargs))
+        return train_data.list_groups(level=level)
 
     def val_group_ids(self, level: Literal["patient", "view"] = "view") -> List[str]:
         """Lists the IDs of the different levels of groups/clusters samples in the validation data can belong to.
@@ -76,7 +78,8 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
         Returns:
             IDs of the different levels of groups/clusters samples in the validation data can belong to.
         """
-        return self.dataset[Subset.VAL].list_groups(level=level)
+        val_data = self.dataset.get(Subset.VAL, Camus(image_set=Subset.VAL, **self._dataset_kwargs))
+        return val_data.list_groups(level=level)
 
     def train_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(
