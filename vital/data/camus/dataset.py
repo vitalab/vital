@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, List, Sequence, Tuple, Union
+from typing import Callable, Dict, List, Literal, Sequence, Tuple, Union
 
 import h5py
 import numpy as np
@@ -85,7 +85,7 @@ class Camus(VisionDataset):
 
         # Determine whether to return data in a format suitable for training or inference
         if self.predict:
-            self.item_list = self._get_patient_paths()
+            self.item_list = self.list_groups(level="patient")
             self.getter = self._get_test_item
         else:
             self.item_list = self._get_instant_paths()
@@ -111,18 +111,27 @@ class Camus(VisionDataset):
     def __len__(self):  # noqa: D105
         return len(self.item_list)
 
-    def _get_patient_paths(self) -> List[str]:
-        """Lists paths to the patients, from the requested ``self.image_set``, inside the HDF5 file.
+    def list_groups(self, level: Literal["patient", "view"] = "view") -> List[str]:
+        """Lists the paths of the different levels of groups/clusters data samples in ``self.image_set`` can belong to.
+
+        Args:
+            level: Hierarchical level at which to group data samples.
+                - 'patient': all the data from the same patient is associated to a unique ID.
+                - 'view': all the data from the same view of a patient is associated to a unique ID.
 
         Returns:
-            Paths to the patients, from the requested ``self.image_set``, inside the HDF5 file.
+            IDs of the different levels of groups/clusters data samples in ``self.image_set`` can belong to.
         """
         with h5py.File(self.root, "r") as dataset:
-            patient_paths = [
+            # List the patients
+            groups = [
                 patient_path_byte.decode()
                 for patient_path_byte in dataset[f"cross_validation/fold_{self.fold}/{self.image_set}"]
             ]
-        return patient_paths
+            if level == "view":
+                groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys()]
+
+        return groups
 
     def _get_instant_paths(self) -> List[Tuple[str, int]]:
         """Lists paths to the instants, from the requested ``self.image_set``, inside the HDF5 file.
@@ -140,14 +149,13 @@ class Camus(VisionDataset):
             )
 
         image_paths = []
-        patient_paths = self._get_patient_paths()
+        view_paths = self.list_groups(level="view")
         with h5py.File(self.root, "r") as dataset:
-            for patient_path in patient_paths:
-                for view in dataset[patient_path].keys():
-                    view_group = dataset[patient_path][view]
-                    for instant in range(view_group[CamusTags.gt].shape[0]):
-                        if include_image(view_group, instant):
-                            image_paths.append((f"{patient_path}/{view}", instant))
+            for view_path in view_paths:
+                view_group = dataset[view_path]
+                for instant in range(view_group[CamusTags.gt].shape[0]):
+                    if include_image(view_group, instant):
+                        image_paths.append((view_path, instant))
         return image_paths
 
     def _get_train_item(self, index: int) -> Dict[str, Union[str, Tensor]]:

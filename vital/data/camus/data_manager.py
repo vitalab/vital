@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Literal
+from typing import Dict, List, Literal
 
 from pytorch_lightning.utilities import AttributeDict
 from torch.utils.data import DataLoader
@@ -8,10 +8,11 @@ from torch.utils.data import DataLoader
 from vital.data.camus.config import Label, image_size, in_channels
 from vital.data.camus.dataset import Camus, DataParameters
 from vital.data.config import Subset
+from vital.data.mixins import StructuredDataMixin
 from vital.systems.vital_system import SystemDataManagerMixin
 
 
-class CamusSystemDataManagerMixin(SystemDataManagerMixin):
+class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
     """Implementation of the mixin handling the training/validation/testing phases for the CAMUS dataset."""
 
     use_da: bool = False  #: Whether the system applies Data Augmentation (DA) by default
@@ -45,11 +46,37 @@ class CamusSystemDataManagerMixin(SystemDataManagerMixin):
             "labels": self.hparams.labels,
             "use_sequence": self.hparams.use_sequence,
         }
-        self.dataset = {
+        self.dataset: Dict[Subset, Camus] = {
             Subset.TRAIN: Camus(image_set=Subset.TRAIN, **common_kwargs),
             Subset.VAL: Camus(image_set=Subset.VAL, **common_kwargs),
             Subset.TEST: Camus(image_set=Subset.TEST, predict=True, **common_kwargs),
         }
+
+    def train_group_ids(self, level: Literal["patient", "view"] = "view") -> List[str]:
+        """Lists the IDs of the different levels of groups/clusters samples in the training data can belong to.
+
+        Args:
+            level: Hierarchical level at which to group data samples.
+                - 'patient': all the data from the same patient is associated to a unique ID.
+                - 'view': all the data from the same view of a patient is associated to a unique ID.
+
+        Returns:
+            IDs of the different levels of groups/clusters samples in the training data can belong to.
+        """
+        return self.dataset[Subset.TRAIN].list_groups(level=level)
+
+    def val_group_ids(self, level: Literal["patient", "view"] = "view") -> List[str]:
+        """Lists the IDs of the different levels of groups/clusters samples in the validation data can belong to.
+
+        Args:
+            level: Hierarchical level at which to group data samples.
+                - 'patient': all the data from the same patient is associated to a unique ID.
+                - 'view': all the data from the same view of a patient is associated to a unique ID.
+
+        Returns:
+            IDs of the different levels of groups/clusters samples in the validation data can belong to.
+        """
+        return self.dataset[Subset.VAL].list_groups(level=level)
 
     def train_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(
