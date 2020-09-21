@@ -9,11 +9,13 @@ dependencies:
   - pathos
   - pillow
   - scipy
+  - h5py
+  - tqdm
   - simpleitk
   - pytorch::pytorch
   - pytorch::torchvision
   - pytorch-lightning>=0.8
-  - cudatoolkit=10.1
+  - cudatoolkit=10
   - pip:
       - keras_preprocessing # Used by `utils/image/register.py` for its image processing utilities (w/o backend)
       - git+https://github.com/longcw/RoIAlign.pytorch
