@@ -14,9 +14,12 @@ def configure_logging(
         print_to_console: Whether the loggers should display the messages to the console.
     """
     handlers = []
+    # No additional handler is set in case of `print_to_console`
+    # because `basicConfig` logs to console by default
+    # Adding a `logging.StreamHandler()` will only cause duplicated logs
+    # TODO Find a way to disable `StreamHandler` only (when `print_to_console=False`)
+
     if filename:
         handlers.append(logging.FileHandler(str(filename), mode="w"))
-    if print_to_console:
-        handlers.append(logging.StreamHandler())
 
     logging.basicConfig(level=level, handlers=handlers)
