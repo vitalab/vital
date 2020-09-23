@@ -12,11 +12,10 @@ Sherbrooke University, headed by Professor [Pierre-Marc Jodoin](http://info.ushe
 
 </div>
 
-## How to use
+## Description
 This repository was not designed to be used as a standalone project, but was rather meant to be used as a third-party
 library for more applied projects.
 
-## Description
 To help you follow along with the organization of the repository, here is a summary of each major package's purpose:
 
 - [data](vital/data): utilities to process and interface with common medical image datasets, from processing raw image
@@ -38,20 +37,32 @@ projects' systems should inherit.
 - [VitalRunner](vital/vital_runner.py): common boilerplate code surrounding the use of Lightning's `Trainer` that
 handles a generic train and eval run of a model.
 
-## Requirements
-The [`vital.yml`](requirements/vital.yml) file lists the dependencies required by the whole repository. In case you
-include the repository inside your own project, you may want to add project specific dependencies, or maybe even remove
-some dependencies (if you only use some of the utilities provided by the repository).
+## How to use
 
+### Install
+To install the project, run the following command from the project's root directory:
+```shell script
+pip install .
+```
+> NOTE: This instruction applies when you only want to use the project. If you want to play around with the code and
+> contribute to the project, see [the section on how to contribute](#how-to-contribute).
 
-## How to contribute
+## How to Contribute
+
+### Environment Setup
+If you want to contribute to the project, you must include it differently in your python environment. Once again, it is
+recommended to use pip to install the project. However, this time the project should be installed in editable mode, with
+the required additional development dependencies:
+```shell script
+pip install -e .[dev]
+```
 
 ### Version Control Hooks
 Before first trying to commit to the project, it is important to setup the version control hooks, so that commits
 respect the coding standards in place for the project. The [`.pre-commit-config.yaml`](.pre-commit-config.yaml) file
 defines the pre-commit hooks that should be installed in any project contributing to the `vital` repository. To setup
 the version control hooks, run the following command:
-```
+```shell script
 pre-commit install
 ```
 

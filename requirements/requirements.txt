@@ -1,0 +1,17 @@
+pathos
+pillow
+numpy
+scipy
+scikit-image
+scikit-learn
+pandas
+h5py
+tqdm
+SimpleITK
+torch
+torchvision
+pytorch-lightning@git+https://github.com/PyTorchLightning/pytorch-lightning
+comet-ml
+Keras-Preprocessing
+medpy
+roi_align@git+https://github.com/longcw/RoIAlign.pytorch
