@@ -4,10 +4,11 @@ from operator import mul
 from typing import Tuple, Type
 
 import torch
-from roi_align import CropAndResize
 from torch import Tensor, nn
 from torch.nn import functional as F
+from torchvision.ops import roi_align
 
+from vital.utils.image.measure import TensorMeasure
 from vital.utils.image.transform import resize_image
 
 
@@ -36,17 +37,22 @@ class LocalizationNet(nn.Module):
         segmentation_cls: Type[nn.Module],
         in_shape: Tuple[int, ...],
         out_shape: Tuple[int, ...],
+        cropped_shape: Tuple[int, int],
         **segmentation_cls_kwargs,
     ):  # noqa: D205,D212,D415
         """
         Args:
             segmentation_cls: Class of the module to use as a base segmentation model for the LocalizationNet.
+            in_shape: Shape of the input data.
+            out_shape: Shape of the target data.
+            cropped_shape: (H, W), Shape at which to resize RoI aligned crops.
             data_shape: Information about the shape of the expected input and output.
             **segmentation_cls_kwargs: Arguments to initialize an instance of ``segmentation_cls``.
         """
         super().__init__()
         self.in_shape = in_shape
         self.out_shape = out_shape
+        self.cropped_shape = cropped_shape
         self.global_segmentation_module = segmentation_cls(
             in_channels=in_shape[0], out_channels=out_shape[0], **segmentation_cls_kwargs
         )
@@ -59,10 +65,8 @@ class LocalizationNet(nn.Module):
         self.segmentation_encoder = segmentation_module.encoder
         self.segmentation_bottleneck = segmentation_module.bottleneck
 
-        self.crop_resize = CropAndResize(*in_shape[1:])
-
         # Compute forward pass with dummy data to compute the output shape of the feature extractor module
-        # used by the ROI bbox module (batch_size of 2 for batchnorm)
+        # used by the RoI bbox module (batch_size of 2 for batchnorm)
         x = torch.rand(2, *out_shape, dtype=torch.float)
         features = self.segmentation_encoder(x)
         if isinstance(features, Tuple):  # In case of multiple tensors returned by the encoder
@@ -72,12 +76,12 @@ class LocalizationNet(nn.Module):
             OrderedDict(
                 [
                     ("linear1", nn.Linear(reduce(mul, features.shape[1:]), 1024)),
-                    ("relu1", nn.ReLU(inplace=True)),
+                    ("relu1", nn.ReLU()),
                     ("linear2", nn.Linear(1024, 256)),
-                    ("relu2", nn.ReLU(inplace=True)),
+                    ("relu2", nn.ReLU()),
                     ("linear3", nn.Linear(256, 32)),
-                    ("relu3", nn.ReLU(inplace=True)),
-                    ("bbox_", nn.Linear(32, 4)),
+                    ("relu3", nn.ReLU()),
+                    ("bbox", nn.Linear(32, 4)),
                 ]
             )
         )
@@ -90,16 +94,16 @@ class LocalizationNet(nn.Module):
 
         Returns:
             - (N, ``out_channels``, H, W), Raw, unnormalized scores for each class in the first, global segmentation.
-            - (N, 4), Coordinates of the bbox around the ROI.
+            - (N, 4), Coordinates of the bbox around the RoI.
             - (N, ``out_channels``, H, W), Raw, unnormalized scores for each class in the second segmentation, localized
-              in the cropped ROI.
+              in the cropped RoI.
         """
         # First segmentation module: Segment input image
         # Segmentation module trained to take as input the complete image, and to predict a rough segmentation from
-        # which the groundtruth segmentation's ROI can be inferred
+        # which the groundtruth segmentation's RoI can be inferred
         global_y_hat = self.global_segmentation_module(x)
 
-        # Feature extraction and bbox module: Regress the bbox coordinates around the ROI
+        # Feature extraction and bbox module: Regress the bbox coordinates around the RoI
         # Downsampling half of segmentation module trained, in association with the following fully-connected layers,
         # to predict through regression the coordinates of the bbox around the groundtruth segmentation
         features = self.segmentation_encoder(F.softmax(global_y_hat, dim=1))
@@ -110,11 +114,11 @@ class LocalizationNet(nn.Module):
         roi_bbox_hat = self.roi_bbox_module(features)
 
         # Crop and resize ``x`` based on ``roi_bbox_hat`` predicted by the previous modules
-        # The ``torch.int32`` is important to pass internal assertions about the type of the bbox index
-        cropped_x = self.crop_resize(x, roi_bbox_hat, torch.arange(x.shape[0], dtype=torch.int32, device=x.device))
+        boxes = [box[None, :] for box in TensorMeasure.denormalize_bbox(roi_bbox_hat, self.in_shape[1:])]
+        cropped_x = roi_align(x, boxes, self.cropped_shape, aligned=True)
 
-        # Second segmentation module: Segment cropped ROI
-        # Segmentation module trained to take as input the image cropped around the predicted segmentation's ROI, and
+        # Second segmentation module: Segment cropped RoI
+        # Segmentation module trained to take as input the image cropped around the predicted segmentation's RoI, and
         # to predict a highly accurate segmentation from the localised input
         localized_y_hat = self.localized_segmentation_module(cropped_x)
 
@@ -138,19 +142,13 @@ class LocalizationNet(nn.Module):
         """Fits the localized segmentation back to its original position the image.
 
         Args:
-            localized_segmentation: (N, 1, H, W), Segmentation of the content of the bbox around the ROI.
-            roi_bbox: (N, 4), Normalized coordinates of the bbox around the ROI.
+            localized_segmentation: (N, 1, H, W), Segmentation of the content of the bbox around the RoI.
+            roi_bbox: (N, 4), Normalized coordinates of the bbox around the RoI.
 
         Returns:
             (N, 1, H, W), Localized segmentation fitted to its original position in the image.
         """
-        # Clamp predicted normalized ROI bbox to ensure it won't end up out of range
-        roi_bbox = roi_bbox.clamp(0, 1)
-
-        # Change ROI bbox from normalized between 0 and 1 to absolute pixel coordinates
-        roi_bbox[:, (0, 2)] = torch.round(roi_bbox[:, (0, 2)] * self.in_shape[1])  # Height
-        roi_bbox[:, (1, 3)] = torch.round(roi_bbox[:, (1, 3)] * self.in_shape[2])  # Width
-        roi_bbox = roi_bbox.int()
+        roi_bbox = TensorMeasure.denormalize_bbox(roi_bbox, self.out_shape[1:], check_bounds=True).int()
 
         # Fit the localized segmentation at its original location in the image, one item at a time
         segmentation = []

@@ -14,4 +14,3 @@ pytorch-lightning@git+https://github.com/PyTorchLightning/pytorch-lightning
 comet-ml
 Keras-Preprocessing
 medpy
-roi_align@git+https://github.com/longcw/RoIAlign.pytorch
