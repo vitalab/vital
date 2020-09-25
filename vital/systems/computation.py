@@ -29,6 +29,10 @@ class TrainValComputationMixin(SystemComputationMixin, ABC):
 
         For models where the behavior in training and validation is different, then override ``training_step`` and
         ``validation_step`` directly (in which case ``trainval_step`` doesn't need to be implemented).
+
+        Returns:
+            Mapping between metric names and their values. It must contain at least a ``'loss'``, as that is the value
+            optimized in training and monitored by callbacks during validation.
         """
         raise NotImplementedError
 
@@ -40,7 +44,7 @@ class TrainValComputationMixin(SystemComputationMixin, ABC):
 
     def validation_step(self, *args, **kwargs) -> EvalResult:  # noqa: D102
         output = prefix(self.trainval_step(*args, **kwargs), "val_")
-        result = EvalResult(checkpoint_on=output["val_loss"])
+        result = EvalResult(checkpoint_on=output["val_loss"], early_stop_on=output["val_loss"])
         result.log_dict(output, **self._val_logging_flags)
         return result
 

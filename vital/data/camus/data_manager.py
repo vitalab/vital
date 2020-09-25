@@ -87,7 +87,7 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
             batch_size=self.hparams.batch_size,
             shuffle=True,
             num_workers=self.hparams.num_workers,
-            pin_memory=self.device.type == "cuda",
+            pin_memory=self.on_gpu,
         )
 
     def val_dataloader(self) -> DataLoader:  # noqa: D102
@@ -95,7 +95,7 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
             self.dataset[Subset.VAL],
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
-            pin_memory=self.device.type == "cuda",
+            pin_memory=self.on_gpu,
         )
 
     def test_dataloader(self) -> DataLoader:  # noqa: D102
@@ -103,7 +103,7 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
             self.dataset[Subset.TEST],
             batch_size=None,
             num_workers=self.hparams.num_workers,
-            pin_memory=self.device.type == "cuda",
+            pin_memory=self.on_gpu,
         )
 
     @classmethod
