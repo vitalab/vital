@@ -82,7 +82,7 @@ class VitalRunner(ABC):
         Args:
             hparams: Arguments parsed from the CLI.
         """
-        configure_logging(print_to_console=True)
+        configure_logging(log_to_console=True, log_file=hparams.default_root_dir / "run.log")
 
     @classmethod
     def _define_best_model_save_path(cls, hparams: Namespace) -> Path:
@@ -95,7 +95,7 @@ class VitalRunner(ABC):
             Fixed path (w.r.t to the system to run) where to copy the best model checkpoint after training.
         """
         system_cls = cls._get_selected_system(hparams)
-        return hparams.default_root_dir.joinpath(f"{system_cls.__name__}.ckpt")
+        return hparams.default_root_dir / f"{system_cls.__name__}.ckpt"
 
     @classmethod
     def _add_system_args(cls, parser: ArgumentParser) -> ArgumentParser:

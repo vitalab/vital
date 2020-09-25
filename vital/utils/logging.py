@@ -4,22 +4,41 @@ from typing import Union
 
 
 def configure_logging(
-    level: Union[int, str] = logging.WARNING, filename: Path = None, print_to_console: bool = True
+    log_to_console: bool = True,
+    console_level: Union[int, str] = logging.WARNING,
+    log_file: Path = None,
+    file_level: Union[int, str] = logging.INFO,
+    formatter: logging.Formatter = None,
 ) -> None:
     """Configures a standardized way of logging for the library.
 
     Args:
-        level: Minimal level of events to log.
-        filename: Path to the file loggers should write to, if wanted.
-        print_to_console: Whether the loggers should display the messages to the console.
+        log_to_console: Whether the loggers should display the messages to the console.
+        console_level: Minimal level of events to log to the console.
+        log_file: Path to the file loggers should write to, if any.
+        file_level: Minimal level of events to log to the file.
+        formatter: If provided, overrides the default formatter set for all the handlers.
     """
     handlers = []
-    # No additional handler is set in case of `print_to_console`
-    # because `basicConfig` logs to console by default
-    # Adding a `logging.StreamHandler()` will only cause duplicated logs
-    # TODO Find a way to disable `StreamHandler` only (when `print_to_console=False`)
 
-    if filename:
-        handlers.append(logging.FileHandler(str(filename), mode="w"))
+    if log_to_console:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(console_level)
+        handlers.append(console_handler)
 
-    logging.basicConfig(level=level, handlers=handlers)
+    if log_file:
+        log_file.parent.mkdir(exist_ok=True)  # Ensure that the directory where to create the log file exists
+        file_handler = logging.FileHandler(str(log_file), mode="w")
+        file_handler.setLevel(file_level)
+        handlers.append(file_handler)
+
+    fmt_kwargs = {}
+    if formatter:
+        for handler in handlers:
+            handler.setFormatter(formatter)
+    else:
+        fmt_kwargs.update(
+            {"format": "[%(asctime)s][%(name)s][%(levelname)s] %(message)s", "datefmt": "%Y-%m-%d %H:%M:%S"}
+        )
+
+    logging.basicConfig(**fmt_kwargs, handlers=handlers, force=True)
