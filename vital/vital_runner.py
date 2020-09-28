@@ -3,9 +3,9 @@ from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from shutil import copy2
-from typing import Type
+from typing import List, Type
 
-from pytorch_lightning import Trainer
+from pytorch_lightning import Callback, Trainer
 
 from vital.systems.vital_system import VitalSystem
 from vital.utils.logging import configure_logging
@@ -52,7 +52,7 @@ class VitalRunner(ABC):
         if hparams.resume:
             trainer = Trainer(resume_from_checkpoint=hparams.checkpoint)
         else:
-            trainer = Trainer.from_argparse_args(hparams)
+            trainer = Trainer.from_argparse_args(hparams, callbacks=cls._get_callbacks(hparams))
 
         if hparams.checkpoint:  # Load pretrained model if checkpoint is provided
             model = system_cls.load_from_checkpoint(hparams.checkpoint)
@@ -135,6 +135,18 @@ class VitalRunner(ABC):
             Type of the Lightning module selected by the user to be run.
         """
         raise NotImplementedError
+
+    @classmethod
+    def _get_callbacks(cls, hparams: Namespace) -> List[Callback]:
+        """Initialize, through the parameters specified in the CLI, the callbacks to use in this run.
+
+        Args:
+            hparams: Arguments parsed from the CLI.
+
+        Returns:
+            Callbacks to pass to the Lightning `Trainer`.
+        """
+        return []
 
     @classmethod
     def _add_generic_args(cls, parser: ArgumentParser) -> ArgumentParser:
