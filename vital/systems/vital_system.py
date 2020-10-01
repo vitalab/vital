@@ -24,6 +24,9 @@ class VitalSystem(pl.LightningModule, ABC):
         - CLI for generic arguments
     """
 
+    #: Choice of logging flags to toggle through the CLI
+    _logging_flags = ["on_step", "on_epoch", "logger", "prog_bar"]
+
     # Fields to initialize in implementation of ``DataManagerMixin``
     #: Collection of parameters related to the nature of the data
     data_params: DataParameters
@@ -47,6 +50,10 @@ class VitalSystem(pl.LightningModule, ABC):
 
         # By default, assumes the provided data shape is in channel-first format
         self.example_input_array = torch.randn((self.hparams.batch_size, *self.data_params.in_shape))
+
+        # Collect logging flags to pass when logging during training/validation
+        self._train_logging_flags = {flag: True in self.hparams.train_logging_flags for flag in self._logging_flags}
+        self._val_logging_flags = {flag: True in self.hparams.val_logging_flags for flag in self._logging_flags}
 
     def summarize(self, mode: str = ModelSummary.MODE_DEFAULT) -> ModelSummary:
         """Adds saving a Keras-style summary of the model to the base PL summary routine.
@@ -83,6 +90,22 @@ class VitalSystem(pl.LightningModule, ABC):
             Parser object that supports CL arguments specific to a system.
         """
         parser = ArgumentParser(add_help=False)
+        parser.add_argument(
+            "--train_logging_flags",
+            type=str,
+            nargs="+",
+            choices=cls._logging_flags,
+            default=["on_step", "logger"],
+            help="Options to use for logging the training metrics. \nThe options apply to all training metrics)",
+        )
+        parser.add_argument(
+            "--val_logging_flags",
+            type=str,
+            nargs="+",
+            choices=cls._logging_flags,
+            default=["on_epoch", "logger"],
+            help="Options to use for logging the validation metrics. \nThe options apply to all validation metrics)",
+        )
         return cls.add_evaluation_args(cls.add_computation_args(cls.add_data_manager_args(parser)))
 
 
