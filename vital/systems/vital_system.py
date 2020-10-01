@@ -52,8 +52,8 @@ class VitalSystem(pl.LightningModule, ABC):
         self.example_input_array = torch.randn((self.hparams.batch_size, *self.data_params.in_shape))
 
         # Collect logging flags to pass when logging during training/validation
-        self._train_logging_flags = {flag: True in self.hparams.train_logging_flags for flag in self._logging_flags}
-        self._val_logging_flags = {flag: True in self.hparams.val_logging_flags for flag in self._logging_flags}
+        self.train_logging_flags = {flag: (flag in self.hparams.train_logging_flags) for flag in self._logging_flags}
+        self.val_logging_flags = {flag: (flag in self.hparams.val_logging_flags) for flag in self._logging_flags}
 
     def summarize(self, mode: str = ModelSummary.MODE_DEFAULT) -> ModelSummary:
         """Adds saving a Keras-style summary of the model to the base PL summary routine.
