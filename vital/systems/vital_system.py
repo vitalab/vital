@@ -1,6 +1,6 @@
 from abc import ABC
 from argparse import ArgumentParser, Namespace
-from typing import Dict, List, Literal, Mapping, Union
+from typing import Any, Dict, List, Literal, Mapping, Union
 
 import pytorch_lightning as pl
 import torch
@@ -150,10 +150,10 @@ class SystemDataManagerMixin(VitalSystem, ABC):
 class SystemComputationMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the training/validation/testing phases."""
 
-    def training_step(self, *args, **kwargs) -> Union[int, Dict[str, Union[Tensor, Dict[str, Tensor]]]]:  # noqa: D102
+    def training_step(self, *args, **kwargs) -> Union[Tensor, Dict[Union[Literal["loss"], Any], Any]]:  # noqa: D102
         raise NotImplementedError
 
-    def validation_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
+    def validation_step(self, *args, **kwargs):  # noqa: D102
         pass
 
     @classmethod
@@ -172,12 +172,10 @@ class SystemComputationMixin(VitalSystem, ABC):
 class SystemEvaluationMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the evaluation phase."""
 
-    def test_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
+    def test_step(self, *args, **kwargs):  # noqa: D102
         pass
 
-    def test_epoch_end(
-        self, outputs: Union[List[Dict[str, Tensor]], List[List[Dict[str, Tensor]]]]
-    ) -> Dict[str, Dict[str, Tensor]]:
+    def test_epoch_end(self, outputs: List[Any]) -> None:
         """Runs at the end of a test epoch with the output of all test steps.
 
         It can be used to export results using custom loggers, while not returning any metrics to display in the
