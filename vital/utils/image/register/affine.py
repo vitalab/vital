@@ -7,7 +7,7 @@ from PIL.Image import LINEAR
 from scipy import ndimage
 
 from vital.data.config import SemanticStructureId
-from vital.utils.format import to_categorical, to_onehot
+from vital.utils.format.numpy import to_categorical, to_onehot
 from vital.utils.image.transform import resize_image
 
 Shift = Tuple[int, int]

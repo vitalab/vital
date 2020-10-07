@@ -1,9 +1,9 @@
 from functools import wraps
 from typing import Any, Callable, Dict, Mapping, Sequence, Union
 
-from vital.utils.format import Item
-from vital.utils.format import prefix as prefix_fn
-from vital.utils.format import squeeze as squeeze_fn
+from vital.utils.format.native import Item
+from vital.utils.format.native import prefix as prefix_fn
+from vital.utils.format.native import squeeze as squeeze_fn
 
 
 def prefix(

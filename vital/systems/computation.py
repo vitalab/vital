@@ -4,7 +4,7 @@ from typing import Dict
 from torch import Tensor
 
 from vital.systems.vital_system import SystemComputationMixin
-from vital.utils.format import prefix
+from vital.utils.format.native import prefix
 
 
 class TrainValComputationMixin(SystemComputationMixin, ABC):
