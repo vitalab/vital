@@ -72,7 +72,7 @@ class VitalSystem(pl.LightningModule, ABC):
         return super().summarize(mode)
 
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
-        return torch.optim.AdamW(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
