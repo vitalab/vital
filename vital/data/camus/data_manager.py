@@ -2,7 +2,6 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import Dict, List, Literal
 
-from pytorch_lightning.utilities import AttributeDict
 from torch.utils.data import DataLoader
 
 from vital.data.camus.config import Label, image_size, in_channels
@@ -18,25 +17,20 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
     use_da: bool = False  #: Whether the system applies Data Augmentation (DA) by default
     use_sequence: bool = False  #: Whether the system uses complete sequences by default
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, **kwargs):
         """Handles initializing parameters related to the nature of the data.
 
         Args:
-            *args: Positional arguments to pass to the parent's constructor.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
-        # TOFIX Hacky and ugly initialization until decoupling to `LightningDataModule`
-        (hparams,) = args
-        if isinstance(hparams, dict):
-            hparams = AttributeDict(hparams)
-        super().__init__(
-            *args,
-            data_params=DataParameters(
-                in_shape=(in_channels, image_size, image_size),
-                out_shape=(len(hparams.labels), image_size, image_size),
-            ),
-            **kwargs,
+        # Propagate data_params to allow model to adapt to data config
+        # Overrides saved data_params for models loaded from a checkpoint
+        kwargs["data_params"] = DataParameters(
+            in_shape=(in_channels, image_size, image_size),
+            out_shape=(len(kwargs["labels"]), image_size, image_size),
         )
+        super().__init__(**kwargs)
+
         self.labels = [str(label) for label in self.hparams.labels]
         self.dataset: Dict[Subset, Camus] = {}
         self._dataset_kwargs = {
@@ -120,15 +114,6 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
             help="Labels of the segmentation classes to take into account (including background). "
             "If None, target all labels included in the data",
         )
-
-        if cls.use_da:
-            parser.add_argument(
-                "no_da", dest="use_da", action="store_false", help="Disable online dataset augmentation"
-            )
-        else:
-            parser.add_argument(
-                "--use_da", dest="use_da", action="store_true", help="Enable online dataset augmentation"
-            )
 
         if cls.use_sequence:
             parser.add_argument(

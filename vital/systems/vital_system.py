@@ -1,5 +1,5 @@
 from abc import ABC
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from typing import Any, Dict, List, Literal, Mapping, Union
 
 import pytorch_lightning as pl
@@ -33,27 +33,26 @@ class VitalSystem(pl.LightningModule, ABC):
     #: Mapping between subsets of the data (e.g. train) and their torch ``Dataset`` handle
     dataset: Mapping[Subset, Dataset]
 
-    def __init__(self, hparams: Union[Dict, Namespace], data_params: DataParameters):  # noqa: D205,D212,D415
-        """
+    def __init__(self, **kwargs):
+        """Saves the parameters from all the model's childs and mixins in `hparams`.
+
         Args:
-            hparams: If created straight from CL input, a ``Namespace`` of arguments parsed from the CLI.
-                Otherwise (when loaded from checkpoints), a ``Dict`` of deserialized hyperparameters.
-            data_params: Provided by the implementation of ``DataManagerMixin`` when it calls its parent's ``__init__``.
+            **kwargs: Dictionary of arguments to save as the model's `hparams`.
         """
         super().__init__()
-        #: Collection of hyperparameters configuring the system
-        self.hparams = hparams
-        self.data_params = data_params
+        # Collection of hyperparameters configuring the system
+        self.save_hyperparameters()
+
+        # Update logging flags to map between available flags and their boolean values,
+        # instead of listing desired flags
+        self.train_log_kwargs = {flag: (flag in self.hparams.train_logging_flags) for flag in self._logging_flags}
+        self.val_log_kwargs = {flag: (flag in self.hparams.val_logging_flags) for flag in self._logging_flags}
 
         # Ensure output directory exists
         self.hparams.default_root_dir.mkdir(parents=True, exist_ok=True)
 
         # By default, assumes the provided data shape is in channel-first format
-        self.example_input_array = torch.randn((self.hparams.batch_size, *self.data_params.in_shape))
-
-        # Collect logging flags to pass when logging during training/validation
-        self.train_logging_flags = {flag: (flag in self.hparams.train_logging_flags) for flag in self._logging_flags}
-        self.val_logging_flags = {flag: (flag in self.hparams.val_logging_flags) for flag in self._logging_flags}
+        self.example_input_array = torch.randn((self.hparams.batch_size, *self.hparams.data_params.in_shape))
 
     def summarize(self, mode: str = ModelSummary.MODE_DEFAULT) -> ModelSummary:
         """Adds saving a Keras-style summary of the model to the base PL summary routine.

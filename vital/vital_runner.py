@@ -57,7 +57,7 @@ class VitalRunner(ABC):
         if hparams.checkpoint:  # Load pretrained model if checkpoint is provided
             model = system_cls.load_from_checkpoint(hparams.checkpoint)
         else:
-            model = system_cls(hparams)
+            model = system_cls(**vars(hparams))
 
         if hparams.train:
             trainer.fit(model)
