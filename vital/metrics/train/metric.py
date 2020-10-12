@@ -16,7 +16,7 @@ class DifferentiableDiceCoefficient(Metric):
         no_fg_score: float = 0.0,
         reduction: str = "elementwise_mean",
         compute_on_step: bool = True,
-        ddp_sync_on_step: bool = False,
+        dist_sync_on_step: bool = False,
         process_group: Optional[Any] = None,
     ):  # noqa: D205,D212,D415
         """
@@ -29,13 +29,13 @@ class DifferentiableDiceCoefficient(Metric):
                 - ``'elementwise_mean'``: takes the mean (default)
                 - ``'none'``: no reduction will be applied
             compute_on_step: Forward only calls ``update()`` and returns None if this is set to False.
-            ddp_sync_on_step: Synchronize metric state across processes at each ``forward()`` before returning the value
-                at the step.
+            dist_sync_on_step: Synchronize metric state across processes at each ``forward()`` before returning the
+                value at the step.
             process_group: Specify the process group on which synchronization is called.
                 Selects the entire world by default.
         """
         super().__init__(
-            compute_on_step=compute_on_step, ddp_sync_on_step=ddp_sync_on_step, process_group=process_group
+            compute_on_step=compute_on_step, dist_sync_on_step=dist_sync_on_step, process_group=process_group
         )
         self.include_background = include_background
         self.nan_score = nan_score
@@ -79,10 +79,10 @@ class KlDivergenceToZeroMeanUnitVariance(Metric):
     """
 
     def __init__(
-        self, compute_on_step: bool = True, ddp_sync_on_step: bool = False, process_group: Optional[Any] = None
+        self, compute_on_step: bool = True, dist_sync_on_step: bool = False, process_group: Optional[Any] = None
     ):
         super().__init__(
-            compute_on_step=compute_on_step, ddp_sync_on_step=ddp_sync_on_step, process_group=process_group
+            compute_on_step=compute_on_step, dist_sync_on_step=dist_sync_on_step, process_group=process_group
         )
         self.add_state("kl_div_by_steps", [])
 
