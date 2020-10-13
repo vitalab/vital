@@ -2,6 +2,7 @@ pathos
 pillow
 numpy
 scipy
+seaborn
 scikit-image
 scikit-learn
 pandas
