@@ -48,9 +48,6 @@ class VitalSystem(pl.LightningModule, ABC):
         self.train_log_kwargs = {flag: (flag in self.hparams.train_logging_flags) for flag in self._logging_flags}
         self.val_log_kwargs = {flag: (flag in self.hparams.val_logging_flags) for flag in self._logging_flags}
 
-        # Ensure output directory exists
-        self.hparams.default_root_dir.mkdir(parents=True, exist_ok=True)
-
         # By default, assumes the provided data shape is in channel-first format
         self.example_input_array = torch.randn((self.hparams.batch_size, *self.hparams.data_params.in_shape))
 
@@ -65,7 +62,9 @@ class VitalSystem(pl.LightningModule, ABC):
               device incompatibilities in clusters.
         """
         if mode is not None:
-            with open(str(self.hparams.default_root_dir.joinpath("summary.txt")), "w") as f:
+            #  Ensure the root directory exists before trying to write the summary
+            self.hparams.default_root_dir.mkdir(parents=True, exist_ok=True)
+            with open(str(self.hparams.default_root_dir / "summary.txt"), "w") as f:
                 summary_str, _ = summary_info(self, self.example_input_array)
                 f.write(summary_str)
         return super().summarize(mode)
