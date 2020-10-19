@@ -12,6 +12,7 @@ class DifferentiableDiceCoefficient(Metric):
     def __init__(
         self,
         include_background: bool = False,
+        num_classes: int = None,
         nan_score: float = 0.0,
         no_fg_score: float = 0.0,
         reduction: str = "elementwise_mean",
@@ -22,6 +23,8 @@ class DifferentiableDiceCoefficient(Metric):
         """
         Args:
             include_background: Whether to also compute dice for the background.
+            num_classes: Number of classes the metric should return, if no reduction are applied.
+                You only need to provide this argument when `reduction=='none'`.
             nan_score: Score to return, if a NaN occurs during computation (denom zero).
             no_fg_score: Score to return, if no foreground pixel was found in target.
             reduction: Method for reducing metric score over labels.
@@ -34,6 +37,12 @@ class DifferentiableDiceCoefficient(Metric):
             process_group: Specify the process group on which synchronization is called.
                 Selects the entire world by default.
         """
+        if reduction == "none" and num_classes is None:
+            raise ValueError(
+                "If you don't apply any reduction, you must provide the number of classes the metric should return. "
+                "This number should take into account whether you also want to include the background or not."
+            )
+
         super().__init__(
             compute_on_step=compute_on_step, dist_sync_on_step=dist_sync_on_step, process_group=process_group
         )
@@ -43,7 +52,9 @@ class DifferentiableDiceCoefficient(Metric):
         assert reduction in ("elementwise_mean", "none")
         self.reduction = reduction
 
-        self.add_state("dice_by_steps", [])
+        dice_state_default = torch.zeros(num_classes) if self.reduction == "none" else torch.tensor(0.0)
+        self.add_state("sum_dice_score", dice_state_default, dist_reduce_fx="sum")
+        self.add_state("counter", torch.tensor(0), dist_reduce_fx="sum")
 
     def update(self, input: torch.Tensor, target: torch.Tensor) -> None:
         """Update state with dice over the batch.
@@ -52,16 +63,15 @@ class DifferentiableDiceCoefficient(Metric):
             input: (N, C, H, W), Raw, unnormalized scores for each class.
             target: (N, H, W), Groundtruth labels, where each value is 0 <= targets[i] <= C-1.
         """
-        self.dice_by_steps += [
-            differentiable_dice_score(
-                input=input,
-                target=target,
-                bg=self.include_background,
-                nan_score=self.nan_score,
-                no_fg_score=self.no_fg_score,
-                reduction=self.reduction,
-            )
-        ]
+        self.sum_dice_score += differentiable_dice_score(
+            input=input,
+            target=target,
+            bg=self.include_background,
+            nan_score=self.nan_score,
+            no_fg_score=self.no_fg_score,
+            reduction=self.reduction,
+        )
+        self.counter += 1
 
     def compute(self) -> torch.Tensor:
         """Reduces dice over state.
@@ -69,7 +79,7 @@ class DifferentiableDiceCoefficient(Metric):
         Return:
             (1,) or (C,), Calculated dice coefficient, averaged or by labels.
         """
-        return torch.mean(torch.stack(self.dice_by_steps), 0)
+        return self.sum_dice_score / self.counter
 
 
 class KlDivergenceToZeroMeanUnitVariance(Metric):
@@ -84,7 +94,8 @@ class KlDivergenceToZeroMeanUnitVariance(Metric):
         super().__init__(
             compute_on_step=compute_on_step, dist_sync_on_step=dist_sync_on_step, process_group=process_group
         )
-        self.add_state("kl_div_by_steps", [])
+        self.add_state("sum_kl_div", torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("counter", torch.tensor(0), dist_reduce_fx="sum")
 
     def update(self, mu: torch.Tensor, logvar: torch.Tensor) -> None:
         """Update state with KL divergence for the batch.
@@ -93,7 +104,8 @@ class KlDivergenceToZeroMeanUnitVariance(Metric):
             mu: (N, Z), Mean of the distribution to compare to N(0,1).
             logvar: (N, Z) Log variance of the distribution to compare to N(0,1).
         """
-        self.kl_div_by_steps += [kl_div_zmuv(mu, logvar)]
+        self.sum_kl_div += kl_div_zmuv(mu, logvar)
+        self.counter += 1
 
     def compute(self) -> torch.Tensor:
         """Reduces KL divergence over state.
@@ -101,4 +113,4 @@ class KlDivergenceToZeroMeanUnitVariance(Metric):
         Returns:
             (1,), KL divergence term of the VAE's loss.
         """
-        return torch.mean(torch.stack(self.kl_div_by_steps), 0)
+        return self.sum_kl_div / self.counter
