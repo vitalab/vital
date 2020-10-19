@@ -20,7 +20,7 @@ def tversky_score(
 
     References:
         - PyTorch-Lightning's ``dice_score`` implementation:
-          https://pytorch-lightning.readthedocs.io/en/stable/metrics.html#dice-score-f
+          https://pytorch-lightning.readthedocs.io/en/stable/metrics.html#dice-score-func
         - Description of the Tversky loss [accessed 22/06/2020]:
           https://lars76.github.io/2018/09/27/loss-functions-for-segmentation.html
 
