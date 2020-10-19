@@ -10,7 +10,7 @@ tqdm
 SimpleITK
 torch
 torchvision
-pytorch-lightning@git+https://github.com/PyTorchLightning/pytorch-lightning
+pytorch-lightning
 comet-ml
 Keras-Preprocessing
 medpy
