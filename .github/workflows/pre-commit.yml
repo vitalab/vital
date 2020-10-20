@@ -1,4 +1,4 @@
-name: "Check Code Format"
+name: pre-commit
 on:
   # Trigger the workflow on push or pull request,
   # but only for the master and dev branches
@@ -12,8 +12,7 @@ on:
       - dev
 
 jobs:
-  code-formatting:
-    name: Check code format
+  pre-commit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,14 +23,5 @@ jobs:
         with:
           python-version: 3.8
 
-      - name: Install code formatting packages
-        run: pip install isort black flake8
-
-      - name: Run Black
-        run: black --config=pyproject.toml --check .
-
-      - name: Run isort
-        run: isort --settings-path=setup.cfg --check-only
-
-      - name: Run flake8
-        run: flake8 --config=setup.cfg .
+      - name: Install and run pre-commit hooks
+        uses: pre-commit/action@v2.0.0
