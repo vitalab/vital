@@ -16,18 +16,23 @@ class Logger:
     desc: str  #: Description of the logger. Used in e.g. progress bar, logs file name, etc.
 
     def __init__(
-        self, output_name_template: str = None, debug: bool = False, **iterable_result_params
+        self,
+        output_name_template: str = None,
+        disable_progress_bar: bool = False,
+        disable_multiprocessing: bool = False,
+        **iterable_result_params,
     ):  # noqa: D205,D212,D415
         """
         Args:
             output_name_template: Name template for the aggregated log, if the logger produces an aggregated log.
-            debug: If ``True``, disables multiprocessing when collecting logs for each result; otherwise, enables
-                multiprocessing.
+            disable_progress_bar: If ``True``, disables the progress bars detailing the progress of the computations.
+            disable_multiprocessing: If ``True``, disables multiprocessing when collecting logs for each result.
             iterable_result_params: Parameters to configure the iterable over the results. Can be ``None`` if the logger
                 will only be used to write logs (and not called).
         """
         self.output_name_template = output_name_template
-        self.debug = debug
+        self.disable_progress_bar = disable_progress_bar
+        self.disable_multiprocessing = disable_multiprocessing
         self.iterable_result_params = iterable_result_params
 
     def __call__(self, results_path: Path, output_folder: Path) -> None:
@@ -41,44 +46,33 @@ class Logger:
         self.output_folder.mkdir(parents=True, exist_ok=True)
 
         results = self.IterableResultT(results_path=results_path, **self.iterable_result_params)
+        pbar_kwargs = {"total": len(results), "unit": results.desc}
+        if self.Log is not None:  # If the logger returns data for each result to be aggregated in a single log
+            pbar_kwargs["desc"] = f"Collecting {results_path.stem} data for {self.desc}"
+        else:  # If the logger writes the log as side-effects as it iterates over the results
+            pbar_kwargs["desc"] = f"Logging {results_path.stem} {self.desc} to {output_folder}"
+
+        if self.disable_multiprocessing:
+            log_results_iter = (self._log_result(result) for result in results)
+        else:
+            with Pool() as pool:
+                log_results_iter = pool.imap(self._log_result, results)
+
+        if self.disable_progress_bar:
+            tqdm.write(pbar_kwargs["desc"] + " ...")
+        else:
+            log_results_iter = tqdm(log_results_iter, **pbar_kwargs)
 
         if self.Log is not None:  # If the logger returns data for each result to be aggregated in a single log
-            if self.debug:
-                logs = dict(
-                    self._log_result(result)
-                    for result in tqdm(
-                        results, unit=results.desc, desc=f"Collecting {results_path.stem} data for {self.desc}"
-                    )
-                )
-            else:
-                with Pool() as pool:
-                    logs = dict(
-                        tqdm(
-                            pool.imap(self._log_result, results),
-                            total=len(results),
-                            unit=results.desc,
-                            desc=f"Collecting {results_path.stem} data for {self.desc}",
-                        )
-                    )
+            logs = dict(log_results_iter)
             output_path = output_folder.joinpath(self.output_name_template.format(results_path.stem))
             tqdm.write(f"Aggregating {results_path.stem} {self.desc} in {output_path} ...")
             self.aggregate_logs(logs, output_path)
         else:  # If the logger writes the log as side-effects as it iterates over the results
-            if self.debug:
-                for result in tqdm(
-                    results, unit=results.desc, desc=f"Logging {results_path.stem} {self.desc} to {output_folder}"
-                ):
-                    self._log_result(result)
-            else:
-                with Pool() as pool:
-                    list(
-                        tqdm(
-                            pool.imap(self._log_result, results),
-                            total=len(results),
-                            unit=results.desc,
-                            desc=f"Logging {results_path.stem} {self.desc} to {output_folder}",
-                        )
-                    )
+            pbar_kwargs["desc"] = f"Logging {results_path.stem} {self.desc} to {output_folder}"
+
+            for _ in log_results_iter:
+                pass
 
     def _log_result(self, result: Result) -> Optional[Tuple[str, "Log"]]:
         """Generates a log (either writing to a file or computing a result to aggregate) for a single result.
@@ -118,7 +112,14 @@ class Logger:
             "--output_folder", type=Path, default="logs", help="Path to the directory in which to save the logs"
         )
         parser.add_argument(
-            "--debug", action="store_true", help="Run logger in debug mode, which disables multiprocessing"
+            "--disable_progress_bar",
+            action="store_true",
+            help="Disables the progress bars detailing the progress of the computations",
+        )
+        parser.add_argument(
+            "--disable_multiprocessing",
+            action="store_true",
+            help="Disables multiprocessing when collecting logs for each result",
         )
         parser = cls.IterableResultT.add_args(parser)
         return parser
