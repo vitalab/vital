@@ -8,8 +8,8 @@ pandas
 h5py
 tqdm
 SimpleITK
-torch
-torchvision
+torch>=1.7
+torchvision>=0.8
 pytorch-lightning
 comet-ml
 Keras-Preprocessing

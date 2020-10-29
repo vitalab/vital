@@ -18,7 +18,6 @@ class _Measure(Generic[T]):
     _copy_fn: Callable[[T], T]
     _float_cast_fn: Callable[[T], T]
     _isin_fn: Callable[[T, SemanticStructureId], T]
-    _clip_fn: Callable[[T, Real, Real], T]
     _elementwise_min: Callable[[T, Union[Real, T]], T]
     _elementwise_max: Callable[[T, Union[Real, T]], T]
 
@@ -87,7 +86,7 @@ class _Measure(Generic[T]):
 
         if check_bounds:
             # Clamp predicted RoI bbox to ensure it won't end up out of range of the image
-            roi_bbox = cls._clip_fn(roi_bbox, 0, 1)
+            roi_bbox = cls._backend.clip(roi_bbox, 0, 1)
 
         # Change ROI bbox from normalized between 0 and 1 to absolute pixel coordinates
         roi_bbox[:, (0, 2)] = (roi_bbox[:, (0, 2)] * output_size[0]).round()  # Height
@@ -112,7 +111,6 @@ class ArrayMeasure(_Measure[np.ndarray]):
     _backend = np
     _t_init_fn = np.array
     _isin_fn = np.isin
-    _clip_fn = np.clip
     _elementwise_min = np.minimum
     _elementwise_max = np.maximum
 
@@ -130,7 +128,6 @@ class TensorMeasure(_Measure[Tensor]):
 
     _backend = torch
     _t_init_fn = torch.tensor
-    _clip_fn = torch.clamp
 
     @classmethod
     def _copy_fn(cls, tensor: Tensor) -> Tensor:
