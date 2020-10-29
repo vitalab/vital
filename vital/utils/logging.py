@@ -4,6 +4,7 @@ from typing import Union
 
 
 def configure_logging(
+    logger_level: Union[int, str] = logging.NOTSET,
     log_to_console: bool = True,
     console_level: Union[int, str] = logging.WARNING,
     log_file: Path = None,
@@ -13,6 +14,7 @@ def configure_logging(
     """Configures a standardized way of logging for the library.
 
     Args:
+        logger_level: Default level of events propagated by loggers.
         log_to_console: Whether the loggers should display the messages to the console.
         console_level: Minimal level of events to log to the console.
         log_file: Path to the file loggers should write to, if any.
@@ -41,4 +43,4 @@ def configure_logging(
             {"format": "[%(asctime)s][%(name)s][%(levelname)s] %(message)s", "datefmt": "%Y-%m-%d %H:%M:%S"}
         )
 
-    logging.basicConfig(**fmt_kwargs, handlers=handlers, force=True)
+    logging.basicConfig(**fmt_kwargs, handlers=handlers, force=True, level=logger_level)
