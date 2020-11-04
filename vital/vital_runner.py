@@ -50,12 +50,12 @@ class VitalRunner(ABC):
         system_cls = cls._get_selected_system(hparams)
 
         if hparams.resume:
-            trainer = Trainer(resume_from_checkpoint=hparams.checkpoint)
+            trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path)
         else:
             trainer = Trainer.from_argparse_args(hparams, callbacks=cls._get_callbacks(hparams))
 
-        if hparams.checkpoint:  # Load pretrained model if checkpoint is provided
-            model = system_cls.load_from_checkpoint(hparams.checkpoint)
+        if hparams.ckpt_path:  # Load pretrained model if checkpoint is provided
+            model = system_cls.load_from_checkpoint(hparams.ckpt_path, ckpt_path=hparams.ckpt_path)
         else:
             model = system_cls(**vars(hparams))
 
@@ -159,7 +159,7 @@ class VitalRunner(ABC):
             Parser object to which generic custom arguments have been added.
         """
         # save/load parameters
-        parser.add_argument("--checkpoint", type=Path, help="Path to Lightning module checkpoints to restore system")
+        parser.add_argument("--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system")
         parser.add_argument(
             "--resume",
             action="store_true",
@@ -200,18 +200,18 @@ class VitalRunner(ABC):
         """
         args = parser.parse_args()
 
-        if not args.checkpoint:
+        if not args.ckpt_path:
             if not args.train:
                 raise ValueError(
                     "Trainer set to skip training (`--skip_train` flag) without a checkpoint provided. \n"
                     "Either allow model to train (remove `--skip_train` flag) or "
-                    "provide a pretrained model (through `--checkpoint` parameter)."
+                    "provide a pretrained model (through `--ckpt_path` parameter)."
                 )
             if args.resume:
                 raise ValueError(
                     "Cannot use flag `--resume` without a checkpoint from which to resume. \n"
                     "Either allow the model to start over (remove `--resume` flag) or "
-                    "provide a saved checkpoint (through `--checkpoint` flag)"
+                    "provide a saved checkpoint (through `--ckpt_path` flag)"
                 )
 
         # If output dir is specified, cast it os Path
