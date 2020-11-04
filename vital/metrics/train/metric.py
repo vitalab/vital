@@ -1,6 +1,6 @@
 from torch import Tensor, nn
 
-from vital.metrics.train.functional import differentiable_dice_score, kl_div_zmuv
+from vital.metrics.train.functional import differentiable_dice_score
 
 
 class DifferentiableDiceCoefficient(nn.Module):
@@ -49,23 +49,3 @@ class DifferentiableDiceCoefficient(nn.Module):
             no_fg_score=self.no_fg_score,
             reduction=self.reduction,
         )
-
-
-class KlDivergenceToZeroMeanUnitVariance(nn.Module):
-    """Computes the KL divergence between a specified distribution and a N(0,1) Gaussian distribution.
-
-    It is the standard loss to use for the reparametrization trick when training a variational autoencoder.
-    """
-
-    def forward(self, mu: Tensor, logvar: Tensor) -> Tensor:
-        """Actual metric calculation.
-
-        Args:
-            mu: (N, Z), Mean of the distribution to compare to N(0,1).
-            logvar: (N, Z) Log variance of the distribution to compare to N(0,1).
-
-
-        Returns:
-            (1,), KL divergence term of the VAE's loss.
-        """
-        return kl_div_zmuv(mu, logvar)
