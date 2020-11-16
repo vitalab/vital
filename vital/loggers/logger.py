@@ -1,3 +1,4 @@
+import logging
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Mapping, Optional, Sequence, Tuple, Type
@@ -6,6 +7,8 @@ from pathos.multiprocessing import Pool
 from tqdm import tqdm
 
 from vital.loggers.utils.itertools import IterableResult, Result
+
+logger = logging.getLogger(__name__)
 
 
 class Logger:
@@ -48,31 +51,34 @@ class Logger:
         results = self.IterableResultT(results_path=results_path, **self.iterable_result_params)
         pbar_kwargs = {"total": len(results), "unit": results.desc}
         if self.Log is not None:  # If the logger returns data for each result to be aggregated in a single log
-            pbar_kwargs["desc"] = f"Collecting {results_path.stem} data for {self.desc}"
+            log_desc = f"Collecting {results_path.stem} data for {self.desc}"
         else:  # If the logger writes the log as side-effects as it iterates over the results
-            pbar_kwargs["desc"] = f"Logging {results_path.stem} {self.desc} to {output_folder}"
+            log_desc = f"Logging {results_path.stem} {self.desc} to {output_folder}"
+        pbar_kwargs["desc"] = log_desc
 
         if self.disable_multiprocessing:
             log_results_iter = (self._log_result(result) for result in results)
         else:
-            with Pool() as pool:
-                log_results_iter = pool.imap(self._log_result, results)
+            pool = Pool()
+            log_results_iter = pool.imap(self._log_result, results)
 
         if self.disable_progress_bar:
-            tqdm.write(pbar_kwargs["desc"] + " ...")
+            logger.info(log_desc)
         else:
             log_results_iter = tqdm(log_results_iter, **pbar_kwargs)
 
         if self.Log is not None:  # If the logger returns data for each result to be aggregated in a single log
             logs = dict(log_results_iter)
             output_path = output_folder.joinpath(self.output_name_template.format(results_path.stem))
-            tqdm.write(f"Aggregating {results_path.stem} {self.desc} in {output_path} ...")
+            logger.info(f"Aggregating {results_path.stem} {self.desc} in {output_path}")
             self.aggregate_logs(logs, output_path)
         else:  # If the logger writes the log as side-effects as it iterates over the results
-            pbar_kwargs["desc"] = f"Logging {results_path.stem} {self.desc} to {output_folder}"
-
             for _ in log_results_iter:
                 pass
+
+        if not self.disable_multiprocessing:  # Ensure pool resources are freed at the end
+            pool.close()
+            pool.join()
 
     def _log_result(self, result: Result) -> Optional[Tuple[str, "Log"]]:
         """Generates a log (either writing to a file or computing a result to aggregate) for a single result.
@@ -95,7 +101,7 @@ class Logger:
             output_path: Path where to write the results of the operations on the aggregated logs.
         """
         if self.Log is None:
-            pass
+            assert "`aggregate_logs` should not be called on logger instances where `self.Log` is None."
         else:
             raise NotImplementedError
 
@@ -146,5 +152,4 @@ class Logger:
 
         results_path = kwargs.pop("results_path")
         output_folder = kwargs.pop("output_folder")
-        logger = cls(**kwargs)
-        logger(results_path=results_path, output_folder=output_folder)
+        cls(**kwargs)(results_path=results_path, output_folder=output_folder)
