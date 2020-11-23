@@ -214,8 +214,11 @@ class VitalRunner(ABC):
                     "provide a saved checkpoint (through `--ckpt_path` flag)"
                 )
 
-        # If output dir is specified, cast it os Path
-        if args.default_root_dir is not None:
+        if args.default_root_dir is None:
+            # If no output dir is specified, default to the working directory
+            args.default_root_dir = Path.cwd()
+        else:
+            # If output dir is specified, cast it os Path
             args.default_root_dir = Path(args.default_root_dir)
 
         return args

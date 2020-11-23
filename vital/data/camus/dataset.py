@@ -183,8 +183,9 @@ class Camus(VisionDataset):
         img, gt = to_tensor(img), segmentation_to_tensor(gt)
         if self.transforms:
             img, gt = self.transforms(img, gt)
+        attrs = torch.tensor([sequence_idx])
 
-        return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.attrs: sequence_idx}
+        return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.attrs: attrs}
 
     def _get_test_item(self, index: int) -> Dict[View, Tuple[Tensor, Tensor]]:
         """Fetches data required for inference on a test item (whole patient).
