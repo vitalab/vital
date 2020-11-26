@@ -1,15 +1,13 @@
 from collections import OrderedDict
 from functools import reduce
 from operator import mul
-from typing import Dict, List, Sequence, Tuple, Union
+from typing import Any, Dict, List, Sequence, Tuple, Union
 
 import torch
-from torch import nn
+from torch import Tensor, nn
 
 
-def summary_info(
-    model: nn.Module, example_input_array: Union[torch.Tensor, Sequence[torch.Tensor]], batch_size: int = -1
-) -> Tuple[str, Tuple[int, int]]:
+def summary_info(model: nn.Module, example_input_array: Any, batch_size: int = -1) -> Tuple[str, Tuple[int, int]]:
     """Computes info to display a summary of a network to the console, similar to `model.summary()` in Keras.
 
     Modifications:
@@ -23,8 +21,9 @@ def summary_info(
 
     Args:
         model: Network for which to print the summary.
-        example_input_array: Example of a tensor (or sequence of tensors) that ``model`` would take as input,
-            i.e. with a realistic shape but dummy data.
+        example_input_array: Example of an arbitrary data structure that ``model`` would take as input for inference,
+            i.e. input with the expected shape but possibly dummy data. The arbitrary input can be any (nested)
+            combination of sequential data structures (e.g. tuples, lists, etc.).
         batch_size: Value to use for the batch size when printing the input/output shape of the model's layers.
 
     Returns:
@@ -64,10 +63,8 @@ def summary_info(
             hooks.append(module.register_forward_hook(hook))
 
     # multiple inputs to the network
-    if isinstance(example_input_array, Sequence):  # If the network has multiple inputs
-        inputs = example_input_array
-    else:  # If the network has a single input
-        inputs = [example_input_array]
+    if not isinstance(example_input_array, Sequence):
+        example_input_array = [example_input_array]
 
     # create properties
     summary = OrderedDict()
@@ -77,7 +74,7 @@ def summary_info(
     model.apply(register_hook)
 
     # make a forward pass
-    model(*inputs)
+    model(*example_input_array)
 
     # remove these hooks
     for h in hooks:
@@ -108,8 +105,18 @@ def summary_info(
                 trainable_params += summary[layer]["nb_params"]
         summary_str += line_new + "\n"
 
+    def find_input_size(input: Any) -> int:
+        if isinstance(input, Tensor):  # if current input is a tensor
+            input_size = reduce(mul, input.shape[1:])  # compute the total size of the current input
+        elif not input:  # base case: no more inputs
+            input_size = 0
+        else:  # if current element is a sequence
+            # total size is the (recursive) size of the current element + size of the remaining elements
+            input_size = find_input_size(input[0]) + find_input_size(input[1:])
+        return input_size
+
     # assume 4 bytes/number (float on cuda).
-    total_input = sum(reduce(mul, input.shape[1:]) for input in inputs)
+    total_input = find_input_size(example_input_array)
     total_input_size = abs(total_input * batch_size * 4.0 / (1024 ** 2.0))
     total_output_size = abs(2.0 * total_output * 4.0 / (1024 ** 2.0))  # x2 for gradients
     total_params_size = abs(total_params * 4.0 / (1024 ** 2.0))
