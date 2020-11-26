@@ -91,7 +91,7 @@ class Camus(VisionDataset):
             self.item_list = self._get_instant_paths()
             self.getter = self._get_train_item
 
-    def __getitem__(self, index) -> Union[Dict[str, Tensor], Dict[View, Tuple[Tensor, Tensor]]]:
+    def __getitem__(self, index) -> Union[Dict[str, Tensor], Dict[View, Dict[str, Tensor]]]:
         """Fetches an item, whose structure depends on the ``predict`` value, from the internal list of items.
 
         Notes:
@@ -178,16 +178,16 @@ class Camus(VisionDataset):
             # Collect metadata
             # Explicit cast to float32 to avoid "Expected object" type error in PyTorch models
             # that output ``FloatTensor`` by default (and not ``DoubleTensor``)
-            sequence_idx = np.float32(instant / view_imgs.shape[0])
+            frame_pos = np.float32(instant / view_imgs.shape[0])
 
         img, gt = to_tensor(img), segmentation_to_tensor(gt)
         if self.transforms:
             img, gt = self.transforms(img, gt)
-        attrs = torch.tensor([sequence_idx])
+        frame_pos = torch.tensor([frame_pos])
 
-        return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.attrs: attrs}
+        return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.frame_pos: frame_pos}
 
-    def _get_test_item(self, index: int) -> Dict[View, Tuple[Tensor, Tensor]]:
+    def _get_test_item(self, index: int) -> Dict[View, Dict[str, Tensor]]:
         """Fetches data required for inference on a test item (whole patient).
 
         Args:
@@ -206,13 +206,14 @@ class Camus(VisionDataset):
                 proc_imgs, proc_gts = Camus._get_data(dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
                 proc_gts = self._process_target_data(proc_gts)
 
-                # Indicate indices of instants with manually annotated segmentations in view sequences
-                instants_with_gt = {
-                    instant: Camus._get_metadata(dataset, patient_view_key, instant.value) for instant in Instant
-                }
-
-                # Only keep instants with manually annotated groundtruths if we do not use the whole sequence
+                # If we do not use the whole sequence
                 if self.dataset_with_sequence and not self.use_sequence:
+                    # Indicate indices of instants with manually annotated segmentations in view sequences
+                    instants_with_gt = {
+                        instant: Camus._get_metadata(dataset, patient_view_key, instant.value) for instant in Instant
+                    }
+
+                    # Only keep instants with manually annotated groundtruths
                     proc_imgs = proc_imgs[list(instants_with_gt.values())]
                     proc_gts = proc_gts[list(instants_with_gt.values())]
 
@@ -220,7 +221,14 @@ class Camus(VisionDataset):
                 proc_imgs_tensor = torch.stack([to_tensor(proc_img) for proc_img in proc_imgs])
                 proc_gts_tensor = torch.stack([segmentation_to_tensor(proc_gt) for proc_gt in proc_gts])
 
-                views[view] = (proc_imgs_tensor, proc_gts_tensor)
+                # Compute auxiliary data for the sequence
+                frame_pos_tensor = torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1)
+
+                views[view] = {
+                    CamusTags.img: proc_imgs_tensor,
+                    CamusTags.gt: proc_gts_tensor,
+                    CamusTags.frame_pos: frame_pos_tensor,
+                }
 
         return views
 
