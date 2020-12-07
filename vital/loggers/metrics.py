@@ -23,6 +23,11 @@ class MetricsLogger(Logger):
             **kwargs: Additional parameters to pass along to ``super().__init__()``.
         """
         super().__init__(output_name_template=f"{{}}_{data}_{self.desc}.csv", **kwargs)
+        if data not in self.data_choices:
+            raise ValueError(
+                f"The `data` parameter should be chosen from one of the supported values: {self.data_choices}. "
+                f"You passed '{data}' as value for `data`."
+            )
         self.data = data
 
     @classmethod
