@@ -6,6 +6,7 @@ from typing import Any, Mapping
 import numpy as np
 import pandas as pd
 import umap
+from matplotlib import pyplot as plt
 
 from vital.loggers.logger import Logger
 from vital.utils.delegate import delegate_inheritance
@@ -68,6 +69,7 @@ class GroupsEmbeddingLogger(Logger):
         else:
             output_path.mkdir(parents=True, exist_ok=True)
             self.save_points_plots(mapper, labels, values, output_path)
+            plt.close("all")
 
     def show_interactive_plot(self, mapper: umap.UMAP, labels: np.ndarray, hover_data: pd.DataFrame) -> None:
         """Plots an interactive view of the UMAP embedding.
