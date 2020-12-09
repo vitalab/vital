@@ -3,10 +3,10 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Mapping
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import umap
-from matplotlib import pyplot as plt
 
 from vital.loggers.logger import Logger
 from vital.utils.delegate import delegate_inheritance
