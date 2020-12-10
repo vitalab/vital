@@ -1,3 +1,4 @@
+import sys
 from abc import ABC
 from argparse import ArgumentParser
 from typing import Any, Dict, List, Literal, Mapping, Union
@@ -8,10 +9,10 @@ from pytorch_lightning.core.memory import ModelSummary
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
+from torchsummary import summary
 
 from vital.data.config import Subset
 from vital.utils.parameters import DataParameters
-from vital.utils.summary import summary_info
 
 
 class VitalSystem(pl.LightningModule, ABC):
@@ -65,8 +66,14 @@ class VitalSystem(pl.LightningModule, ABC):
             #  Ensure the root directory exists before trying to write the summary
             self.hparams.default_root_dir.mkdir(parents=True, exist_ok=True)
             with open(str(self.hparams.default_root_dir / "summary.txt"), "w") as f:
-                summary_str, _ = summary_info(self, self.example_input_array)
-                f.write(summary_str)
+                model_summary = summary(
+                    self,
+                    input_data=self.example_input_array,
+                    verbose=0,
+                    depth=sys.maxsize,
+                    col_names=["input_size", "output_size", "kernel_size", "num_params"],
+                )
+                f.write(str(model_summary))
         return super().summarize(mode)
 
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
