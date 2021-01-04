@@ -6,9 +6,11 @@ from shutil import copy2
 from typing import List, Type
 
 from pytorch_lightning import Callback, Trainer
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 from vital.systems.vital_system import VitalSystem
 from vital.utils.logging import configure_logging
+from vital.utils.parsing import StoreDictKeyPair
 
 
 class VitalRunner(ABC):
@@ -52,7 +54,14 @@ class VitalRunner(ABC):
         if hparams.resume:
             trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path)
         else:
-            trainer = Trainer.from_argparse_args(hparams, callbacks=cls._get_callbacks(hparams))
+            trainer = Trainer.from_argparse_args(
+                hparams,
+                callbacks=[
+                    ModelCheckpoint(**hparams.model_checkpoint_kwargs),
+                    EarlyStopping(**hparams.early_stopping_kwargs),
+                    *cls._get_callbacks(hparams),
+                ],
+            )
 
         if hparams.ckpt_path:  # Load pretrained model if checkpoint is provided
             model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams))
@@ -158,6 +167,20 @@ class VitalRunner(ABC):
         Returns:
             Parser object to which generic custom arguments have been added.
         """
+        # callback parameters
+        parser.add_argument(
+            "--model_checkpoint_kwargs",
+            type=StoreDictKeyPair,
+            default=dict(),
+            help="Parameters for Lightning's built-in model checkpoint callback",
+        )
+        parser.add_argument(
+            "--early_stopping_kwargs",
+            type=StoreDictKeyPair,
+            default=dict(),
+            help="Parameters for Lightning's built-in early stopping callback",
+        )
+
         # save/load parameters
         parser.add_argument("--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system")
         parser.add_argument(

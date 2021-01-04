@@ -35,6 +35,6 @@ class TrainValComputationMixin(SystemComputationMixin, ABC):
 
     def validation_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
         result = prefix(self.trainval_step(*args, **kwargs), "val_")
-        result.update({"checkpoint_on": result["val_loss"], "early_stop_on": result["val_loss"]})
+        result.update({"early_stop_on": result["val_loss"]})
         self.log_dict(result, **self.val_log_kwargs)
         return result
