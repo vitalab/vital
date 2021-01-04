@@ -8,7 +8,7 @@ from vital.data.camus.config import Label, image_size, in_channels
 from vital.data.camus.dataset import Camus, DataParameters
 from vital.data.config import Subset
 from vital.data.mixins import StructuredDataMixin
-from vital.systems.vital_system import SystemDataManagerMixin
+from vital.systems.system import SystemDataManagerMixin
 
 
 class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):

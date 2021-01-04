@@ -8,13 +8,13 @@ from typing import List, Type
 from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
-from vital.systems.vital_system import VitalSystem
+from vital.systems.system import VitalSystem
 from vital.utils.logging import configure_logging
 from vital.utils.parsing import StoreDictKeyPair
 
 
 class VitalRunner(ABC):
-    """Abstract runner that runs the main training/val loop, etc... using Lightning Trainer."""
+    """Abstract runner that runs the main training/val loop, etc. using Lightning Trainer."""
 
     @classmethod
     def main(cls) -> None:

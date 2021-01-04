@@ -1,6 +1,6 @@
 from typing import List
 
-from vital.systems.vital_system import SystemDataManagerMixin
+from vital.systems.system import SystemDataManagerMixin
 
 
 class StructuredDataMixin(SystemDataManagerMixin):
