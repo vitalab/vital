@@ -36,7 +36,7 @@ projects' systems should inherit.
 - [utils](vital/utils): a wide range of common utilities that may be used in multiple other packages (e.g.
 [image processing](vital/utils/image), [parameter groups](vital/utils/parameters.py), etc.).
 
-- [VitalRunner](vital/vital_runner.py): common boilerplate code surrounding the use of Lightning's `Trainer` that
+- [VitalRunner](vital/runner.py): common boilerplate code surrounding the use of Lightning's `Trainer` that
 handles a generic train and eval run of a model.
 
 ## How to use
