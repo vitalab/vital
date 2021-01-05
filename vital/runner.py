@@ -6,8 +6,10 @@ from typing import List, Type
 
 from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.loggers import CometLogger
 
 from vital.systems.system import VitalSystem
+from vital.utils.config import read_ini_config
 from vital.utils.logging import configure_logging
 from vital.utils.parsing import StoreDictKeyPair
 
@@ -34,8 +36,14 @@ class VitalRunner(ABC):
         Args:
             hparams: Arguments parsed from the CLI.
         """
+        # Use Comet for logging if a path to a Comet config file is provided
+        # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
+        logger = True
+        if hparams.comet_config and not hparams.fast_dev_run:
+            logger = cls._configure_comet_logger(hparams)
+
         if hparams.resume:
-            trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path)
+            trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path, logger=logger)
         else:
             trainer = Trainer.from_argparse_args(
                 hparams,
@@ -44,6 +52,7 @@ class VitalRunner(ABC):
                     EarlyStopping(**hparams.early_stopping_kwargs),
                     *cls._get_callbacks(hparams),
                 ],
+                logger=logger,
             )
 
         if not hparams.fast_dev_run:
@@ -82,6 +91,26 @@ class VitalRunner(ABC):
             hparams: Arguments parsed from the CLI.
         """
         configure_logging(log_to_console=True, log_file=log_dir / "run.log")
+
+    @classmethod
+    def _configure_comet_logger(cls, hparams: Namespace) -> CometLogger:
+        """Builds a ``CometLogger`` instance using the content of the Comet configuration file.
+
+        Notes:
+            - The Comet configuration file should follow the `.comet.config` format. See Comet's documentation for more
+              details: https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables
+
+        Args:
+            hparams: Arguments parsed from the CLI.
+
+        Returns:
+            Instance of ``CometLogger`` built using the content of the Comet configuration file.
+        """
+        comet_config = read_ini_config(hparams.comet_config)["comet"]
+        offline = comet_config.getboolean("offline", fallback=False)
+        if "offline" in comet_config:
+            del comet_config["offline"]
+        return CometLogger(**dict(comet_config), offline=offline)
 
     @classmethod
     def _best_model_path(cls, log_dir: Path, hparams: Namespace) -> Path:
@@ -157,6 +186,13 @@ class VitalRunner(ABC):
         Returns:
             Parser object to which generic custom arguments have been added.
         """
+        # logging parameters
+        parser.add_argument(
+            "--comet_config",
+            type=Path,
+            help="Path to Comet configuration file, if you want to track the experiment using Comet",
+        )
+
         # callback parameters
         parser.add_argument(
             "--model_checkpoint_kwargs",
