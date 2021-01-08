@@ -1,5 +1,5 @@
 from numbers import Real
-from typing import Callable, Generic, Tuple, TypeVar, Union
+from typing import Callable, Generic, Tuple, Type, TypeVar, Union
 
 import numpy as np
 import torch
@@ -10,7 +10,7 @@ from vital.data.config import SemanticStructureId
 T = TypeVar("T", np.ndarray, Tensor)
 
 
-class _Measure(Generic[T]):
+class Measure(Generic[T]):
     """Generic implementations of various measures on images represented as numpy arrays or torch tensors."""
 
     _backend = None
@@ -20,6 +20,27 @@ class _Measure(Generic[T]):
     _isin_fn: Callable[[T, SemanticStructureId], T]
     _elementwise_min: Callable[[T, Union[Real, T]], T]
     _elementwise_max: Callable[[T, Union[Real, T]], T]
+
+    @classmethod
+    def from_img_type(cls, img_type: Type[T]) -> Type["Measure"]:
+        """Detects the implementation of the `Measure` that fits the provided data type.
+
+        Args:
+            img_type: Type of data structure for which to detect the appropriate `Measure` API implementation.
+
+        Returns:
+            Implementation of the `Measure` that fits the provided data type.
+        """
+        if img_type == np.ndarray:
+            return ArrayMeasure
+        elif img_type == Tensor:
+            return TensorMeasure
+        else:
+            raise ValueError(
+                f"The `Measure` API is not supported for data of type '{img_type}'. Either provide the implementation "
+                f"of the API for your target data type, or cast your data to one of the following supported types: "
+                f"[np.ndarray, Tensor]."
+            )
 
     @classmethod
     def bbox(cls, segmentation: T, labels: SemanticStructureId, bbox_margin: Real = 0.05, normalize: bool = False) -> T:
@@ -105,7 +126,7 @@ class _Measure(Generic[T]):
         return roi_bbox
 
 
-class ArrayMeasure(_Measure[np.ndarray]):
+class ArrayMeasure(Measure[np.ndarray]):
     """Specialization of the generic ``_Measure`` methods to work with with numpy arrays."""
 
     _backend = np
@@ -123,7 +144,7 @@ class ArrayMeasure(_Measure[np.ndarray]):
         return array.astype(float)
 
 
-class TensorMeasure(_Measure[Tensor]):
+class TensorMeasure(Measure[Tensor]):
     """Specialization of the generic ``_Measure`` methods to work with with torch tensors."""
 
     _backend = torch

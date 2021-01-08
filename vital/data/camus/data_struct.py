@@ -3,8 +3,6 @@ from typing import Mapping, MutableMapping
 
 import numpy as np
 
-from vital.data.camus.config import Instant, View
-
 
 @dataclass
 class PatientData:
@@ -16,7 +14,7 @@ class PatientData:
     """
 
     id: str
-    views: MutableMapping[View, "ViewData"] = field(default_factory=dict)
+    views: MutableMapping[str, "ViewData"] = field(default_factory=dict)
 
 
 @dataclass
@@ -26,12 +24,11 @@ class ViewData:
     Args:
         gt: Unprocessed groundtruths, used as reference when evaluating models' scores.
         info: Images' metadata.
-        instants_with_gt: Mapping between labels of instants that have manually annotated segmentations and their
-            indices in the view.
+        instants: Mapping between instant IDs and their frame index in the view.
         registering: Parameters applied originally to register the images and groundtruths.
     """
 
     gt: np.ndarray
     info: np.ndarray
-    instants_with_gt: Mapping[Instant, int]
+    instants: Mapping[str, int]
     registering: Mapping[str, np.ndarray] = field(default_factory=dict)

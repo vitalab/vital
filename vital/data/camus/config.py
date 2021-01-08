@@ -1,9 +1,9 @@
-from typing import Any, Dict
+from dataclasses import dataclass
+from typing import Any, Dict, Literal
 
 import numpy as np
 
 from vital.data.config import DataTag, Tags
-from vital.utils.parameters import parameters
 
 
 class Label(DataTag):
@@ -22,37 +22,70 @@ class Label(DataTag):
     ATRIUM = 3
 
 
-class View(DataTag):
-    """Enumeration of tags related to the different views available for each patient.
+@dataclass(frozen=True)
+class View:
+    """Collection of tags related to the different views available for each patient.
 
-    Attributes:
-        TWO: Tag referring to the two-chamber view.
-        FOUR: Tag referring to the four-chamber view.
+    Args:
+        A2C: Tag referring to the apical two-chamber view.
+        A4C: Tag referring to the apical four-chamber view.
     """
 
-    TWO = "2CH"
-    FOUR = "4CH"
+    A2C: str = "2CH"
+    A4C: str = "4CH"
 
 
-class Instant(DataTag):
-    """Enumeration of tags related to noteworthy instants in the ultrasound sequences.
+@dataclass(frozen=True)
+class Instant:
+    """Collection of tags related to noteworthy instants in ultrasound sequences.
 
-    Attributes:
+    Args:
         ED: Tag referring to the end-diastolic instant.
         ES: Tag referring to the end-systolic instant.
     """
 
-    ED = "ED"
-    ES = "ES"
+    @classmethod
+    def from_sequence_type(cls, sequence_type: Literal["half_cycle", "full_cycle"]) -> "Instant":
+        """Detects the specialized version of the `Instant` collection that fits the requested sequence type.
+
+        Args:
+            sequence_type: Flag that indicates the kind of sequences for which to provide the important instants.
+
+        Returns:
+            A specialized version of the `Instant` collection that fits the requested sequence type.
+        """
+        return globals()[f"{sequence_type.title().replace('_', '')}Instant"]()
+
+    ED: str = "ED"
+    ES: str = "ES"
 
 
-@parameters
+@dataclass(frozen=True)
+class HalfCycleInstant(Instant):
+    """Collection of tags related to noteworthy instants in half-cycle ultrasound sequences."""
+
+    pass
+
+
+@dataclass(frozen=True)
+class FullCycleInstant(Instant):
+    """Collection of tags related to noteworthy instants in full-cycle ultrasound sequences.
+
+    Args:
+        ED_E: Tag referring to the end-diastolic instant marking the end of the cycle.
+    """
+
+    ED_E: str = "ED_E"
+
+
+@dataclass(frozen=True)
 class CamusTags(Tags):
     """Class to gather the tags referring to CAMUS specific data, from both the training and result datasets.
 
     Args:
         registered: Tag indicating whether the dataset was registered.
         full_sequence: Tag indicating whether the dataset contains complete sequence between ED and ES for each view.
+        instants: Tag indicating the clinically important instants available in the sequence.
         img_proc: Tag referring to resized images, used as input when training models.
         gt_proc: Tag referring to resized groundtruths used as reference when training models.
         info: Tag referring to images' metadata.
@@ -62,6 +95,7 @@ class CamusTags(Tags):
 
     registered: str = "register"
     full_sequence: str = "sequence"
+    instants: str = "instants"
 
     img_proc: str = "img_proc"
     gt_proc: str = "gt_proc"

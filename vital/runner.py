@@ -170,14 +170,16 @@ class VitalRunner(ABC):
         # callback parameters
         parser.add_argument(
             "--model_checkpoint_kwargs",
-            type=StoreDictKeyPair,
+            action=StoreDictKeyPair,
             default=dict(),
+            metavar="ARG1=VAL1,ARG2=VAL2...",
             help="Parameters for Lightning's built-in model checkpoint callback",
         )
         parser.add_argument(
             "--early_stopping_kwargs",
-            type=StoreDictKeyPair,
+            action=StoreDictKeyPair,
             default=dict(),
+            metavar="ARG1=VAL1,ARG2=VAL2...",
             help="Parameters for Lightning's built-in early stopping callback",
         )
 

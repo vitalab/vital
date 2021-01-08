@@ -1,7 +1,6 @@
+from dataclasses import dataclass
 from enum import Enum
-from typing import List, Sequence, Union
-
-from vital.utils.parameters import parameters
+from typing import List, Sequence, Tuple, Union
 
 SemanticStructureId = Union[int, Sequence[int]]
 
@@ -60,7 +59,7 @@ class Subset(DataTag):
     TEST = "test"
 
 
-@parameters
+@dataclass(frozen=True)
 class Tags:
     """Class to gather the tags referring to the different type of data stored.
 
@@ -79,3 +78,16 @@ class Tags:
     pred: str = "pred"
     post_pred: str = "post_pred"
     encoding: str = "z"
+
+
+@dataclass(frozen=True)
+class DataParameters:
+    """Class for defining parameters related to the nature of the data.
+
+    Args:
+        in_shape: Shape of the input data (e.g. height, width, channels).
+        out_shape: Shape of the target data (e.g. height, width, channels).
+    """
+
+    in_shape: Tuple[int, ...]
+    out_shape: Tuple[int, ...]

@@ -11,8 +11,7 @@ from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
 from torchsummary import summary
 
-from vital.data.config import Subset
-from vital.utils.parameters import DataParameters
+from vital.data.config import DataParameters, Subset
 
 
 class VitalSystem(pl.LightningModule, ABC):

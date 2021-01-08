@@ -1,9 +1,11 @@
+import logging
 import os
+from dataclasses import asdict
 from functools import reduce
 from numbers import Real
 from operator import add
 from pathlib import Path
-from typing import Dict, List, Literal, Mapping, Sequence, Tuple
+from typing import Dict, List, Literal, Sequence, Tuple
 
 import h5py
 import numpy as np
@@ -15,6 +17,9 @@ from vital.data.config import Subset
 from vital.utils.image.io import load_mhd
 from vital.utils.image.register.camus import CamusRegisteringTransformer
 from vital.utils.image.transform import remove_labels, resize_image
+from vital.utils.logging import configure_logging
+
+logger = logging.getLogger(__name__)
 
 
 class CrossValidationDatasetGenerator:
@@ -43,6 +48,7 @@ class CrossValidationDatasetGenerator:
         output: Path,
         folds: Sequence[int] = range(1, 11),
         target_image_size: Tuple[int, int] = (image_size, image_size),
+        sequence_type: Literal["half_cycle", "full_cycle"] = "half_cycle",
         sequence: bool = False,
         register: bool = False,
         labels: Sequence[Label] = None,
@@ -54,7 +60,9 @@ class CrossValidationDatasetGenerator:
             output: Path to the HDF5 file to generate, containing all the raw image data and cross-validation metadata.
             folds: IDs of the folds for which to include metadata in the generated HDF5 file.
             target_image_size: Target height and width at which to resize the image and groundtruth.
-            sequence: Whether to augment the dataset by adding the data for the full sequence between ED and ES.
+            sequence_type: Type of sequential data available, whether it's for half a cycle (ED->ES) or the full cycle
+                (ED->ES->ED).
+            sequence: Whether to augment the dataset by adding the data for the full sequence between instants.
             register: Enable/disable registering.
             labels: Labels of the segmentation classes to include.
         """
@@ -66,6 +74,7 @@ class CrossValidationDatasetGenerator:
         self.registering_transformer = CamusRegisteringTransformer(
             num_classes=Label.count(), crop_shape=target_image_size
         )
+        self.sequence_type_instants = asdict(Instant.from_sequence_type(sequence_type)).values()
 
         output.parent.mkdir(parents=True, exist_ok=True)
         with h5py.File(output, "w") as dataset:
@@ -106,7 +115,7 @@ class CrossValidationDatasetGenerator:
         Returns:
             IDs of the patients that are included in the subset of the fold.
         """
-        list_fn = data.joinpath("listSubGroups", f"subGroup{fold}_{subset}.txt")
+        list_fn = data / "listSubGroups" / f"subGroup{fold}_{subset}.txt"
         # Open text file containing patient ids (one patient id by row)
         with open(str(list_fn), "r") as f:
             patient_ids = [line for line in f.read().splitlines()]
@@ -120,9 +129,12 @@ class CrossValidationDatasetGenerator:
         """
         patient_id = os.path.basename(patient_group.name)
 
-        for view in View:
+        available_views = [
+            view for view in asdict(View()).values() if (self.data / patient_id / f"Info_{view}.cfg").exists()
+        ]
+        for view in available_views:
             # The order of the instants within a view dataset is chronological: ED -> ES -> ED
-            data_x, data_y, info_view, instants_with_gt = self._get_view_data(patient_id, view)
+            data_x, data_y, info_view, instants = self._get_view_data(patient_id, view)
 
             data_y = remove_labels(data_y, [lbl.value for lbl in self.labels_to_remove], fill_label=Label.BG.value)
 
@@ -135,7 +147,7 @@ class CrossValidationDatasetGenerator:
                 data_y_proc = np.array([resize_image(y, (image_size, image_size)) for y in data_y])
 
             # Write image and groundtruth data
-            patient_view_group = patient_group.create_group(view.value)
+            patient_view_group = patient_group.create_group(view)
             patient_view_group.create_dataset(
                 name=CamusTags.img_proc, data=data_x_proc[..., np.newaxis], **img_save_options
             )
@@ -144,17 +156,14 @@ class CrossValidationDatasetGenerator:
 
             # Write metadata useful for providing instants or full sequences
             patient_view_group.attrs[CamusTags.info] = info_view
-            for instant, instant_idx in instants_with_gt.items():
-                patient_view_group.attrs[instant.value] = instant_idx
+            patient_view_group.attrs[CamusTags.instants] = list(instants)
+            patient_view_group.attrs.update(instants)
 
             # Write metadata concerning the registering applied
             if self.flags[CamusTags.registered]:
-                for registering_step, values in registering_parameters.items():
-                    patient_view_group.attrs[registering_step] = values
+                patient_view_group.attrs.update(registering_parameters)
 
-    def _get_view_data(
-        self, patient_id: str, view: View
-    ) -> Tuple[np.ndarray, np.ndarray, List[Real], Dict[Instant, int]]:
+    def _get_view_data(self, patient_id: str, view: str) -> Tuple[np.ndarray, np.ndarray, List[Real], Dict[str, int]]:
         """Fetches the data for a specific view of a patient.
 
         If ``self.use_sequence`` is ``True``, augments the dataset with sequence between the ED and ES instants.
@@ -165,81 +174,70 @@ class CrossValidationDatasetGenerator:
             view: View for which to fetch the patient's data.
 
         Returns:
-            - Sequence of ultrasound images acquired between ED and ES. The trend is that the first images are closer
-              to ED, and the last images are closer to ES.
-            - Segmentations interpolated between ED and ES. The trend is that the first segmentations are closer to ED,
-              and the last segmentations are closer to ES.
+            - Sequence of ultrasound images acquired over a cardiac cycle.
+            - Segmentation masks associated with the sequence of ultrasound images.
             - Metadata concerning the sequence.
-            - Mapping between the instants with manually validated groundtruths and the index where they appear in the
-              sequence.
+            - Mapping between clinically important instants and the index where they appear in the sequence.
         """
-        view_info_fn = self.data.joinpath(patient_id, f"Info_{view.value}.cfg")
+        view_info_fn = self.data / patient_id / f"Info_{view}.cfg"
 
         # Determine the index of segmented instants in sequence
-        instants_with_gt = {}
+        instants = {}
         with open(str(view_info_fn), "r") as view_info_file:
-            view_info_lines = view_info_file.read().splitlines()
-            for instant_idx, instant in enumerate(Instant):
-                instants_with_gt[instant] = int(view_info_lines[instant_idx].split()[-1]) - 1
+            view_info = {(pair := line.split(": "))[0]: pair[1] for line in view_info_file.read().splitlines()}
+        for instant in self.sequence_type_instants:
+            instants[instant] = int(view_info[instant]) - 1
 
         # Get data for the whole sequence ranging from ED to ES
-        sequence, sequence_gt, info = self._get_sequence_data(patient_id, view, instants_with_gt)
+        sequence, sequence_gt, info = self._get_sequence_data(patient_id, view)
 
-        if instants_with_gt[Instant.ED] > instants_with_gt[Instant.ES]:  # Ensure ED comes before ES (swap when ES->ED)
-            instants_with_gt[Instant.ED], instants_with_gt[Instant.ES] = (
-                instants_with_gt[Instant.ES],
-                instants_with_gt[Instant.ED],
+        # Ensure ED comes before ES (swap when ES->ED)
+        if (ed_idx := instants[Instant.ED]) > (es_idx := instants[Instant.ES]):
+            logger.warning(
+                f"The image and reference sequence for '{patient_id}_{view}' were reversed because the metadata file "
+                f"indicates that ED originally came after ES in the frames: {instants}."
             )
+            sequence, sequence_gt = list(reversed(sequence)), list(reversed(sequence_gt))
+            instants[Instant.ED], instants[Instant.ES] = es_idx, ed_idx
 
         # Include all or only some instants from the input and reference data according to the parameters
         data_x, data_y = [], []
         if self.flags[CamusTags.full_sequence]:
             data_x, data_y = sequence, sequence_gt
         else:
-            for instant in Instant:
-                data_x.append(sequence[instants_with_gt[instant]])
-                data_y.append(sequence_gt[instants_with_gt[instant]])
+            for instant in instants:
+                data_x.append(sequence[instants[instant]])
+                data_y.append(sequence_gt[instants[instant]])
 
-            # Update indices of instants with annotated segmentations in view sequences in newly sliced sequences
-            instants_with_gt = {instant_key: idx for idx, instant_key in enumerate(Instant)}
+            # Update indices of clinically important instants to match the new slicing of the sequences
+            instants = {instant_key: idx for idx, instant_key in enumerate(instants)}
 
         # Add channel dimension
-        return np.array(data_x), np.array(data_y), info, instants_with_gt
+        return np.array(data_x), np.array(data_y), info, instants
 
-    def _get_sequence_data(
-        self, patient_id: str, view: View, instants_with_gt: Mapping[Instant, int]
-    ) -> Tuple[List[np.ndarray], List[np.ndarray], List[Real]]:
+    def _get_sequence_data(self, patient_id: str, view: str) -> Tuple[List[np.ndarray], List[np.ndarray], List[Real]]:
         """Fetches additional reference segmentations, interpolated between ED and ES instants.
 
         Args:
             patient_id: Patient id formatted to match the identifiers in the mhd files' names.
             view: View for which to fetch the patient's data.
-            instants_with_gt: Mapping between instant keys and the indices of their groundtruths in the sequence.
 
         Returns:
-            - Sequence of ultrasound images acquired between ED and ES. The trend is that the first images are
-              closer to ED, and the last images are closer to ES.
-            - Segmentations interpolated between ED and ES. The trend is that the first segmentations are closer to
-              ED, and the last segmentations are closer to ES.
+            - Sequence of ultrasound images acquired over a cardiac cycle.
+            - Segmentation masks associated with the sequence of ultrasound images.
             - Metadata concerning the sequence.
         """
-        patient_folder = self.data.joinpath(patient_id)
-        sequence_fn_template = f"{patient_id}_{view.value}_sequence{{}}.mhd"
-
-        # Indicate if ED comes after ES (normal) or the opposite
-        reverse_sequence = False if instants_with_gt[Instant.ED] < instants_with_gt[Instant.ES] else True
+        patient_folder = self.data / patient_id
+        sequence_fn_template = f"{patient_id}_{view}_sequence{{}}.mhd"
 
         # Open interpolated segmentations
         data_x, data_y = [], []
-        sequence, info = load_mhd(patient_folder.joinpath(sequence_fn_template.format("")))
-        sequence_gt, _ = load_mhd(patient_folder.joinpath(sequence_fn_template.format("_gt")))
+        sequence, info = load_mhd(patient_folder / sequence_fn_template.format(""))
+        sequence_gt, _ = load_mhd(patient_folder / sequence_fn_template.format("_gt"))
 
         for image, segmentation in zip(sequence, sequence_gt):  # For every instant in the sequence
             data_x.append(image)
             data_y.append(segmentation)
-
-        if reverse_sequence:  # Reverse order of sequence if ES comes before ED
-            data_x, data_y = list(reversed(data_x)), list(reversed(data_y))
 
         info = [item for sublist in info for item in sublist]  # Flatten info
 
@@ -249,6 +247,8 @@ class CrossValidationDatasetGenerator:
 def main():
     """Run the script."""
     from argparse import ArgumentParser
+
+    configure_logging(log_to_console=True, console_level=logging.INFO)
 
     parser = ArgumentParser()
     parser.add_argument(
@@ -261,10 +261,25 @@ def main():
         help="Path to the HDF5 file to generate, containing all the raw image data and cross-validation metadata",
     )
     parser.add_argument(
+        "--folds",
+        type=int,
+        nargs="+",
+        choices=range(1, 11),
+        default=range(1, 11),
+        help="Subfolds of the data to include in the generated dataset",
+    )
+    parser.add_argument(
         "--image_size",
         type=Tuple[int, int],
         default=(image_size, image_size),
         help="Target height and width at which to resize the image and groundtruth",
+    )
+    parser.add_argument(
+        "--sequence_type",
+        type=str,
+        choices=["half_cycle", "full_cycle"],
+        default="half_cycle",
+        help="Type of sequential data available, whether it's for half a cycle (ED->ES) or the full cycle (ED->ES->ED)",
     )
     parser.add_argument(
         "-s",
@@ -288,7 +303,9 @@ def main():
     CrossValidationDatasetGenerator()(
         args.data,
         args.output,
+        folds=args.folds,
         target_image_size=args.image_size,
+        sequence_type=args.sequence_type,
         sequence=args.sequence,
         register=args.register,
         labels=args.labels,
