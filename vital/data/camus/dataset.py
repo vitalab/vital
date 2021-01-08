@@ -8,26 +8,12 @@ from torch import Tensor
 from torchvision.datasets import VisionDataset
 from torchvision.transforms.functional import to_tensor
 
-import vital
 from vital.data.camus.config import CamusTags, Label
 from vital.data.camus.data_struct import PatientData, ViewData
 from vital.data.config import Subset
 from vital.utils.decorators import squeeze
 from vital.utils.image.register.camus import CamusRegisteringTransformer
 from vital.utils.image.transform import remove_labels, segmentation_to_tensor
-from vital.utils.parameters import parameters
-
-
-@parameters
-class DataParameters(vital.utils.parameters.DataParameters):
-    """Extension of the generic ``DataParameters`` dataclass for CAMUS-specific parameters.
-
-    Args:
-        in_shape: (height, width, channels) Shape of the input data.
-        out_shape: (height, width, channels) Shape of the target data.
-    """
-
-    pass
 
 
 class Camus(VisionDataset):
