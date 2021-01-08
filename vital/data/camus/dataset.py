@@ -9,7 +9,7 @@ from torchvision.datasets import VisionDataset
 from torchvision.transforms.functional import to_tensor
 
 import vital
-from vital.data.camus.config import CamusTags, Instant, Label, View
+from vital.data.camus.config import CamusTags, Label
 from vital.data.camus.data_struct import PatientData, ViewData
 from vital.data.config import Subset
 from vital.utils.decorators import squeeze
@@ -91,7 +91,7 @@ class Camus(VisionDataset):
             self.item_list = self._get_instant_paths()
             self.getter = self._get_train_item
 
-    def __getitem__(self, index) -> Union[Dict[str, Tensor], Dict[View, Dict[str, Tensor]]]:
+    def __getitem__(self, index) -> Union[Dict[str, Tensor], Dict[str, Dict[str, Tensor]]]:
         """Fetches an item, whose structure depends on the ``predict`` value, from the internal list of items.
 
         Notes:
@@ -141,11 +141,13 @@ class Camus(VisionDataset):
         """
 
         def include_image(view_group: h5py.Group, instant: int) -> bool:
-            is_instant_with_gt = instant in (view_group.attrs[instant_key] for instant_key in Instant.values())
+            is_clinically_important_instant = instant in (
+                view_group.attrs[instant_key] for instant_key in view_group.attrs[CamusTags.instants]
+            )
             return (
                 not self.dataset_with_sequence
                 or self.use_sequence
-                or (self.dataset_with_sequence and is_instant_with_gt)
+                or (self.dataset_with_sequence and is_clinically_important_instant)
             )
 
         image_paths = []
@@ -187,7 +189,7 @@ class Camus(VisionDataset):
 
         return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.frame_pos: frame_pos}
 
-    def _get_test_item(self, index: int) -> Dict[View, Dict[str, Tensor]]:
+    def _get_test_item(self, index: int) -> Dict[str, Dict[str, Tensor]]:
         """Fetches data required for inference on a test item (whole patient).
 
         Args:
@@ -200,7 +202,6 @@ class Camus(VisionDataset):
         with h5py.File(self.root, "r") as dataset:
             for view in dataset[self.item_list[index]]:
                 patient_view_key = f"{self.item_list[index]}/{view}"
-                view = View(view)
 
                 # Collect and process data
                 proc_imgs, proc_gts = Camus._get_data(dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
@@ -208,14 +209,15 @@ class Camus(VisionDataset):
 
                 # If we do not use the whole sequence
                 if self.dataset_with_sequence and not self.use_sequence:
-                    # Indicate indices of instants with manually annotated segmentations in view sequences
-                    instants_with_gt = {
-                        instant: Camus._get_metadata(dataset, patient_view_key, instant.value) for instant in Instant
+                    # Indicate indices of clinically important instants in view sequences
+                    instants = {
+                        instant: Camus._get_metadata(dataset, patient_view_key, instant)
+                        for instant in Camus._get_metadata(dataset, patient_view_key, CamusTags.instants)
                     }
 
-                    # Only keep instants with manually annotated groundtruths
-                    proc_imgs = proc_imgs[list(instants_with_gt.values())]
-                    proc_gts = proc_gts[list(instants_with_gt.values())]
+                    # Only keep clinically important instants
+                    proc_imgs = proc_imgs[list(instants.values())]
+                    proc_gts = proc_gts[list(instants.values())]
 
                 # Transform arrays to tensor
                 proc_imgs_tensor = torch.stack([to_tensor(proc_img) for proc_img in proc_imgs])
@@ -261,26 +263,27 @@ class Camus(VisionDataset):
             patient_data = PatientData(id=self.item_list[index])
             for view in dataset[self.item_list[index]]:
                 patient_view_key = f"{self.item_list[index]}/{view}"
-                view = View(view)
 
                 # Collect data
                 gts = self._process_target_data(Camus._get_data(dataset, patient_view_key, CamusTags.gt))
 
                 # Collect metadata
-                info = Camus._get_metadata(dataset, patient_view_key, CamusTags.info)
+                info, clinically_important_instants = Camus._get_metadata(
+                    dataset, patient_view_key, CamusTags.info, CamusTags.instants
+                )
 
-                # Indicate indices of instants with manually annotated segmentations in view sequences
-                instants_with_gt = {
-                    instant: Camus._get_metadata(dataset, patient_view_key, instant.value) for instant in Instant
+                # Indicate indices of clinically important instants in view sequences
+                instants = {
+                    instant: Camus._get_metadata(dataset, patient_view_key, instant)
+                    for instant in clinically_important_instants
                 }
 
-                # Only keep instants with manually annotated groundtruths if we do not use the whole sequence
+                # Only keep instants with clinically important instants if we do not use the whole sequence
                 if self.dataset_with_sequence and not self.use_sequence:
-                    gts = gts[list(instants_with_gt.values())]
+                    gts = gts[list(instants.values())]
 
-                    # Update indices of instants with manually annotated segmentations in view sequences in
-                    # newly sliced sequences
-                    instants_with_gt = {instant: idx for idx, instant in enumerate(Instant)}
+                    # Update indices of clinically important instants to match the new slicing of the sequences
+                    instants = {instant: idx for idx, instant in enumerate(clinically_important_instants)}
 
                 # Extract metadata concerning the registering applied
                 registering_parameters = None
@@ -290,7 +293,7 @@ class Camus(VisionDataset):
                         for reg_step in CamusRegisteringTransformer.registering_steps
                     }
 
-                patient_data.views[view] = ViewData(gts, info, instants_with_gt, registering=registering_parameters)
+                patient_data.views[view] = ViewData(gts, info, instants, registering=registering_parameters)
 
         return patient_data
 
