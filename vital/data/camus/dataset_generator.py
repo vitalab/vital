@@ -12,7 +12,16 @@ import numpy as np
 from PIL.Image import LINEAR
 from tqdm import tqdm
 
-from vital.data.camus.config import CamusTags, Instant, Label, View, image_size, img_save_options, seg_save_options
+from vital.data.camus.config import (
+    CamusTags,
+    FullCycleInstant,
+    Instant,
+    Label,
+    View,
+    image_size,
+    img_save_options,
+    seg_save_options,
+)
 from vital.data.config import Subset
 from vital.utils.image.io import load_mhd
 from vital.utils.image.register.camus import CamusRegisteringTransformer
@@ -74,7 +83,12 @@ class CrossValidationDatasetGenerator:
         self.registering_transformer = CamusRegisteringTransformer(
             num_classes=Label.count(), crop_shape=target_image_size
         )
+        self.sequence_type = sequence_type
         self.sequence_type_instants = asdict(Instant.from_sequence_type(sequence_type)).values()
+        if self.sequence_type == "half_cycle":
+            self.info_filename_format = "Info_{view}.cfg"
+        else:
+            self.info_filename_format = "{patient}_{view}_info.cfg"
 
         output.parent.mkdir(parents=True, exist_ok=True)
         with h5py.File(output, "w") as dataset:
@@ -130,7 +144,9 @@ class CrossValidationDatasetGenerator:
         patient_id = os.path.basename(patient_group.name)
 
         available_views = [
-            view for view in asdict(View()).values() if (self.data / patient_id / f"Info_{view}.cfg").exists()
+            view
+            for view in asdict(View()).values()
+            if (self.data / patient_id / self.info_filename_format.format(patient=patient_id, view=view)).exists()
         ]
         for view in available_views:
             # The order of the instants within a view dataset is chronological: ED -> ES -> ED
@@ -179,14 +195,16 @@ class CrossValidationDatasetGenerator:
             - Metadata concerning the sequence.
             - Mapping between clinically important instants and the index where they appear in the sequence.
         """
-        view_info_fn = self.data / patient_id / f"Info_{view}.cfg"
+        view_info_fn = self.data / patient_id / self.info_filename_format.format(patient=patient_id, view=view)
 
         # Determine the index of segmented instants in sequence
         instants = {}
         with open(str(view_info_fn), "r") as view_info_file:
             view_info = {(pair := line.split(": "))[0]: pair[1] for line in view_info_file.read().splitlines()}
         for instant in self.sequence_type_instants:
-            instants[instant] = int(view_info[instant]) - 1
+            # For [ED,ES], read the frame number from the corresponding field in the info file
+            # The ED_E is always the last frame, so populate this info from the total number of frames instead
+            instants[instant] = int(view_info[instant if instant != FullCycleInstant.ED_E else "NbFrame"]) - 1
 
         # Get data for the whole sequence ranging from ED to ES
         sequence, sequence_gt, info = self._get_sequence_data(patient_id, view)
