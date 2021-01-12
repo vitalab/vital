@@ -14,7 +14,6 @@ from vital.systems.system import SystemDataManagerMixin
 class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
     """Implementation of the mixin handling the training/validation/testing phases for the CAMUS dataset."""
 
-    use_da: bool = False  #: Whether the system applies Data Augmentation (DA) by default
     use_sequence: bool = False  #: Whether the system uses complete sequences by default
 
     def __init__(self, **kwargs):

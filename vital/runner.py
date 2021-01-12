@@ -1,4 +1,3 @@
-import os
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -196,15 +195,6 @@ class VitalRunner(ABC):
             "--skip_train", dest="train", action="store_false", help="Skip training and do test/evaluation phase"
         )
         parser.add_argument("--skip_test", dest="test", action="store_false", help="Skip test/evaluation phase")
-
-        # resource-use parameters
-        parser.add_argument(
-            "--num_workers",
-            type=int,
-            default=os.cpu_count() - 1,
-            help="How many subprocesses to use for data loading. "
-            "0 means that the data will be loaded in the main process.",
-        )
 
         return parser
 
