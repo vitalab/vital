@@ -77,7 +77,7 @@ class Camus(VisionDataset):
             self.item_list = self._get_instant_paths()
             self.getter = self._get_train_item
 
-    def __getitem__(self, index) -> Union[Dict[str, Tensor], Dict[str, Dict[str, Tensor]]]:
+    def __getitem__(self, index) -> Union[Dict[str, Union[str, Tensor]], PatientData]:
         """Fetches an item, whose structure depends on the ``predict`` value, from the internal list of items.
 
         Notes:
@@ -175,101 +175,51 @@ class Camus(VisionDataset):
 
         return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.frame_pos: frame_pos}
 
-    def _get_test_item(self, index: int) -> Dict[str, Dict[str, Tensor]]:
-        """Fetches data required for inference on a test item (whole patient).
+    def _get_test_item(self, index: int) -> PatientData:
+        """Fetches data required for inference on a test item, i.e. a patient.
 
         Args:
             index: Index of the test sample in the test set's ``self.item_list``.
 
         Returns:
-            Data for inference on a test item.
+            Data related a to a test item, i.e. a patient.
         """
-        views = {}
-        with h5py.File(self.root, "r") as dataset:
-            for view in dataset[self.item_list[index]]:
-                patient_view_key = f"{self.item_list[index]}/{view}"
-
-                # Collect and process data
-                proc_imgs, proc_gts = Camus._get_data(dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
-                proc_gts = self._process_target_data(proc_gts)
-
-                # If we do not use the whole sequence
-                if self.dataset_with_sequence and not self.use_sequence:
-                    # Indicate indices of clinically important instants in view sequences
-                    instants = {
-                        instant: Camus._get_metadata(dataset, patient_view_key, instant)
-                        for instant in Camus._get_metadata(dataset, patient_view_key, CamusTags.instants)
-                    }
-
-                    # Only keep clinically important instants
-                    proc_imgs = proc_imgs[list(instants.values())]
-                    proc_gts = proc_gts[list(instants.values())]
-
-                # Transform arrays to tensor
-                proc_imgs_tensor = torch.stack([to_tensor(proc_img) for proc_img in proc_imgs])
-                proc_gts_tensor = torch.stack([segmentation_to_tensor(proc_gt) for proc_gt in proc_gts])
-
-                # Compute auxiliary data for the sequence
-                frame_pos_tensor = torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1)
-
-                views[view] = {
-                    CamusTags.img: proc_imgs_tensor,
-                    CamusTags.gt: proc_gts_tensor,
-                    CamusTags.frame_pos: frame_pos_tensor,
-                }
-
-        return views
-
-    def get_patient_data(self, index: int) -> PatientData:
-        """Fetches data about a patient that is typically not used by models for inference.
-
-        Returns additional data about the same patient as ``get_test_item`` returns inference-necessary data.
-        The additional data returned by ``get_patient_data`` should be useful during evaluation
-        (e.g. to save along with the predictions).
-
-        Notes:
-            - This method should only be used on datasets in ``predict`` mode. This is because items correspond to
-              patients in those datasets, ``get_patient_data`` works in pair with directly indexing the dataset to fetch
-              data about the ith patient (i.e. the index means the same for both methods). For datasets not in
-              ``predict`` mode, where items don't correspond to patients, the `index` parameter makes no sense.
-
-        Args:
-            index: Index of the patient in the dataset's ``self.item_list``.
-
-        Returns:
-            Data about a patient.
-
-        Raises:
-            RuntimeError: If ``get_patient_data`` is called on a ``Camus`` instance not in ``predict`` mode.
-        """
-        if not self.predict:
-            raise RuntimeError("Method `get_patient_data` should only be used on datasets in `predict` mode.")
-
         with h5py.File(self.root, "r") as dataset:
             patient_data = PatientData(id=self.item_list[index])
             for view in dataset[self.item_list[index]]:
                 patient_view_key = f"{self.item_list[index]}/{view}"
 
-                # Collect data
-                gts = self._process_target_data(Camus._get_data(dataset, patient_view_key, CamusTags.gt))
+                # Collect and process data
+                proc_imgs, proc_gts, gts = Camus._get_data(
+                    dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc, CamusTags.gt
+                )
+                proc_gts = self._process_target_data(proc_gts)
+                gts = self._process_target_data(gts)
 
                 # Collect metadata
                 info, clinically_important_instants = Camus._get_metadata(
                     dataset, patient_view_key, CamusTags.info, CamusTags.instants
                 )
-
-                # Indicate indices of clinically important instants in view sequences
                 instants = {
                     instant: Camus._get_metadata(dataset, patient_view_key, instant)
                     for instant in clinically_important_instants
                 }
 
-                # Only keep instants with clinically important instants if we do not use the whole sequence
+                # If we do not use the whole sequence
                 if self.dataset_with_sequence and not self.use_sequence:
-                    gts = gts[list(instants.values())]
+
+                    # Only keep clinically important instants
+                    instant_indices = list(instants.values())
+                    proc_imgs = proc_imgs[instant_indices]
+                    proc_gts = proc_gts[instant_indices]
+                    gts = gts[instant_indices]
 
                     # Update indices of clinically important instants to match the new slicing of the sequences
-                    instants = {instant: idx for idx, instant in enumerate(clinically_important_instants)}
+                    instants = {instant: idx for idx, instant in enumerate(instants)}
+
+                # Transform arrays to tensor
+                proc_imgs_tensor = torch.stack([to_tensor(proc_img) for proc_img in proc_imgs])
+                proc_gts_tensor = torch.stack([segmentation_to_tensor(proc_gt) for proc_gt in proc_gts])
 
                 # Extract metadata concerning the registering applied
                 registering_parameters = None
@@ -279,7 +229,18 @@ class Camus(VisionDataset):
                         for reg_step in CamusRegisteringTransformer.registering_steps
                     }
 
-                patient_data.views[view] = ViewData(gts, info, instants, registering=registering_parameters)
+                # Compute attributes for the sequence
+                attrs = {CamusTags.frame_pos: torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1)}
+
+                patient_data.views[view] = ViewData(
+                    img_proc=proc_imgs_tensor,
+                    gt_proc=proc_gts_tensor,
+                    gt=gts,
+                    voxelspacing=info[6:9][::-1],
+                    instants=instants,
+                    attrs=attrs,
+                    registering=registering_parameters,
+                )
 
         return patient_data
 

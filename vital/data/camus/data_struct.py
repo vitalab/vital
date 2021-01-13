@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Mapping, MutableMapping
+from numbers import Real
+from typing import Mapping, MutableMapping, Tuple
 
 import numpy as np
+from torch import Tensor
 
 
 @dataclass
@@ -22,13 +24,19 @@ class ViewData:
     """Collection of data relevant to a specific view sequence.
 
     Args:
+        img_proc: Resized images, used as input when training models.
+        gt_proc: Resized groundtruths, used as input when training models.
         gt: Unprocessed groundtruths, used as reference when evaluating models' scores.
-        info: Images' metadata.
+        voxelspacing: Size of the segmentations' voxels along each (time, height, width) dimension (in mm).
         instants: Mapping between instant IDs and their frame index in the view.
+        attrs: Attributes related to and/or computed on the image/groundtruth pair.
         registering: Parameters applied originally to register the images and groundtruths.
     """
 
+    img_proc: Tensor
+    gt_proc: Tensor
     gt: np.ndarray
-    info: np.ndarray
+    voxelspacing: Tuple[Real, Real, Real]
     instants: Mapping[str, int]
+    attrs: Mapping[str, np.ndarray] = field(default_factory=dict)
     registering: Mapping[str, np.ndarray] = field(default_factory=dict)

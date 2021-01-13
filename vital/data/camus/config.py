@@ -89,6 +89,7 @@ class CamusTags(Tags):
         img_proc: Tag referring to resized images, used as input when training models.
         gt_proc: Tag referring to resized groundtruths used as reference when training models.
         info: Tag referring to images' metadata.
+        voxelspacing: Tag referring to voxels' size along each (time, height, width) dimension (in mm).
         proc_instants: Tag referring to metadata indicating which image where affected by the postprocessing.
         frame_pos: Tag referring to the frame normalized index in the sequence (normalized so that ED=0 and ES=1).
     """
@@ -100,6 +101,7 @@ class CamusTags(Tags):
     img_proc: str = "img_proc"
     gt_proc: str = "gt_proc"
     info: str = "info"
+    voxelspacing: str = "voxelspacing"
     proc_instants: str = "processed_instants"
 
     frame_pos: str = "frame_pos"
