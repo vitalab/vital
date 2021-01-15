@@ -2,6 +2,7 @@ import os
 import sys
 from abc import ABC
 from argparse import ArgumentParser
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Mapping, Union
 
 import pytorch_lightning as pl
@@ -44,10 +45,15 @@ class VitalSystem(pl.LightningModule, ABC):
         # By default, assumes the provided data shape is in channel-first format
         self.example_input_array = torch.randn((self.hparams.batch_size, *self.hparams.data_params.in_shape))
 
+    @property
+    def log_dir(self) -> Path:
+        """Returns the root directory where test logs get saved."""
+        return Path(self.trainer.log_dir) if self.trainer.log_dir else self.hparams.default_root_dir
+
     def summarize(self, mode: str = ModelSummary.MODE_DEFAULT) -> ModelSummary:
         """Adds saving a Keras-style summary of the model to the base PL summary routine.
 
-        The Keras-style summary is saved to a ``summary.txt`` file, inside the ``default_root_dir`` directory.
+        The Keras-style summary is saved to a ``summary.txt`` file, inside the output directory.
 
         Notes:
             - Requires the ``example_input_array`` property to be set for the module.
@@ -55,9 +61,7 @@ class VitalSystem(pl.LightningModule, ABC):
               device incompatibilities in clusters.
         """
         if mode is not None:
-            #  Ensure the root directory exists before trying to write the summary
-            self.hparams.default_root_dir.mkdir(parents=True, exist_ok=True)
-            with open(str(self.hparams.default_root_dir / "summary.txt"), "w") as f:
+            with open(str(self.log_dir / "summary.txt"), "w") as f:
                 model_summary = summary(
                     self,
                     input_data=self.example_input_array,

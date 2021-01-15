@@ -18,28 +18,14 @@ class VitalRunner(ABC):
     @classmethod
     def main(cls) -> None:
         """Sets-up the CLI for the ``LightningModule``s runnable through this trainer and runs the requested system."""
-        # Initialize the parser with our own generic arguments
-        parser = ArgumentParser()
-        parser = cls._add_generic_args(parser)
-
-        # Add Lightning trainer arguments to the parser
-        parser = Trainer.add_argparse_args(parser)
-
-        # Override Lightning trainer defaults with trainer-specific defaults
-        parser = cls._override_trainer_default(parser)
-
-        # Add subparsers for all systems available through the trainer
-        parser = cls._add_system_args(parser)
-
-        # Parse args
-        hparams = cls._parse_and_check_args(parser)
-
-        # Configure logging right after args parsing,
-        # since this allows customization of logging behavior
-        cls._configure_logging(hparams)
+        # Initialize the parser with our own generic arguments, Lightning trainer arguments,
+        # and subparsers for all systems available through the trainer
+        parser = cls._add_system_args(
+            cls._override_trainer_default(cls._add_generic_args(Trainer.add_argparse_args(ArgumentParser())))
+        )
 
         # Run target system
-        cls.run_system(hparams)
+        cls.run_system(cls._parse_and_check_args(parser))
 
     @classmethod
     def run_system(cls, hparams: Namespace) -> None:
@@ -48,8 +34,6 @@ class VitalRunner(ABC):
         Args:
             hparams: Arguments parsed from the CLI.
         """
-        system_cls = cls._get_selected_system(hparams)
-
         if hparams.resume:
             trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path)
         else:
@@ -62,6 +46,11 @@ class VitalRunner(ABC):
                 ],
             )
 
+        if not hparams.fast_dev_run:
+            # Configure Python logging right after instantiating the trainer (which determines the logs' path)
+            cls._configure_logging(Path(trainer.log_dir), hparams)
+
+        system_cls = cls._get_selected_system(hparams)
         if hparams.ckpt_path:  # Load pretrained model if checkpoint is provided
             model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams))
         else:
@@ -70,40 +59,42 @@ class VitalRunner(ABC):
         if hparams.train:
             trainer.fit(model)
 
-            # Copy best model checkpoint to a fixed path
-            best_model_path = cls._define_best_model_save_path(hparams)
-            copy2(str(trainer.checkpoint_callback.best_model_path), str(best_model_path))
+            if not hparams.fast_dev_run:
+                # Copy best model checkpoint to a predictable path
+                best_model_path = cls._best_model_path(Path(trainer.log_dir), hparams)
+                copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
 
-            # Ensure we use the best weights (and not the latest ones) by loading back the best model
-            model = system_cls.load_from_checkpoint(str(best_model_path))
+                # Ensure we use the best weights (and not the latest ones) by loading back the best model
+                model = system_cls.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
         if hparams.test:
             trainer.test(model)
 
     @classmethod
-    def _configure_logging(cls, hparams: Namespace) -> None:
+    def _configure_logging(cls, log_dir: Path, hparams: Namespace) -> None:
         """Callback that defines the default logging behavior.
 
         It can be overridden to customize the logging behavior, e.g. to adjust to some CLI arguments defined by the
         user.
 
         Args:
+            log_dir: Lightning's directory for the current run.
             hparams: Arguments parsed from the CLI.
         """
-        configure_logging(log_to_console=True, log_file=hparams.default_root_dir / "run.log")
+        configure_logging(log_to_console=True, log_file=log_dir / "run.log")
 
     @classmethod
-    def _define_best_model_save_path(cls, hparams: Namespace) -> Path:
-        """Defines the fixed path (w.r.t to the system to run) where to copy the best model checkpoint after training.
+    def _best_model_path(cls, log_dir: Path, hparams: Namespace) -> Path:
+        """Defines the path where to copy the best model checkpoint after training.
 
         Args:
+            log_dir: Lightning's directory for the current run.
             hparams: Arguments parsed from the CLI.
 
         Returns:
-            Fixed path (w.r.t to the system to run) where to copy the best model checkpoint after training.
+            Path where to copy the best model checkpoint after training.
         """
-        system_cls = cls._get_selected_system(hparams)
-        return hparams.default_root_dir / f"{system_cls.__name__}.ckpt"
+        return log_dir / f"{cls._get_selected_system(hparams).__name__}.ckpt"
 
     @classmethod
     def _add_system_args(cls, parser: ArgumentParser) -> ArgumentParser:
