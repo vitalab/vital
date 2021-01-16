@@ -61,6 +61,7 @@ class VitalSystem(pl.LightningModule, ABC):
               device incompatibilities in clusters.
         """
         if mode is not None:
+            self.log_dir.mkdir(parents=True, exist_ok=True)
             with open(str(self.log_dir / "summary.txt"), "w") as f:
                 model_summary = summary(
                     self,
