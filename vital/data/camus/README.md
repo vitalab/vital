@@ -30,4 +30,28 @@ python dataset_generator.py -h
 python dataset_generator.py {path to the extracted data}
 ```
 Once you've finished generating the cross validation dataset, it can be used through the
-[CAMUS `VisionDataset` interface](dataset.py) to train and evaluate models.
+[CAMUS `VisionDataset` interface](dataset.py) to train and evaluate models. The data inside in the HDF5 dataset is
+structured according to the following format:
+```yaml
+/:  # root of the file
+
+    - cross_validation:  # dedicated group for the folds' metadata
+        - fold_{n}:
+            - train  # list of patients in the training set of this fold
+            - val  # list of patients in the validation set of this fold
+            - test  # list of patients in the testing set of this fold
+        - fold_{m}: ...
+        ...
+
+    - patient{XXXX}:  # patient data
+        - {2|4}CH:  # sequence data w/ some metadata attributes
+                    # (e.g. voxel size, ED/ES frames, etc.)
+            - img_proc  # NxHxW, raw image after pre-processing
+                        # (e.g. resized to a fixed size)
+            - gt_proc  # NxHxW, reference segmentation after pre-processing
+                       # (e.g. resized to a fixed size)
+            - gt  # NxOG_HxOG_W, copy of the original reference segmentation
+        - {2|4}CH: ...
+    - patient{YYYY}: ...
+    ...
+```

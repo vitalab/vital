@@ -1,6 +1,8 @@
+import os
 import sys
 from abc import ABC
 from argparse import ArgumentParser
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Mapping, Union
 
 import pytorch_lightning as pl
@@ -24,9 +26,6 @@ class VitalSystem(pl.LightningModule, ABC):
         - CLI for generic arguments
     """
 
-    #: Choice of logging flags to toggle through the CLI
-    _logging_flags = ["on_step", "on_epoch", "logger", "prog_bar"]
-
     # Fields to initialize in implementation of ``DataManagerMixin``
     #: Collection of parameters related to the nature of the data
     data_params: DataParameters
@@ -43,18 +42,18 @@ class VitalSystem(pl.LightningModule, ABC):
         # Collection of hyperparameters configuring the system
         self.save_hyperparameters()
 
-        # Update logging flags to map between available flags and their boolean values,
-        # instead of listing desired flags
-        self.train_log_kwargs = {flag: (flag in self.hparams.train_logging_flags) for flag in self._logging_flags}
-        self.val_log_kwargs = {flag: (flag in self.hparams.val_logging_flags) for flag in self._logging_flags}
-
         # By default, assumes the provided data shape is in channel-first format
         self.example_input_array = torch.randn((self.hparams.batch_size, *self.hparams.data_params.in_shape))
+
+    @property
+    def log_dir(self) -> Path:
+        """Returns the root directory where test logs get saved."""
+        return Path(self.trainer.log_dir) if self.trainer.log_dir else self.hparams.default_root_dir
 
     def summarize(self, mode: str = ModelSummary.MODE_DEFAULT) -> ModelSummary:
         """Adds saving a Keras-style summary of the model to the base PL summary routine.
 
-        The Keras-style summary is saved to a ``summary.txt`` file, inside the ``default_root_dir`` directory.
+        The Keras-style summary is saved to a ``summary.txt`` file, inside the output directory.
 
         Notes:
             - Requires the ``example_input_array`` property to be set for the module.
@@ -62,9 +61,7 @@ class VitalSystem(pl.LightningModule, ABC):
               device incompatibilities in clusters.
         """
         if mode is not None:
-            #  Ensure the root directory exists before trying to write the summary
-            self.hparams.default_root_dir.mkdir(parents=True, exist_ok=True)
-            with open(str(self.hparams.default_root_dir / "summary.txt"), "w") as f:
+            with open(str(self.log_dir / "summary.txt"), "w") as f:
                 model_summary = summary(
                     self,
                     input_data=self.example_input_array,
@@ -94,22 +91,6 @@ class VitalSystem(pl.LightningModule, ABC):
             Parser object that supports CL arguments specific to a system.
         """
         parser = ArgumentParser(add_help=False)
-        parser.add_argument(
-            "--train_logging_flags",
-            type=str,
-            nargs="+",
-            choices=cls._logging_flags,
-            default=["on_step", "logger"],
-            help="Options to use for logging the training metrics. \nThe options apply to all training metrics)",
-        )
-        parser.add_argument(
-            "--val_logging_flags",
-            type=str,
-            nargs="+",
-            choices=cls._logging_flags,
-            default=["on_epoch", "logger"],
-            help="Options to use for logging the validation metrics. \nThe options apply to all validation metrics)",
-        )
         return cls.add_evaluation_args(cls.add_computation_args(cls.add_data_manager_args(parser)))
 
 
@@ -148,11 +129,28 @@ class SystemDataManagerMixin(VitalSystem, ABC):
         Returns:
             Parser object to which data loop related arguments have been added.
         """
+        parser.add_argument(
+            "--num_workers",
+            type=int,
+            default=os.cpu_count() - 1,
+            help="How many subprocesses to use for data loading. 0 means that the data will be loaded in the main "
+            "process.",
+        )
         return parser
 
 
 class SystemComputationMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the training/validation/testing phases."""
+
+    #: Choice of logging flags to toggle through the CLI
+    _logging_flags = ["on_step", "on_epoch", "logger", "prog_bar"]
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Update logging flags to map between available flags and their boolean values,
+        # instead of listing desired flags
+        self.train_log_kwargs = {flag: (flag in self.hparams.train_logging_flags) for flag in self._logging_flags}
+        self.val_log_kwargs = {flag: (flag in self.hparams.val_logging_flags) for flag in self._logging_flags}
 
     def training_step(self, *args, **kwargs) -> Union[Tensor, Dict[Union[Literal["loss"], Any], Any]]:  # noqa: D102
         raise NotImplementedError
@@ -170,6 +168,22 @@ class SystemComputationMixin(VitalSystem, ABC):
         Returns:
             Parser object to which computation related arguments have been added.
         """
+        parser.add_argument(
+            "--train_logging_flags",
+            type=str,
+            nargs="+",
+            choices=cls._logging_flags,
+            default=["on_step", "logger"],
+            help="Options to use for logging the training metrics. The options apply to all training metrics",
+        )
+        parser.add_argument(
+            "--val_logging_flags",
+            type=str,
+            nargs="+",
+            choices=cls._logging_flags,
+            default=["on_epoch", "logger"],
+            help="Options to use for logging the validation metrics. The options apply to all validation metrics",
+        )
         return parser
 
 

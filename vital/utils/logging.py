@@ -29,7 +29,7 @@ def configure_logging(
         handlers.append(console_handler)
 
     if log_file:
-        log_file.parent.mkdir(exist_ok=True)  # Ensure that the directory where to create the log file exists
+        log_file.parent.mkdir(parents=True, exist_ok=True)  # Ensure that the log directory exists
         file_handler = logging.FileHandler(str(log_file), mode="w")
         file_handler.setLevel(file_level)
         handlers.append(file_handler)
