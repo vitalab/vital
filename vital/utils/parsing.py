@@ -2,7 +2,7 @@ import argparse
 
 
 class StoreDictKeyPair(argparse.Action):
-    """Action that can parse a python from comma-separated key-value pairs passed to the parser."""
+    """Action that can parse a python dictionary from comma-separated key-value pairs passed to the parser."""
 
     def __call__(self, parser, namespace, values, option_string=None):
         """Parses comma-separated key-value pairs passed to the parser into a dict, adding it to the namespace.
