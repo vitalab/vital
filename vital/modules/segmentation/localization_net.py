@@ -157,7 +157,7 @@ class LocalizationNet(nn.Module):
             bbox_size = (item_roi_bbox[3] - item_roi_bbox[1], item_roi_bbox[2] - item_roi_bbox[0])
 
             # Convert segmentation tensor to array (compatible with PIL) to resize, then convert back to tensor
-            pil_formatted_localized_seg = item_localized_seg.byte().cpu().numpy().squeeze()
+            pil_formatted_localized_seg = item_localized_seg.detach().byte().cpu().numpy().squeeze()
             item_resized_seg = torch.from_numpy(resize_image(pil_formatted_localized_seg, bbox_size)).unsqueeze(0)
 
             # Place the resized localised segmentation inside an empty segmentation
