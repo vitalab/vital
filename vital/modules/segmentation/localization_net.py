@@ -8,7 +8,7 @@ from torch import Tensor, nn
 from torch.nn import functional as F
 from torchvision.ops import roi_align
 
-from vital.utils.image.measure import TensorMeasure
+from vital.utils.image.measure import Measure
 from vital.utils.image.transform import resize_image
 
 
@@ -114,7 +114,7 @@ class LocalizationNet(nn.Module):
         roi_bbox_hat = self.roi_bbox_module(features)
 
         # Crop and resize ``x`` based on ``roi_bbox_hat`` predicted by the previous modules
-        boxes = [box[None, :] for box in TensorMeasure.denormalize_bbox(roi_bbox_hat, self.in_shape[1:])]
+        boxes = [box[None, :] for box in Measure.denormalize_bbox(roi_bbox_hat, self.in_shape[1:])]
         cropped_x = roi_align(x, boxes, self.cropped_shape, aligned=True)
 
         # Second segmentation module: Segment cropped RoI
@@ -148,7 +148,7 @@ class LocalizationNet(nn.Module):
         Returns:
             (N, 1, H, W), Localized segmentation fitted to its original position in the image.
         """
-        roi_bbox = TensorMeasure.denormalize_bbox(roi_bbox, self.out_shape[1:], check_bounds=True).int()
+        roi_bbox = Measure.denormalize_bbox(roi_bbox, self.out_shape[1:], check_bounds=True).int()
 
         # Fit the localized segmentation at its original location in the image, one item at a time
         segmentation = []
