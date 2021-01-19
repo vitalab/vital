@@ -8,9 +8,11 @@ from vital.modules.layers import conv2d_activation, conv2d_activation_bn
 
 
 class CamusUnet(nn.Module):
-    """U-Net model fine-tuned for the CAMUS dataset.
+    """U-Net architecture fine-tuned for the CAMUS dataset.
 
-    This is inspired by the original U-Net work (link in the refs) but was slightly modified.
+    This is inspired by the original U-Net work (link in the refs) but was slightly modified to perform especially well
+    on the CAMUS dataset. However, it is still a generic architecture applicable to any segmentation task.
+
 
     The input size, the number and types of layers are different. The number of feature maps per layer is also
     different. It provided better results than a standard U-Net when applied on the CAMUS dataset (link in the refs).

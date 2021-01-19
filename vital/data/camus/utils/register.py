@@ -4,7 +4,7 @@ import numpy as np
 from skimage.measure import inertia_tensor, regionprops
 
 from vital.data.camus.config import Label
-from vital.utils.image.measure import ArrayMeasure
+from vital.utils.image.measure import Measure
 from vital.utils.image.register.affine import AffineRegisteringTransformer, Crop, Rotation, Shift
 
 
@@ -83,7 +83,7 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
             height, width, row_min, col_min, row_max, col_max.
         """
         # Get the best fitting bbox around the segmented structures
-        bbox_coord = ArrayMeasure.bbox(segmentation, list(range(1, segmentation.shape[-1])), bbox_margin=margin)
+        bbox_coord = Measure.bbox(segmentation, list(range(1, segmentation.shape[-1])), bbox_margin=margin)
         bbox_shape = (bbox_coord[2] - bbox_coord[0], bbox_coord[3] - bbox_coord[1])
 
         # Find the parameters to get a square bbox from the current, best fit, rectangular bbox

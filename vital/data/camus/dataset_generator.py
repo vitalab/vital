@@ -22,9 +22,9 @@ from vital.data.camus.config import (
     img_save_options,
     seg_save_options,
 )
+from vital.data.camus.utils.register import CamusRegisteringTransformer
 from vital.data.config import Subset
 from vital.utils.image.io import load_mhd
-from vital.utils.image.register.camus import CamusRegisteringTransformer
 from vital.utils.image.transform import remove_labels, resize_image
 from vital.utils.logging import configure_logging
 

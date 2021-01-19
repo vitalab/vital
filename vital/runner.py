@@ -149,7 +149,7 @@ class VitalRunner(ABC):
 
     @classmethod
     def _add_generic_args(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Adds generic custom arguments for running a system to a parser object.
+        """Adds to the parser object some generic arguments useful for running a system.
 
         Args:
             parser: Parser object to which generic custom arguments will be added.
