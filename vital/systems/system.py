@@ -45,6 +45,9 @@ class VitalSystem(pl.LightningModule, ABC):
         # By default, assumes the provided data shape is in channel-first format
         self.example_input_array = torch.randn((self.hparams.batch_size, *self.hparams.data_params.in_shape))
 
+    def on_pretrain_routine_start(self) -> None:  # noqa: D102
+        self.log_dir.mkdir(parents=True, exist_ok=True)  # Ensure output directory exists
+
     @property
     def log_dir(self) -> Path:
         """Returns the root directory where test logs get saved."""
@@ -68,7 +71,6 @@ class VitalSystem(pl.LightningModule, ABC):
                 depth=sys.maxsize,
                 col_names=["input_size", "output_size", "kernel_size", "num_params"],
             )
-            self.log_dir.mkdir(parents=True, exist_ok=True)
             (self.log_dir / "summary.txt").write_text(str(model_summary))
         return super().summarize(mode)
 
