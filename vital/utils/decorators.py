@@ -1,6 +1,10 @@
 from functools import wraps
 from typing import Any, Callable, Dict, Mapping, Sequence, Union
 
+import numpy as np
+import torch
+from torch import Tensor
+
 from vital.utils.format.native import Item
 from vital.utils.format.native import prefix as prefix_fn
 from vital.utils.format.native import squeeze as squeeze_fn
@@ -45,3 +49,36 @@ def squeeze(fn: Callable[..., Sequence[Item]]) -> Callable[..., Union[Item, Sequ
         return squeeze_fn(fn(*args, **kwargs))
 
     return unpack_single_item_return
+
+
+def auto_cast_data(func: Callable) -> Callable:
+    """Decorator to allow functions relying on numpy arrays to accept other input data types.
+
+    Args:
+        func: Function for which to automatically convert the first argument to a numpy array.
+
+    Returns:
+        Function that accepts input data types other than numpy arrays by converting between them and numpy arrays.
+    """
+    cast_types = [Tensor]
+    dtypes = [np.ndarray, *cast_types]
+
+    @wraps(func)
+    def _call_func_with_cast_data(data, *args, **kwargs):
+        dtype = type(data)
+        if dtype not in dtypes:
+            raise ValueError(
+                f"Decorator 'auto_cast_data' used by function '{func.__name__}' does not support casting inputs of "
+                f"type '{cast_types}' to numpy arrays. Either provide the implementation for casting to numpy arrays "
+                f"from '{cast_types}' in 'auto_cast_data' decorator, or manually convert the input of '{func.__name__}'"
+                f"to one of the following supported types: {dtypes}."
+            )
+        if dtype == Tensor:
+            data_device = data.device
+            data = data.detach().cpu().numpy()
+        result = func(data, *args, **kwargs)
+        if dtype == Tensor:
+            result = torch.tensor(result, device=data_device)
+        return result
+
+    return _call_func_with_cast_data
