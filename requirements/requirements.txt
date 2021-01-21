@@ -15,3 +15,6 @@ torch-summary
 comet-ml
 Keras-Preprocessing
 medpy
+natsort
+nibabel
+albumentations
