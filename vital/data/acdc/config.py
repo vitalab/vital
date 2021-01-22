@@ -1,11 +1,21 @@
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Any, Dict
 
 import numpy as np
+
 from vital.data.config import DataTag, Tags
 
 
 class Label(DataTag):
+    """Enumeration of tags related to the different anatomical structures segmented in the dataset.
+
+    Attributes:
+        BG: Label of the background.
+        RV: Label of the right ventricle.
+        MYO: Label of the myocardium.
+        LV: Label of the left ventricle.
+    """
+
     BG = 0
     RV = 1
     MYO = 2
@@ -13,26 +23,32 @@ class Label(DataTag):
 
 
 class Instant(DataTag):
-    ED = 'ED'
-    ES = 'ES'
-    MID = 'MID'
+    """Collection of tags related to noteworthy instants in ultrasound sequences.
+
+    Args:
+        ED: Tag referring to the end-diastolic instant.
+        ES: Tag referring to the end-systolic instant.
+        MID: Tag referring to a sample between ED and ES.
+    """
+
+    ED = "ED"
+    ES = "ES"
+    MID = "MID"
 
 
 @dataclass(frozen=True)
 class AcdcTags(Tags):
-    """ Class to gather the tags referring to the different types of data stored in the HDF5 datasets.
+    """Class to gather the tags referring to the different types of data stored in the HDF5 datasets.
 
     Args:
         registered: name of the tag indicating whether the dataset was registered.
         voxel_spacing: name of the tag referring to metadata indicating the voxel size used in the output
         slice_index: name of the tag referring to the index of the slice
     """
-    registered: str = 'register'
 
-    voxel_spacing: str = 'voxel_size'
-    slice_index: str = 'slice_index'
-
-    proc_instants: str = "processed_instants"
+    registered: str = "register"
+    voxel_spacing: str = "voxel_size"
+    slice_index: str = "slice_index"
 
 
 image_size: int = 256

@@ -9,20 +9,21 @@ import numpy as np
 from natsort import natsorted
 from scipy import ndimage
 from scipy.ndimage.interpolation import rotate
-from vital.data.acdc.config import AcdcTags, Label, Instant
-from vital.data.acdc.utils import centered_resize
+
+from vital.data.acdc.config import AcdcTags, Instant, Label
+from vital.data.acdc.utils.acdc import AcdcRegisteringTransformer
+from vital.data.acdc.utils.utils import centered_resize
 from vital.data.config import Subset
-from vital.utils.image.register.acdc import AcdcRegisteringTransformer
 
 try:
     from tqdm import tqdm
-except ImportError as ie:
-    print("The package 'tqdm' is not installed, "
-          "if you want a progress bar install it.")
+except ImportError:
+    print("The package 'tqdm' is not installed, " "if you want a progress bar install it.")
 
     def tqdm(iterable, *args, **kwargs):
-        """ Mock function """
+        """Mcock function."""
         return iterable
+
 
 PRIOR_SIZE = 100
 PRIOR_HALF_SIZE = PRIOR_SIZE // 2
@@ -31,7 +32,7 @@ ROTATIONS = [-60, -45, -15, 0, 15, 45, 60]
 
 
 def generate_list_directory(path):
-    """ Generate the list of nifti images from the path.
+    """Generate the list of nifti images from the path.
 
     Args:
         path: string, path to nifti images
@@ -39,15 +40,16 @@ def generate_list_directory(path):
     if not os.path.exists(path):
         return []
 
-    path = os.path.join(path, '*', '*')
+    path = os.path.join(path, "*", "*")
     paths = natsorted(glob(path))
     paths = [path for path in paths if "Info" not in path]
-    paths = [path for path in paths if path.find('_4d') < 0]
+    paths = [path for path in paths if path.find("_4d") < 0]
     return paths
 
 
 def _to_categorical(matrix, nb_classes):
-    """ Transform a matrix containing integer label class into a matrix containing categorical class labels.
+    """Transform a matrix containing integer label class into a matrix containing categorical class labels.
+
     The last dim of the matrix should be the category (classes).
 
     Args:
@@ -61,13 +63,12 @@ def _to_categorical(matrix, nb_classes):
 
 
 def _mass_center(imgs):
-    """ Function to extract the center of masses of a 3D ground truth image.
+    """Function to extract the center of masses of a 3D ground truth image.
 
     Args:
         imgs: images
     """
-    centers = np.array([ndimage.measurements.center_of_mass(img[:, :, 3])
-                        for img in imgs])
+    centers = np.array([ndimage.measurements.center_of_mass(img[:, :, 3]) for img in imgs])
     # Need to fix the Nan when the ground truth slice is a slice of zeros.
     # Set it to center 256 // 2 = 128
     centers[np.isnan(centers)] = 128
@@ -75,7 +76,7 @@ def _mass_center(imgs):
 
 
 def _generate_centered_prob_map(image, shape, center, label):
-    """ Function to extract the information from the ground truth image given the centers.
+    """Function to extract the information from the ground truth image given the centers.
 
     Args:
         image: np.array, Numpy array of the ground truth.
@@ -91,14 +92,17 @@ def _generate_centered_prob_map(image, shape, center, label):
     # of the image and the ground truth
     space = np.linspace(0, shape[0] - 1, num=image.shape[0]).astype(np.int32)
     for i, (s, c) in enumerate(zip(space, center)):
-        res[s] += image[i, c[0] - PRIOR_HALF_SIZE:c[0] + PRIOR_HALF_SIZE,
-                        c[1] - PRIOR_HALF_SIZE:c[1] + PRIOR_HALF_SIZE,
-                        label:label + 1]
+        res[s] += image[
+            i,
+            c[0] - PRIOR_HALF_SIZE : c[0] + PRIOR_HALF_SIZE,
+            c[1] - PRIOR_HALF_SIZE : c[1] + PRIOR_HALF_SIZE,
+            label : label + 1,
+        ]
     return res
 
 
 def generate_probability_map(h5f, group):
-    """ Generate the probability map from all unrotated training exemples.
+    """Generate the probability map from all unrotated training exemples.
 
     Args:
     h5f: hdf5 File, Handle of the hdf5 file containing all the dataset.
@@ -116,33 +120,41 @@ def generate_probability_map(h5f, group):
 
     prior_shape = np.array([15, PRIOR_SIZE, PRIOR_SIZE, 1])
 
-    label0 = np.array([
-        _generate_centered_prob_map(np.copy(img), prior_shape, center, 0)
-        for img, center in tqdm(zip(images, images_center),
-                                desc='Background', total=len(images))])
+    label0 = np.array(
+        [
+            _generate_centered_prob_map(np.copy(img), prior_shape, center, 0)
+            for img, center in tqdm(zip(images, images_center), desc="Background", total=len(images))
+        ]
+    )
     label0 = label0.sum(axis=0)
 
-    label1 = np.array([
-        _generate_centered_prob_map(np.copy(img), prior_shape, center, 1)
-        for img, center in tqdm(zip(images, images_center),
-                                desc='Right ventricle', total=len(images))])
+    label1 = np.array(
+        [
+            _generate_centered_prob_map(np.copy(img), prior_shape, center, 1)
+            for img, center in tqdm(zip(images, images_center), desc="Right ventricle", total=len(images))
+        ]
+    )
     label1 = label1.sum(axis=0)
 
-    label2 = np.array([
-        _generate_centered_prob_map(np.copy(img), prior_shape, center, 2)
-        for img, center in tqdm(zip(images, images_center),
-                                desc='Myocardium', total=len(images))])
+    label2 = np.array(
+        [
+            _generate_centered_prob_map(np.copy(img), prior_shape, center, 2)
+            for img, center in tqdm(zip(images, images_center), desc="Myocardium", total=len(images))
+        ]
+    )
     label2 = label2.sum(axis=0)
 
-    label3 = np.array([
-        _generate_centered_prob_map(np.copy(img), prior_shape, center, 3)
-        for img, center in tqdm(zip(images, images_center),
-                                desc='Left ventricle', total=len(images))])
+    label3 = np.array(
+        [
+            _generate_centered_prob_map(np.copy(img), prior_shape, center, 3)
+            for img, center in tqdm(zip(images, images_center), desc="Left ventricle", total=len(images))
+        ]
+    )
     label3 = label3.sum(axis=0)
 
     p_img = np.concatenate((label0, label1, label2, label3), axis=-1)
     p_img /= p_img.sum(axis=-1, keepdims=True).astype(np.float32)
-    h5f.create_dataset('prior', data=p_img[:, :, :, 1:])
+    h5f.create_dataset("prior", data=p_img[:, :, :, 1:])
 
 
 # def create_instant(patient_group, instant_name, img, gt, rot, registering_transformer):
@@ -163,11 +175,12 @@ def generate_probability_map(h5f, group):
 #         instant.create_dataset(AcdcTags.img, data=r_img)
 
 
+def create_database_structure(
+    group, data_augmentation, registering, data_ed, gt_ed, data_es, gt_es, data_mid=None, gt_mid=None
+):
+    """Create the dataset for the End-Systolic and End-Diastolic phases.
 
-def create_database_structure(group, data_augmentation, registering, data_ed,
-                              gt_ed, data_es, gt_es, data_mid=None, gt_mid=None):
-    """ Create the dataset for the End-Systolic and End-Diastolic phases and if some data augmentation is
-    involve we create also the rotation for each phase.
+    If some data augmentation is involved we create also the rotation for each phase.
 
     Args:
         group: hdf5 Group, Group where we add each image by its name and the rotation associated to it.
@@ -217,22 +230,24 @@ def create_database_structure(group, data_augmentation, registering, data_ed,
     if data_augmentation:
         iterable = ROTATIONS
     else:
-        iterable = [0, ]
+        iterable = [
+            0,
+        ]
 
     if registering:
         registering_transformer = AcdcRegisteringTransformer()
 
     for rot in iterable:
         patient = group.create_group("{}_{}".format(p_name, rot))
-        patient.attrs[AcdcTags.voxel_spacing] = ni_img.header.get_zooms()
+        # patient.attrs[AcdcTags.voxel_spacing] = ni_img.header.get_zooms()
 
         instant = patient.create_group(Instant.ED.value)
-        # instant.attrs['voxel_size'] = ni_img.header.get_zooms()
+        instant.attrs["voxel_size"] = ni_img.header.get_zooms()
 
         # ED gate with gt
         r_img = rotate(ed_img, rot, axes=(1, 2), reshape=False)
         r_img = np.clip(r_img, ed_img.min(), ed_img.max())
-        r_img[np.isclose(r_img, 0.)] = 0.
+        r_img[np.isclose(r_img, 0.0)] = 0.0
         if registering:
             registering_parameters, edg_img, r_img = registering_transformer.register_batch(edg_img, r_img)
             instant.attrs.update(registering_parameters)
@@ -241,43 +256,41 @@ def create_database_structure(group, data_augmentation, registering, data_ed,
 
         if gt_ed:
             r_img = rotate(edg_img, rot, axes=(1, 2), output=np.uint8, reshape=False)
-            instant.create_dataset(AcdcTags.img, data=r_img)
+            instant.create_dataset(AcdcTags.gt, data=r_img)
 
         instant = patient.create_group(Instant.ES.value)
 
         # ES gate with gt
         r_img = rotate(es_img, rot, axes=(1, 2), reshape=False)
         r_img = np.clip(r_img, es_img.min(), es_img.max())
-        r_img[np.isclose(r_img, 0.)] = 0.
+        r_img[np.isclose(r_img, 0.0)] = 0.0
 
         if registering:
             registering_parameters, esg_img, r_img = registering_transformer.register_batch(esg_img, r_img)
             instant.attrs.update(registering_parameters)
 
         instant.create_dataset(AcdcTags.img, data=r_img)
-
-        # instant.attrs['voxel_size'] = ni_img.header.get_zooms()
+        instant.attrs["voxel_size"] = ni_img.header.get_zooms()
 
         if gt_es:
-            r_img = rotate(esg_img, rot, axes=(1, 2), output=np.uint8,
-                           reshape=False)
+            r_img = rotate(esg_img, rot, axes=(1, 2), output=np.uint8, reshape=False)
             instant.create_dataset(AcdcTags.gt, data=r_img)
 
         # Add mid-cycle data
         if data_mid:
             instant = patient.create_group(Instant.MID.value)
+            instant.attrs["voxel_size"] = ni_img.header.get_zooms()
 
             # Mid gate with gt
             r_img = rotate(mid_img, rot, axes=(1, 2), reshape=False)
             r_img = np.clip(r_img, mid_img.min(), mid_img.max())
-            r_img[np.isclose(r_img, 0.)] = 0.
+            r_img[np.isclose(r_img, 0.0)] = 0.0
 
             if registering:
                 registering_parameters, midg_img, r_img = registering_transformer.register_batch(midg_img, r_img)
                 instant.attrs.update(registering_parameters)
 
             instant.create_dataset(AcdcTags.img, data=r_img)
-            # instant.attrs['voxel_size'] = ni_img.header.get_zooms()
 
             if gt_mid:
                 r_img = rotate(midg_img, rot, axes=(1, 2), output=np.uint8, reshape=False)
@@ -285,7 +298,7 @@ def create_database_structure(group, data_augmentation, registering, data_ed,
 
 
 def generate_dataset(path, name, data_augmentation=False, registering=False):
-    """ Function that generates each dataset, train, valid and test.
+    """Function that generates each dataset, train, valid and test.
 
     Args:
         path: string, Path where we can find the images from the downloaded ACDC challenge.
@@ -297,8 +310,7 @@ def generate_dataset(path, name, data_augmentation=False, registering=False):
         ValueError if names don't match
     """
     if data_augmentation:
-        print("Data augmentation enabled, rotation "
-              "from -60 to 60 by step of 15.")
+        print("Data augmentation enabled, rotation " "from -60 to 60 by step of 15.")
     if registering:
         print("Registering enabled, MRIs and groundtruths centered and rotated.")
     rng = np.random.RandomState(1337)
@@ -306,8 +318,7 @@ def generate_dataset(path, name, data_augmentation=False, registering=False):
     # get training examples
     train_paths = generate_list_directory(os.path.join(path, "training"))
     # We have 4 path, path_ED, path_gt_ED, path_ES and path_gt_ES
-    train_paths = np.array(list(zip(train_paths[0::4], train_paths[1::4],
-                                    train_paths[2::4], train_paths[3::4])))
+    train_paths = np.array(list(zip(train_paths[0::4], train_paths[1::4], train_paths[2::4], train_paths[3::4])))
 
     # 20 is the number of patients per group
     # indexes = np.arange(20)
@@ -320,8 +331,8 @@ def generate_dataset(path, name, data_augmentation=False, registering=False):
         start = i * 5
         idxs = indexes + start
         rng.shuffle(idxs)
-        t_idxs = idxs[:int(indexes.shape[0] * 0.75)]
-        v_idxs = idxs[int(indexes.shape[0] * 0.75):]
+        t_idxs = idxs[: int(indexes.shape[0] * 0.75)]
+        v_idxs = idxs[int(indexes.shape[0] * 0.75) :]
         train_idxs.append(t_idxs)
         valid_idxs.append(v_idxs)
 
@@ -333,15 +344,22 @@ def generate_dataset(path, name, data_augmentation=False, registering=False):
     # get testing examples
     if os.path.exists(os.path.join(path, "testing_with_gt_mid")):
         test_paths = generate_list_directory(os.path.join(path, "testing_with_gt_mid"))
-        test_paths = np.array(list(zip(test_paths[0::6], test_paths[1::6],
-                                       test_paths[2::6], test_paths[3::6],
-                                       test_paths[4::6], test_paths[5::6])))
+        test_paths = np.array(
+            list(
+                zip(
+                    test_paths[0::6],
+                    test_paths[1::6],
+                    test_paths[2::6],
+                    test_paths[3::6],
+                    test_paths[4::6],
+                    test_paths[5::6],
+                )
+            )
+        )
     else:
         test_paths = generate_list_directory(os.path.join(path, "testing_with_gt"))
-        test_paths = np.array(list(zip(test_paths[0::4], test_paths[1::4],
-                                       test_paths[2::4], test_paths[3::4])))
+        test_paths = np.array(list(zip(test_paths[0::4], test_paths[1::4], test_paths[2::4], test_paths[3::4])))
         test_paths = np.array([np.insert(i, 2, [None, None]).tolist() for i in test_paths])
-
 
     print("train: ", len(train_paths))
     print("val: ", len(valid_paths))
@@ -353,67 +371,80 @@ def generate_dataset(path, name, data_augmentation=False, registering=False):
 
         # Training samples ###
         group = h5f.create_group(Subset.TRAIN.value)
-        for p_ed, g_ed, p_es, g_es in tqdm(train_paths, desc='Training'):
+        for p_ed, g_ed, p_es, g_es in tqdm(train_paths, desc="Training"):
             # Find missmatch in the zip
-            if p_ed != g_ed.replace('_gt', '') or \
-                    p_es != g_es.replace('_gt', ''):
-                raise ValueError(("File name don't match: ",
-                                  "{} instead of {}, ".format(p_ed, g_ed),
-                                  "{} instead of {}.".format(p_es, g_es)))
+            if p_ed != g_ed.replace("_gt", "") or p_es != g_es.replace("_gt", ""):
+                raise ValueError(
+                    (
+                        "File name don't match: ",
+                        "{} instead of {}, ".format(p_ed, g_ed),
+                        "{} instead of {}.".format(p_es, g_es),
+                    )
+                )
 
-            create_database_structure(group, data_augmentation, registering,
-                                      p_ed, g_ed,
-                                      p_es, g_es)
+            create_database_structure(group, data_augmentation, registering, p_ed, g_ed, p_es, g_es)
 
         # Generate the probability map from the ground truth training examples
         generate_probability_map(h5f, group)
 
         # Validation samples ###
         group = h5f.create_group(Subset.VAL.value)
-        for p_ed, g_ed, p_es, g_es in tqdm(valid_paths, desc='Validation'):
+        for p_ed, g_ed, p_es, g_es in tqdm(valid_paths, desc="Validation"):
             # Find missmatch in the zip
-            if p_ed != g_ed.replace('_gt', '') or \
-                    p_es != g_es.replace('_gt', ''):
-                raise ValueError(("File name don't match: ",
-                                  "{} instead of {}, ".format(p_ed, g_ed),
-                                  "{} instead of {}.".format(p_es, g_es)))
+            if p_ed != g_ed.replace("_gt", "") or p_es != g_es.replace("_gt", ""):
+                raise ValueError(
+                    (
+                        "File name don't match: ",
+                        "{} instead of {}, ".format(p_ed, g_ed),
+                        "{} instead of {}.".format(p_es, g_es),
+                    )
+                )
 
             create_database_structure(group, False, registering, p_ed, g_ed, p_es, g_es)
 
         # Testing samples ###
         group = h5f.create_group(Subset.TEST.value)
-        for p_ed, g_ed, p_mid, g_mid, p_es, g_es in tqdm(test_paths, desc='Testing'):
+        for p_ed, g_ed, p_mid, g_mid, p_es, g_es in tqdm(test_paths, desc="Testing"):
             p_mid = None if p_mid == "None" else p_mid
             g_mid = None if g_mid == "None" else g_mid
             # Find missmatch in the zip
-            if basename(p_ed) != basename(g_ed).replace('_gt', '') or \
-                    basename(p_es) != basename(g_es).replace('_gt', ''):
-                raise ValueError(("File name don't match: ",
-                                  "{} instead of {}, ".format(p_ed, g_ed),
-                                  "{} instead of {}.".format(p_es, g_es)))
-            create_database_structure(group, data_augmentation, registering,
-                                      p_ed, g_ed,
-                                      p_es, g_es,
-                                      data_mid=p_mid, gt_mid=g_mid)
+            if basename(p_ed) != basename(g_ed).replace("_gt", "") or basename(p_es) != basename(g_es).replace(
+                "_gt", ""
+            ):
+                raise ValueError(
+                    (
+                        "File name don't match: ",
+                        "{} instead of {}, ".format(p_ed, g_ed),
+                        "{} instead of {}.".format(p_es, g_es),
+                    )
+                )
+            create_database_structure(
+                group, data_augmentation, registering, p_ed, g_ed, p_es, g_es, data_mid=p_mid, gt_mid=g_mid
+            )
 
 
 def main():
-    """ Main function where we define the argument for the script. """
+    """Main function where we define the argument for the script."""
     parser = argparse.ArgumentParser(
-        description=("Script to create the ACDC dataset "
-                     "hdf5 file from the directory. "
-                     "The given directory need to have two "
-                     "directory inside, 'training' and 'testing'."))
-    parser.add_argument('--path', type=str, required=True,
-                        help="Path of the ACDC dataset.")
-    parser.add_argument('--name', type=str, required=True,
-                        help="Name of the generated hdf5 file.")
+        description=(
+            "Script to create the ACDC dataset "
+            "hdf5 file from the directory. "
+            "The given directory need to have two "
+            "directory inside, 'training' and 'testing'."
+        )
+    )
+    parser.add_argument("--path", type=str, required=True, help="Path of the ACDC dataset.")
+    parser.add_argument("--name", type=str, required=True, help="Name of the generated hdf5 file.")
     data_processing_group = parser.add_mutually_exclusive_group()
-    data_processing_group.add_argument('-d', '--data_augmentation', action='store_true',
-                                       help="Add data augmentation (rotation).")
-    data_processing_group.add_argument('-r', '--registering', action='store_true',
-                                       help="Apply registering (registering and rotation)."
-                                            "Only works when groundtruths are provided.")
+    data_processing_group.add_argument(
+        "-d", "--data_augmentation", action="store_true", help="Add data augmentation (rotation)."
+    )
+    data_processing_group.add_argument(
+        "-r",
+        "--registering",
+        action="store_true",
+        help="Apply registering (registering and rotation)." "Only works when groundtruths are provided.",
+    )
     args = parser.parse_args()
     generate_dataset(args.path, args.name, args.data_augmentation, args.registering)
 

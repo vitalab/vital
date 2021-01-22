@@ -1,3 +1,4 @@
+# flake8: noqa
 # -*- coding: utf-8 -*-
 
 """
@@ -12,7 +13,7 @@ from sklearn.feature_extraction.image import extract_patches_2d
 
 
 def extract_balanced_sets(labels, sets_proportion, seed=1234):
-    """ Splits a dataset into n different balanced subsets with the same number of subjects per class.
+    """Splits a dataset into n different balanced subsets with the same number of subjects per class.
 
     Args:
         labels: list or ndarray of discrete values, Labels of every subjects (of size n = number of subjects).
@@ -41,7 +42,7 @@ def extract_balanced_sets(labels, sets_proportion, seed=1234):
         prev_index = 0
 
         for set_id, set_proportion in enumerate(sets_proportion):
-            num_subjects_to_keep = set_proportion / 100. * min_subjects_in_label
+            num_subjects_to_keep = set_proportion / 100.0 * min_subjects_in_label
             next_index = prev_index + int(np.floor(num_subjects_to_keep))
 
             subjects_to_keep = subjects_ids_in_label[prev_index:next_index]
@@ -53,7 +54,7 @@ def extract_balanced_sets(labels, sets_proportion, seed=1234):
 
 
 def standardize_data(data, axis=0):
-    """ Performs standardization independently on every axis of the data.
+    """Performs standardization independently on every axis of the data.
 
     Args
         data: ndarray, Whole dataset.
@@ -67,13 +68,13 @@ def standardize_data(data, axis=0):
     std = np.nanstd(data, axis=axis)
 
     # Set standard deviations of zero to 1 to avoid division by zero.
-    std[std == 0] = 1.
+    std[std == 0] = 1.0
 
     return (data - mean) / std
 
 
 def vectorize_data(data, axis=0):
-    """ Turns multi-dimensional data into a 1D vector per subject.
+    """Turns multi-dimensional data into a 1D vector per subject.
 
     Args:
         data: ndarray, Whole dataset.
@@ -95,7 +96,7 @@ def vectorize_data(data, axis=0):
 
 
 def get_patch_at_x_y(data, patch, x, y):
-    """ Get a 2D patch from the data
+    """Get a 2D patch from the data
 
     Args:
         data: ndarray, The whole image.
@@ -113,7 +114,7 @@ def get_patch_at_x_y(data, patch, x, y):
 
 
 def get_patch_list(data, patch, stride):
-    """ Get all the patches of the given size and stride.
+    """Get all the patches of the given size and stride.
 
     Args:
         data: ndarray, Data to extract patches.
@@ -137,7 +138,7 @@ def get_patch_list(data, patch, stride):
 
 
 def centered_padding(image, pad_size, c_val=0):
-    """ Pad the image given in parameters to have a size of self.image_size.
+    """Pad the image given in parameters to have a size of self.image_size.
 
     Args:
         image: ndarray (3d or 4d), Numpy array of data to be padded.
@@ -158,11 +159,11 @@ def centered_padding(image, pad_size, c_val=0):
         to_pad = np.array(to_pad).astype(np.int)
         to_pad = ((to_pad[0], to_pad[0]), (to_pad[1], to_pad[1]), (0, 0))
 
-    return np.pad(image, to_pad, mode='constant', constant_values=c_val)
+    return np.pad(image, to_pad, mode="constant", constant_values=c_val)
 
 
 def centered_crop(image, crop_size):
-    """ Crop the image given in parameters to have a size of crop_size.
+    """Crop the image given in parameters to have a size of crop_size.
 
     Args:
         image: ndarray (4D), Numpy array of data to be padded.
@@ -184,7 +185,7 @@ def centered_crop(image, crop_size):
 
 
 def centered_resize(image, size, c_val=0):
-    """ Centered image resize using crop or padding with c_val.
+    """Centered image resize using crop or padding with c_val.
 
     Args:
         image: ndarray, A 3d or 4d numpy array of the image.
@@ -241,7 +242,7 @@ def preprocess_channel(img, preproc_fn):
 
 
 def bbox(segmentation, labels, bbox_margin=0.05):
-    """ Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
+    """Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 
     Args:
         segmentation: ndarray, segmentation in which to identify the coordinates of the bbox.
