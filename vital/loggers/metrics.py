@@ -14,7 +14,7 @@ class MetricsLogger(Logger):
     """Abstract class that computes metrics on the results and saves them to csv."""
 
     Log = Mapping[str, Real]
-    data_choices: Sequence[str]  #: Tags of the data on which to compute metrics
+    data_choices: Sequence[str]  #: Tags of the data on which it is possible to compute the metrics
 
     def __init__(self, data: str, **kwargs):  # noqa: D205,D212,D415
         """
@@ -22,7 +22,7 @@ class MetricsLogger(Logger):
             data: Tag of the data on which to compute metrics.
             **kwargs: Additional parameters to pass along to ``super().__init__()``.
         """
-        super().__init__(output_name_template=f"{{}}_{data}_{self.desc}.csv", **kwargs)
+        super().__init__(output_name=f"{data}_{self.desc}.csv", **kwargs)
         if data not in self.data_choices:
             raise ValueError(
                 f"The `data` parameter should be chosen from one of the supported values: {self.data_choices}. "
@@ -68,5 +68,11 @@ class MetricsLogger(Logger):
             Parser object with support for generic metrics and iterable logger arguments.
         """
         parser = super().build_parser()
-        parser = super().add_data_selection_args(parser, choices=cls.data_choices)
+        parser.add_argument(
+            "--data",
+            type=str,
+            default=cls.data_choices[0],
+            choices=cls.data_choices,
+            help="Data on which to compute the metrics",
+        )
         return parser

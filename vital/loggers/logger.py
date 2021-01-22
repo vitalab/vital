@@ -1,7 +1,7 @@
 import logging
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Mapping, Optional, Sequence, Tuple, Type
+from typing import Mapping, Optional, Tuple, Type
 
 from pathos.multiprocessing import Pool
 from tqdm import tqdm
@@ -20,30 +20,39 @@ class Logger:
 
     def __init__(
         self,
-        output_name_template: str = None,
+        output_name: str = None,
         disable_progress_bar: bool = False,
         disable_multiprocessing: bool = False,
         **iterable_result_params,
     ):  # noqa: D205,D212,D415
         """
         Args:
-            output_name_template: Name template for the aggregated log, if the logger produces an aggregated log.
+            output_name: Name for the aggregated log, if the logger produces an aggregated log.
             disable_progress_bar: If ``True``, disables the progress bars detailing the progress of the computations.
             disable_multiprocessing: If ``True``, disables multiprocessing when collecting logs for each result.
-            iterable_result_params: Parameters to configure the iterable over the results. Can be ``None`` if the logger
-                will only be used to write logs (and not called).
+            iterable_result_params: Parameters to pass along to result iterator's ``__init__``.
+
+        Raises:
+            ValueError: If logger that returns results to be aggregated is not provided with a name to use as part of
+                the output path.
         """
-        self.output_name_template = output_name_template
+        if self.Log is not None and not output_name:
+            raise ValueError(
+                "When using a logger that returns results to be aggregated, you must provide a non-empty `output_name` "
+                "so that we can generate the path of the aggregated results."
+            )
+        self.output_name = output_name
         self.disable_progress_bar = disable_progress_bar
         self.disable_multiprocessing = disable_multiprocessing
         self.iterable_result_params = iterable_result_params
 
-    def __call__(self, results_path: Path, output_folder: Path) -> None:
+    def __call__(self, results_path: Path, output_folder: Path, output_prefix: str = None) -> None:
         """Iterates over a set of results and logs the result of the evaluation to a logger-specifc format.
 
         Args:
             results_path: Root path of the results to log.
             output_folder: Path where to save the logs.
+            output_prefix: Prefix to distinguish the logging info, and aggregated saved output if any.
         """
         self.output_folder = output_folder
         self.output_folder.mkdir(parents=True, exist_ok=True)
@@ -51,9 +60,9 @@ class Logger:
         results = self.IterableResultT(results_path=results_path, **self.iterable_result_params)
         pbar_kwargs = {"total": len(results), "unit": results.desc}
         if self.Log is not None:  # If the logger returns data for each result to be aggregated in a single log
-            log_desc = f"Collecting {results_path.stem} data for {self.desc}"
+            log_desc = f"Collecting {output_prefix} data for {self.desc}"
         else:  # If the logger writes the log as side-effects as it iterates over the results
-            log_desc = f"Logging {results_path.stem} {self.desc} to {output_folder}"
+            log_desc = f"Logging {output_prefix} {self.desc} to {output_folder}"
         pbar_kwargs["desc"] = log_desc
 
         if self.disable_multiprocessing:
@@ -69,8 +78,9 @@ class Logger:
 
         if self.Log is not None:  # If the logger returns data for each result to be aggregated in a single log
             logs = dict(log_results_iter)
-            output_path = output_folder.joinpath(self.output_name_template.format(results_path.stem))
-            logger.info(f"Aggregating {results_path.stem} {self.desc} in {output_path}")
+            output_name = (output_prefix + "_" if output_prefix else "") + self.output_name
+            output_path = output_folder / output_name
+            logger.info(f"Aggregating {output_prefix} {self.desc} in {output_path}")
             self.aggregate_logs(logs, output_path)
         else:  # If the logger writes the log as side-effects as it iterates over the results
             for _ in log_results_iter:
@@ -115,7 +125,13 @@ class Logger:
         parser = ArgumentParser()
         parser.add_argument("--results_path", type=Path, required=True, help="Path to a HDF5 file of results to log")
         parser.add_argument(
-            "--output_folder", type=Path, default="logs", help="Path to the directory in which to save the logs"
+            "--output_folder",
+            type=Path,
+            default=Path.cwd() / "logs",
+            help="Path to the directory in which to save the logs",
+        )
+        parser.add_argument(
+            "--output_prefix", type=str, help="Prefix to distinguish the logging info and aggregated saved output"
         )
         parser.add_argument(
             "--disable_progress_bar",
@@ -131,20 +147,6 @@ class Logger:
         return parser
 
     @classmethod
-    def add_data_selection_args(cls, parser: ArgumentParser, choices: Sequence[str]) -> ArgumentParser:
-        """Adds data selection arguments to a parser.
-
-        Args:
-           parser: Parser object for which to add arguments handling data selection.
-           choices: Tags of the data the logger can be called on. The first tag in the list is the default choice.
-
-        Returns:
-            Parser object with support for arguments handling data selection.
-        """
-        parser.add_argument("--data", type=str, default=choices[0], choices=choices, help="Results data to log.")
-        return parser
-
-    @classmethod
     def main(cls):
         """Generic main that handles CLI and logger calling for use in loggers that could be executable scripts."""
         parser = cls.build_parser()
@@ -152,4 +154,5 @@ class Logger:
 
         results_path = kwargs.pop("results_path")
         output_folder = kwargs.pop("output_folder")
-        cls(**kwargs)(results_path=results_path, output_folder=output_folder)
+        output_prefix = kwargs.pop("output_prefix")
+        cls(**kwargs)(results_path=results_path, output_folder=output_folder, output_prefix=output_prefix)

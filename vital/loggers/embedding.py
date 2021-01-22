@@ -30,7 +30,7 @@ class GroupsEmbeddingLogger(Logger):
             interactive: If ``True``, use the interactive plot; otherwise, save a custom set of figures for later
                 viewing.
         """
-        super().__init__(output_name_template="{}", **kwargs)
+        super().__init__(output_name=self.desc, **kwargs)
         embedding_params = embedding_params if embedding_params else {}
         self.umap = umap.UMAP(**embedding_params)
         self.interactive = interactive
