@@ -11,8 +11,8 @@ from torchvision.transforms import ToTensor, transforms
 from vital.data.acdc.config import AcdcTags, Instant, image_size
 from vital.data.acdc.data_struct import InstantData, PatientData
 from vital.data.acdc.transforms import NormalizeSample
-from vital.data.acdc.utils import centered_resize
 from vital.data.acdc.utils.acdc import AcdcRegisteringTransformer
+from vital.data.acdc.utils.utils import centered_resize
 from vital.data.config import Subset
 
 

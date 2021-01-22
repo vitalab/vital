@@ -157,24 +157,6 @@ def generate_probability_map(h5f, group):
     h5f.create_dataset("prior", data=p_img[:, :, :, 1:])
 
 
-# def create_instant(patient_group, instant_name, img, gt, rot, registering_transformer):
-#     instant = patient_group.create_group(Instant.ED.value)
-#     # instant.attrs['voxel_size'] = ni_img.header.get_zooms()
-#
-#     r_img = rotate(img, rot, axes=(1, 2), reshape=False)
-#     r_img = np.clip(r_img, img.min(), img.max())
-#     r_img[np.isclose(r_img, 0.)] = 0.
-#     if registering_transformer is not None:
-#         registering_parameters, edg_img, r_img = registering_transformer.register_batch(img, r_img)
-#         instant.attrs.update(registering_parameters)
-#
-#     instant.create_dataset(AcdcTags.img, data=r_img)
-#
-#     if gt:
-#         r_img = rotate(img, rot, axes=(1, 2), output=np.uint8, reshape=False)
-#         instant.create_dataset(AcdcTags.img, data=r_img)
-
-
 def create_database_structure(
     group, data_augmentation, registering, data_ed, gt_ed, data_es, gt_es, data_mid=None, gt_mid=None
 ):
@@ -321,14 +303,13 @@ def generate_dataset(path, name, data_augmentation=False, registering=False):
     train_paths = np.array(list(zip(train_paths[0::4], train_paths[1::4], train_paths[2::4], train_paths[3::4])))
 
     # 20 is the number of patients per group
-    # indexes = np.arange(20)
-    indexes = np.arange(5)
+    indexes = np.arange(20)
 
     train_idxs = []
     valid_idxs = []
     # 5 is the number of groups
     for i in range(5):
-        start = i * 5
+        start = i * 20
         idxs = indexes + start
         rng.shuffle(idxs)
         t_idxs = idxs[: int(indexes.shape[0] * 0.75)]
@@ -360,10 +341,6 @@ def generate_dataset(path, name, data_augmentation=False, registering=False):
         test_paths = generate_list_directory(os.path.join(path, "testing_with_gt"))
         test_paths = np.array(list(zip(test_paths[0::4], test_paths[1::4], test_paths[2::4], test_paths[3::4])))
         test_paths = np.array([np.insert(i, 2, [None, None]).tolist() for i in test_paths])
-
-    print("train: ", len(train_paths))
-    print("val: ", len(valid_paths))
-    print("test: ", len(test_paths))
 
     with h5py.File(name, "w") as h5f:
 
