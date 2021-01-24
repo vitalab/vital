@@ -58,7 +58,10 @@ class Acdc(VisionDataset):
         self.image_set = image_set.value
 
         with h5py.File(path, "r") as f:
-            self.registered_dataset = f.attrs[AcdcTags.registered]
+            if AcdcTags.registered in f.attrs.keys():
+                self.registered_dataset = f.attrs[AcdcTags.registered]
+            else:
+                self.registered_dataset = False
 
         # Determine whether to return data in a format suitable for training or inference
         if predict:
@@ -119,7 +122,7 @@ class Acdc(VisionDataset):
         with h5py.File(self.root, "r") as dataset:
             for instant_path in instant_paths:
                 instant = dataset[instant_path]
-                for z in range(instant[AcdcTags.gt].shape[0]):
+                for z in range(instant[AcdcTags.img].shape[0]):
                     image_paths.append((f"{instant_path}", z))
 
         return image_paths

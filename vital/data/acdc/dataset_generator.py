@@ -180,32 +180,32 @@ def create_database_structure(
 
     ni_img = nib.load(data_ed)
 
-    ed_img = ni_img.get_data().astype(np.float32)
+    ed_img = ni_img.get_fdata().astype(np.float32)
     ed_img = ed_img.transpose(2, 0, 1)[..., np.newaxis]
 
     if gt_ed:
         ni_img = nib.load(gt_ed)
-        edg_img = ni_img.get_data()
+        edg_img = ni_img.get_fdata()
         edg_img = edg_img.transpose(2, 0, 1)[..., np.newaxis]
         edg_img = _to_categorical(edg_img, Label.count()).astype(np.uint8)
 
     ni_img = nib.load(data_es)
-    es_img = ni_img.get_data().astype(np.float32)
+    es_img = ni_img.get_fdata().astype(np.float32)
     es_img = es_img.transpose(2, 0, 1)[..., np.newaxis]
 
     if gt_es:
         ni_img = nib.load(gt_es)
-        esg_img = ni_img.get_data()
+        esg_img = ni_img.get_fdata()
         esg_img = esg_img.transpose(2, 0, 1)[..., np.newaxis]
         esg_img = _to_categorical(esg_img, Label.count()).astype(np.uint8)
 
     if data_mid:
         ni_img = nib.load(data_mid)
-        mid_img = ni_img.get_data().astype(np.float32)
+        mid_img = ni_img.get_fdata().astype(np.float32)
         mid_img = mid_img.transpose(2, 0, 1)[..., np.newaxis]
         if gt_mid:
             ni_img = nib.load(gt_mid)
-            midg_img = ni_img.get_data()
+            midg_img = ni_img.get_fdata()
             midg_img = midg_img.transpose(2, 0, 1)[..., np.newaxis]
             midg_img = _to_categorical(midg_img, Label.count()).astype(np.uint8)
 
@@ -303,13 +303,14 @@ def generate_dataset(path, name, data_augmentation=False, registering=False):
     train_paths = np.array(list(zip(train_paths[0::4], train_paths[1::4], train_paths[2::4], train_paths[3::4])))
 
     # 20 is the number of patients per group
-    indexes = np.arange(20)
+    patients_per_group = 20
+    indexes = np.arange(patients_per_group)
 
     train_idxs = []
     valid_idxs = []
     # 5 is the number of groups
     for i in range(5):
-        start = i * 20
+        start = i * patients_per_group
         idxs = indexes + start
         rng.shuffle(idxs)
         t_idxs = idxs[: int(indexes.shape[0] * 0.75)]

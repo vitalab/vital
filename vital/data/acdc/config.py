@@ -49,6 +49,7 @@ class AcdcTags(Tags):
     registered: str = "register"
     voxel_spacing: str = "voxel_size"
     slice_index: str = "slice_index"
+    proc_slices: str = "processed_slices"
 
 
 image_size: int = 256

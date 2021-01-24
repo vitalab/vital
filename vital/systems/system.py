@@ -71,7 +71,7 @@ class VitalSystem(pl.LightningModule, ABC):
                 depth=sys.maxsize,
                 col_names=["input_size", "output_size", "kernel_size", "num_params"],
             )
-            (self.log_dir / "summary.txt").write_text(str(model_summary))
+            (self.log_dir / "summary.txt").write_text(str(model_summary), encoding="utf-8")
         return super().summarize(mode)
 
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
