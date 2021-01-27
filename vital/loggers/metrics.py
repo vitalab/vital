@@ -14,21 +14,30 @@ class MetricsLogger(Logger):
     """Abstract class that computes metrics on the results and saves them to csv."""
 
     Log = Mapping[str, Real]
-    data_choices: Sequence[str]  #: Tags of the data on which it is possible to compute the metrics
+    input_choices: Sequence[str]  #: Tags of the data on which it is possible to compute the metrics
+    target_choices: Sequence[str] = None  #: Tags of reference data that can serve as target when computing the metrics
 
-    def __init__(self, data: str, **kwargs):  # noqa: D205,D212,D415
+    def __init__(self, input: str, target: str = None, **kwargs):  # noqa: D205,D212,D415
         """
         Args:
-            data: Tag of the data on which to compute metrics.
+            input: Tag of the data for which to compute metrics.
+            target: Tag of the (optional) reference data to use as target when computing metrics.
             **kwargs: Additional parameters to pass along to ``super().__init__()``.
         """
-        super().__init__(output_name=f"{data}_{self.desc}.csv", **kwargs)
-        if data not in self.data_choices:
+        super().__init__(output_name=f"{input.replace('/', '-')}_{self.desc}.csv", **kwargs)
+        if input not in self.input_choices:
             raise ValueError(
-                f"The `data` parameter should be chosen from one of the supported values: {self.data_choices}. "
-                f"You passed '{data}' as value for `data`."
+                f"The `input` parameter should be chosen from one of the supported values: {self.input_choices}. "
+                f"You passed '{input}' as value for `input`."
             )
-        self.data = data
+        if self.target_choices is not None and target not in self.target_choices:
+            raise ValueError(
+                f"The `target` parameter should be chosen from one of the supported values: {self.target_choices}. "
+                f"You passed '{target}' as value for `target`."
+            )
+
+        self.input_tag = input
+        self.target_tag = target
 
     @classmethod
     def aggregate_logs(cls, logs: Mapping[str, Log], output_path: Path) -> None:
@@ -69,10 +78,18 @@ class MetricsLogger(Logger):
         """
         parser = super().build_parser()
         parser.add_argument(
-            "--data",
+            "--input",
             type=str,
-            default=cls.data_choices[0],
-            choices=cls.data_choices,
-            help="Data on which to compute the metrics",
+            default=cls.input_choices[0],
+            choices=cls.input_choices,
+            help="Data for which to compute the metrics",
         )
+        if cls.target_choices is not None:
+            parser.add_argument(
+                "--target",
+                type=str,
+                default=cls.target_choices[0],
+                choices=cls.target_choices,
+                help="Reference data to use as target when computing metrics",
+            )
         return parser
