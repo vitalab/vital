@@ -13,7 +13,7 @@ from vital.utils.image.transform import resize_image
 Shift = Tuple[int, int]
 Rotation = float
 Zoom = Tuple[int, int]
-Crop = Tuple[int, int, int, int]
+Crop = Tuple[int, int, int, int, int, int]
 RegisteringParameter = Union[Shift, Rotation, Zoom, Crop]
 
 
@@ -185,7 +185,13 @@ class AffineRegisteringTransformer:
                     f"`segmentations` has length {len(segmentations)}."
                 )
 
-        unregistered_segmentations = np.empty_like(segmentations)
+        if "crop" in self.registering_steps:
+            # Create an array of the original size in case crop was applied to receive the unregistered output
+            unregistered_segmentations = np.empty((len(segmentations), *registering_parameters["crop"][0][:2]))
+        else:
+            # Create an empty array similar to the segmentations to receive the unregistered output
+            unregistered_segmentations = np.empty_like(segmentations)
+
         for idx, segmentation in enumerate(segmentations):
             seg_registering_parameters = {
                 registering_step: values[idx] for registering_step, values in registering_parameters.items()
