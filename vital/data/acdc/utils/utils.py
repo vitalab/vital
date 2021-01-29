@@ -4,13 +4,13 @@
 """
 This file contains any helpful generic functions concerning datasets.
 """
-from typing import Sequence
+from typing import Sequence, Tuple
 
 import numpy as np
 from skimage.util import crop
 
 
-def centered_padding(image: np.ndarray, pad_size: Sequence[int, int], c_val: float = 0) -> np.ndarray:
+def centered_padding(image: np.ndarray, pad_size: Tuple[int, int], c_val: float = 0) -> np.ndarray:
     """Pad the image given in parameters to have a size of self.image_size.
 
     Args:
@@ -35,7 +35,7 @@ def centered_padding(image: np.ndarray, pad_size: Sequence[int, int], c_val: flo
     return np.pad(image, to_pad, mode="constant", constant_values=c_val)
 
 
-def centered_crop(image: np.ndarray, crop_size: Sequence[int, int]) -> np.ndarray:
+def centered_crop(image: np.ndarray, crop_size: Tuple[int, int]) -> np.ndarray:
     """Crop the image given in parameters to have a size of crop_size.
 
     Args:
@@ -57,7 +57,7 @@ def centered_crop(image: np.ndarray, crop_size: Sequence[int, int]) -> np.ndarra
     return crop(image, to_crop)
 
 
-def centered_resize(image: np.ndarray, size: Sequence[int, int], c_val: float = 0) -> np.ndarray:
+def centered_resize(image: np.ndarray, size: Tuple[int, int], c_val: float = 0) -> np.ndarray:
     """Centered image resize using crop or padding with c_val.
 
     Args:

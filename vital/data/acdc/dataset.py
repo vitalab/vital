@@ -5,15 +5,13 @@ import albumentations as A
 import h5py
 import numpy as np
 import torch
-from pytorch_lightning.metrics.utils import to_categorical
 from torchvision.datasets import VisionDataset
 from torchvision.transforms import ToTensor, transforms
 
 from vital.data.acdc.config import AcdcTags, Instant, image_size
 from vital.data.acdc.data_struct import InstantData, PatientData
-from vital.data.acdc.transforms import NormalizeSample
+from vital.data.acdc.transforms import NormalizeSample, SegmentationToTensor
 from vital.data.acdc.utils.acdc import AcdcRegisteringTransformer
-from vital.data.acdc.utils.utils import centered_resize
 from vital.data.config import Subset
 from vital.utils.decorators import squeeze
 
@@ -45,9 +43,9 @@ class Acdc(VisionDataset):
             else transforms.Compose([transform, ToTensor()])
         )
         target_transform = (
-            transforms.Compose([ToTensor()])
+            transforms.Compose([SegmentationToTensor()])
             if not target_transform
-            else transforms.Compose([target_transform, ToTensor()])
+            else transforms.Compose([target_transform, SegmentationToTensor()])
         )
 
         if use_da and image_set is Subset.TRAIN:
@@ -146,7 +144,7 @@ class Acdc(VisionDataset):
             img = patient_imgs[slice]
             gt = patient_gts[slice]
 
-            img, gt = self.center(img=img, gt=gt, output_shape=(image_size, image_size))
+            # img, gt = self.center(img=img, gt=gt, output_shape=(image_size, image_size))
 
             voxel = Acdc._get_metadata(dataset, set_patient_instant_key, AcdcTags.voxel_spacing)
 
@@ -160,9 +158,9 @@ class Acdc(VisionDataset):
             gt = transformed["mask"]
 
         img = self.transform(img)
-        gt = self.target_transform(gt)
+        gt = self.target_transform(gt).squeeze()
 
-        gt = gt.argmax(0)
+        # gt = gt.argmax(0)
 
         d = {
             AcdcTags.img: img,
@@ -193,13 +191,13 @@ class Acdc(VisionDataset):
                 # Collect and process data
                 imgs, gts = Acdc._get_data(dataset, patient_instant_key, AcdcTags.img, AcdcTags.gt)
 
-                imgs, gts = self.center(img=imgs, gt=gts, output_shape=(image_size, image_size))
+                # imgs, gts = self.center(img=imgs, gt=gts, output_shape=(image_size, image_size))
 
                 # Transform arrays to tensor
                 imgs = torch.stack([self.transform(img) for img in imgs])
-                gts = torch.stack([self.target_transform(gt) for gt in gts])
+                gts = torch.stack([self.target_transform(gt) for gt in gts]).squeeze()
 
-                gts = to_categorical(gts)
+                # gts = to_categorical(gts)
 
                 # Extract metadata concerning the registering applied
                 registering_parameters = None
@@ -254,8 +252,9 @@ class Acdc(VisionDataset):
         """Get the normalized index of the instant.
 
         Args:
-            gt (np.ndarray): Full patient segmentation map (N, H, W, K)
-            instant (int): Index of the slice in the full segmentation map
+            gt: Full patient segmentation map (N, H, W)
+            instant: Index of the slice in the full segmentation map
+            image_size: size of the image
 
         Returns:
             Normalize slice index between 0 and 1
@@ -263,36 +262,14 @@ class Acdc(VisionDataset):
         number_slices = gt.shape[0]
         slice_index = int(instant)
 
-        if np.sum(gt[0, :, :, 0]) != image_size * image_size:  # if first slice is not 0, add i virtually
+        if np.sum(np.equal(gt[slice_index], 0)) == image_size * image_size:
+            return 0  # If slice is empty, return 0
+
+        if np.sum(np.equal(gt[0, :, :], 0)) != image_size * image_size:  # if first slice is not 0, add i virtually
             slice_index += 1
             number_slices += 1
 
-        normalized_slice = slice_index / number_slices
-
-        if np.sum(gt[:, :, 0]) == image_size * image_size:
-            normalized_slice = 0
-
-        return normalized_slice
-
-    @staticmethod
-    def center(img: np.ndarray, gt: np.ndarray, output_shape: Tuple[int, int]) -> Tuple[np.ndarray, np.ndarray]:
-        """Center and resize img and gt.
-
-        Args:
-            img (np.ndarray): Input image
-            gt (np.ndarray): segmentation gt
-            output_shape (Tuple): output shape (H,w)
-
-        Returns:
-            Tuple[np.ndarray, np.ndarray] resized img and gt
-        """
-        img = centered_resize(img, output_shape)
-        gt = centered_resize(gt, output_shape)
-
-        summed = np.clip(gt[..., 1:].sum(axis=-1), 0, 1)
-        gt[..., 0] = np.abs(1 - summed)
-
-        return img, gt
+        return slice_index / number_slices
 
     @staticmethod
     def get_voxel_spaces(dataset):
@@ -356,3 +333,5 @@ if __name__ == "__main__":
     plt.imshow(img, cmap="gray")
     plt.imshow(gt, alpha=0.2)
     plt.show()
+
+    print(gt[100:150, 100:150])

@@ -2,6 +2,7 @@ import argparse
 import os
 from glob import glob
 from os.path import basename
+from typing import Optional, Tuple
 
 import h5py
 import nibabel as nib
@@ -10,7 +11,7 @@ from natsort import natsorted
 from scipy import ndimage
 from scipy.ndimage.interpolation import rotate
 
-from vital.data.acdc.config import AcdcTags, Instant, Label
+from vital.data.acdc.config import AcdcTags, Instant, Label, image_size
 from vital.data.acdc.utils.acdc import AcdcRegisteringTransformer
 from vital.data.acdc.utils.utils import centered_resize
 from vital.data.config import Subset
@@ -68,7 +69,11 @@ def _mass_center(imgs):
     Args:
         imgs: images
     """
-    centers = np.array([ndimage.measurements.center_of_mass(img[:, :, 3]) for img in imgs])
+    print(imgs.shape)
+    # print(np.equal(imgs, 3).shape)
+    # centers = np.array([ndimage.measurements.center_of_mass(img[:, :, 3]) for img in imgs])
+    centers = np.array([ndimage.measurements.center_of_mass(np.equal(img, 3)) for img in imgs])
+    # print("Mass center: ", centers.shape)
     # Need to fix the Nan when the ground truth slice is a slice of zeros.
     # Set it to center 256 // 2 = 128
     centers[np.isnan(centers)] = 128
@@ -87,16 +92,25 @@ def _generate_centered_prob_map(image, shape, center, label):
     Returns:
         Array of shape (slices, 100, 100, 1)
     """
+    # print(image.shape)
+    image = np.equal(image, label)[..., None]
+    # print("IMage: ", image.shape)
+    # print("Shape: ", shape.shape)
+    # print("Center: ", center.shape)
     res = np.zeros(shape)
     # Nearest neighbour slice index between the number of slice
     # of the image and the ground truth
     space = np.linspace(0, shape[0] - 1, num=image.shape[0]).astype(np.int32)
     for i, (s, c) in enumerate(zip(space, center)):
+        # print(" IMg: ", image[
+        #           i,
+        #           c[0] - PRIOR_HALF_SIZE: c[0] + PRIOR_HALF_SIZE,
+        #           c[1] - PRIOR_HALF_SIZE: c[1] + PRIOR_HALF_SIZE].shape)
+        # print(" res", res.shape)
         res[s] += image[
             i,
             c[0] - PRIOR_HALF_SIZE : c[0] + PRIOR_HALF_SIZE,
             c[1] - PRIOR_HALF_SIZE : c[1] + PRIOR_HALF_SIZE,
-            label : label + 1,
         ]
     return res
 
@@ -115,8 +129,11 @@ def generate_probability_map(h5f, group):
         for k2 in group[k1].keys():
             image_keys.append("{}/{}/{}".format(k1, k2, AcdcTags.gt))
 
-    images = [centered_resize(group[k][:], (256, 256)) for k in image_keys]
+    # images = [centered_resize(group[k][:], (256, 256)) for k in image_keys]
+    images = [group[k][:] for k in image_keys]
     images_center = [_mass_center(img) for img in images]
+
+    # print("Images: ", images.shape)
 
     prior_shape = np.array([15, PRIOR_SIZE, PRIOR_SIZE, 1])
 
@@ -157,6 +174,85 @@ def generate_probability_map(h5f, group):
     h5f.create_dataset("prior", data=p_img[:, :, :, 1:])
 
 
+def load_instant_data(img_path: str, gt_path: Optional[str]) -> Tuple[np.ndarray, Optional[np.ndarray], np.ndarray]:
+    """Load data, gt (when available) and voxel spacing from  nii file.
+
+    Args:
+        img_path: path to image nii file.
+        gt_path: path to gt nii file.
+
+    Returns:
+        img, gt and voxel spacing for one instant.
+    """
+    ni_img = nib.load(img_path)
+
+    img = ni_img.get_fdata().astype(np.float32)
+    img = img.transpose(2, 0, 1)[..., np.newaxis]
+
+    img = centered_resize(img, (image_size, image_size))
+
+    voxel = ni_img.header.get_zooms()
+
+    if gt_path:
+        ni_img = nib.load(gt_path)
+        gt = ni_img.get_fdata()
+        gt = gt.transpose(2, 0, 1)[..., np.newaxis]
+
+        gt = _to_categorical(gt, Label.count()).astype(np.uint8)
+
+        gt = centered_resize(gt, (image_size, image_size))
+
+        # Need to redo the background class due to resize
+        # that set the image border to 0
+        summed = np.clip(gt[..., 1:].sum(axis=-1), 0, 1)
+        gt[..., 0] = np.abs(1 - summed)
+
+        # Put data to categorical format.
+        gt = gt.argmax(-1)
+
+        return img, gt, voxel
+
+    return img, None, voxel
+
+
+def write_instant_group(
+    patient_group: h5py.Group,
+    group_name: str,
+    img_data: np.ndarray,
+    gt_data: np.ndarray,
+    voxel: np.ndarray,
+    rotation: float,
+    registering_transformer: Optional[AcdcRegisteringTransformer],
+):
+    """Write an instant group to the patient group.
+
+    Args:
+        patient_group: patient group for which the instant is saved
+        group_name: name of the instant group name
+        img_data: Array containing the img data
+        gt_data: Array containing the gt data
+        voxel: Voxel size of the instant
+        rotation: Rotation for data augmentation
+        registering_transformer: Transformer used for registration
+    """
+    instant = patient_group.create_group(group_name)
+    instant.attrs["voxel_size"] = voxel
+
+    r_img = rotate(img_data, rotation, axes=(1, 2), reshape=False)
+    r_img = np.clip(r_img, img_data.min(), img_data.max())
+    r_img[np.isclose(r_img, 0.0)] = 0.0
+
+    if registering_transformer is not None:
+        registering_parameters, gt_data, r_img = registering_transformer.register_batch(gt_data, r_img)
+        instant.attrs.update(registering_parameters)
+
+    instant.create_dataset(AcdcTags.img, data=r_img)
+
+    if gt_data is not None:
+        r_img = rotate(gt_data, rotation, axes=(1, 2), output=np.uint8, reshape=False)
+        instant.create_dataset(AcdcTags.gt, data=r_img)
+
+
 def create_database_structure(
     group, data_augmentation, registering, data_ed, gt_ed, data_es, gt_es, data_mid=None, gt_mid=None
 ):
@@ -178,36 +274,11 @@ def create_database_structure(
     """
     p_name = data_ed.split(os.path.sep)[-2]
 
-    ni_img = nib.load(data_ed)
-
-    ed_img = ni_img.get_fdata().astype(np.float32)
-    ed_img = ed_img.transpose(2, 0, 1)[..., np.newaxis]
-
-    if gt_ed:
-        ni_img = nib.load(gt_ed)
-        edg_img = ni_img.get_fdata()
-        edg_img = edg_img.transpose(2, 0, 1)[..., np.newaxis]
-        edg_img = _to_categorical(edg_img, Label.count()).astype(np.uint8)
-
-    ni_img = nib.load(data_es)
-    es_img = ni_img.get_fdata().astype(np.float32)
-    es_img = es_img.transpose(2, 0, 1)[..., np.newaxis]
-
-    if gt_es:
-        ni_img = nib.load(gt_es)
-        esg_img = ni_img.get_fdata()
-        esg_img = esg_img.transpose(2, 0, 1)[..., np.newaxis]
-        esg_img = _to_categorical(esg_img, Label.count()).astype(np.uint8)
+    ed_img, edg_img, ed_voxel = load_instant_data(data_ed, gt_ed)
+    es_img, esg_img, es_voxel = load_instant_data(data_es, gt_es)
 
     if data_mid:
-        ni_img = nib.load(data_mid)
-        mid_img = ni_img.get_fdata().astype(np.float32)
-        mid_img = mid_img.transpose(2, 0, 1)[..., np.newaxis]
-        if gt_mid:
-            ni_img = nib.load(gt_mid)
-            midg_img = ni_img.get_fdata()
-            midg_img = midg_img.transpose(2, 0, 1)[..., np.newaxis]
-            midg_img = _to_categorical(midg_img, Label.count()).astype(np.uint8)
+        mid_img, midg_img, mid_voxel = load_instant_data(data_mid, gt_mid)
 
     if data_augmentation:
         iterable = ROTATIONS
@@ -218,65 +289,18 @@ def create_database_structure(
 
     if registering:
         registering_transformer = AcdcRegisteringTransformer()
+    else:
+        registering_transformer = None
 
     for rot in iterable:
         patient = group.create_group("{}_{}".format(p_name, rot))
-        # patient.attrs[AcdcTags.voxel_spacing] = ni_img.header.get_zooms()
 
-        instant = patient.create_group(Instant.ED.value)
-        instant.attrs["voxel_size"] = ni_img.header.get_zooms()
-
-        # ED gate with gt
-        r_img = rotate(ed_img, rot, axes=(1, 2), reshape=False)
-        r_img = np.clip(r_img, ed_img.min(), ed_img.max())
-        r_img[np.isclose(r_img, 0.0)] = 0.0
-        if registering:
-            registering_parameters, edg_img, r_img = registering_transformer.register_batch(edg_img, r_img)
-            instant.attrs.update(registering_parameters)
-
-        instant.create_dataset(AcdcTags.img, data=r_img)
-
-        if gt_ed:
-            r_img = rotate(edg_img, rot, axes=(1, 2), output=np.uint8, reshape=False)
-            instant.create_dataset(AcdcTags.gt, data=r_img)
-
-        instant = patient.create_group(Instant.ES.value)
-
-        # ES gate with gt
-        r_img = rotate(es_img, rot, axes=(1, 2), reshape=False)
-        r_img = np.clip(r_img, es_img.min(), es_img.max())
-        r_img[np.isclose(r_img, 0.0)] = 0.0
-
-        if registering:
-            registering_parameters, esg_img, r_img = registering_transformer.register_batch(esg_img, r_img)
-            instant.attrs.update(registering_parameters)
-
-        instant.create_dataset(AcdcTags.img, data=r_img)
-        instant.attrs["voxel_size"] = ni_img.header.get_zooms()
-
-        if gt_es:
-            r_img = rotate(esg_img, rot, axes=(1, 2), output=np.uint8, reshape=False)
-            instant.create_dataset(AcdcTags.gt, data=r_img)
+        write_instant_group(patient, Instant.ED.value, ed_img, edg_img, ed_voxel, rot, registering_transformer)
+        write_instant_group(patient, Instant.ES.value, es_img, esg_img, es_voxel, rot, registering_transformer)
 
         # Add mid-cycle data
         if data_mid:
-            instant = patient.create_group(Instant.MID.value)
-            instant.attrs["voxel_size"] = ni_img.header.get_zooms()
-
-            # Mid gate with gt
-            r_img = rotate(mid_img, rot, axes=(1, 2), reshape=False)
-            r_img = np.clip(r_img, mid_img.min(), mid_img.max())
-            r_img[np.isclose(r_img, 0.0)] = 0.0
-
-            if registering:
-                registering_parameters, midg_img, r_img = registering_transformer.register_batch(midg_img, r_img)
-                instant.attrs.update(registering_parameters)
-
-            instant.create_dataset(AcdcTags.img, data=r_img)
-
-            if gt_mid:
-                r_img = rotate(midg_img, rot, axes=(1, 2), output=np.uint8, reshape=False)
-                instant.create_dataset(AcdcTags.gt, data=r_img)
+            write_instant_group(patient, Instant.MID.value, mid_img, midg_img, mid_voxel, rot, registering_transformer)
 
 
 def generate_dataset(path, name, data_augmentation=False, registering=False):
