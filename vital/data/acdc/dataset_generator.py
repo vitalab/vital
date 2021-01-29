@@ -415,7 +415,7 @@ def main():
     parser.add_argument("--name", type=str, required=True, help="Name of the generated hdf5 file.")
     data_processing_group = parser.add_mutually_exclusive_group()
     data_processing_group.add_argument(
-        "-d", "--data_augmentation", action="store_true", help="Add data augmentation (rotation)."
+        "-d", "--data_augmentation", action="store_true", help="Add data augmentation (rotation -60 to 60)."
     )
     data_processing_group.add_argument(
         "-r",

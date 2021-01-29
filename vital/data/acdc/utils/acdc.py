@@ -3,7 +3,7 @@ from math import degrees
 import numpy as np
 
 from vital.data.acdc.config import Label
-from vital.utils.image.register.affine import AffineRegisteringTransformer
+from vital.utils.image.register.affine import AffineRegisteringTransformer, Rotation, Shift
 
 
 class AcdcRegisteringTransformer(AffineRegisteringTransformer):
@@ -20,30 +20,30 @@ class AcdcRegisteringTransformer(AffineRegisteringTransformer):
     def __init__(self):
         super().__init__(len(Label))
 
-    def _compute_shift_parameters(self, segmentation: np.ndarray) -> tuple:
+    def _compute_shift_parameters(self, segmentation: np.ndarray) -> Shift:
         """Computes the pixel shift to apply along each axis to center the segmentation around the LV/MYO mass.
 
         Args:
-            segmentation: ndarray, segmentation for which to compute shift parameters.
+            segmentation: segmentation for which to compute shift parameters.
 
         Returns:
-            tuple, pixel shift to apply along each axis to center the segmentation around the LV/MYO mass.
+            Pixel shift to apply along each axis to center the segmentation around the LV/MYO mass.
         """
         segmentation_center = np.array(segmentation.shape[:2]) // 2
         lv_myo_center = np.array(self._find_structure_center(segmentation, [Label.LV.value, Label.MYO.value]))
-        return tuple((lv_myo_center - segmentation_center).astype(int))
+        return (lv_myo_center - segmentation_center).astype(int)
 
-    def _compute_rotation_parameters(self, segmentation: np.ndarray) -> float:
+    def _compute_rotation_parameters(self, segmentation: np.ndarray) -> Rotation:
         """Computes the angle of the rotation.
 
         Angle is computed to apply to align the segmentation so that the RV center of mass is
         always left of the LV/MYO center of mass on a straight horizontal line.
 
         Args:
-            segmentation: ndarray, segmentation for which to compute rotation parameters.
+            segmentation: for which to compute rotation parameters.
 
         Returns:
-            float, angle of the rotation to apply to align the segmentation so that the RV center of mass is always
+            Angle of the rotation to apply to align the segmentation so that the RV center of mass is always
             left of the LV/MYO center of mass on a straight horizontal line.
         """
         lv_myo_center = np.array(self._find_structure_center(segmentation, [Label.LV.value, Label.MYO.value]))

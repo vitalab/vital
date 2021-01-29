@@ -11,6 +11,7 @@ class PatientData:
 
     Args:
         id: patient's identifier (in format "patient0123").
+        instants: Mapping between each instant available for the patient and the data associated with the instant.
     """
 
     id: str
@@ -22,7 +23,10 @@ class InstantData:
     """Data structure that bundles data from the ACDC dataset for one Instant (ED or ES).
 
     Args:
-        id: patient's identifier (in format "patient0123").
+        img: Resized images, used as input when training models.
+        gt: Resized groundtruths, used as input when training models.
+        voxelspacing: Size of the segmentations' voxels along each (height, width, depth) dimension (in mm).
+        registering: Parameters applied originally to register the images and groundtruths.
     """
 
     img: Tensor

@@ -5,6 +5,7 @@ import albumentations as A
 import h5py
 import numpy as np
 import torch
+from pytorch_lightning.metrics.utils import to_categorical
 from torchvision.datasets import VisionDataset
 from torchvision.transforms import ToTensor, transforms
 
@@ -14,6 +15,7 @@ from vital.data.acdc.transforms import NormalizeSample
 from vital.data.acdc.utils.acdc import AcdcRegisteringTransformer
 from vital.data.acdc.utils.utils import centered_resize
 from vital.data.config import Subset
+from vital.utils.decorators import squeeze
 
 
 class Acdc(VisionDataset):
@@ -121,9 +123,8 @@ class Acdc(VisionDataset):
         instant_paths = self.list_groups(level="instant")
         with h5py.File(self.root, "r") as dataset:
             for instant_path in instant_paths:
-                instant = dataset[instant_path]
-                for z in range(instant[AcdcTags.img].shape[0]):
-                    image_paths.append((f"{instant_path}", z))
+                num_slices = len(dataset[instant_path][AcdcTags.img])
+                image_paths.extend((instant_path, slice) for slice in range(num_slices))
 
         return image_paths
 
@@ -147,7 +148,7 @@ class Acdc(VisionDataset):
 
             img, gt = self.center(img=img, gt=gt, output_shape=(image_size, image_size))
 
-            (voxel,) = Acdc._get_metadata(dataset, set_patient_instant_key, AcdcTags.voxel_spacing)
+            voxel = Acdc._get_metadata(dataset, set_patient_instant_key, AcdcTags.voxel_spacing)
 
         # Get slice index
         slice_index = self.get_normalized_slice(patient_gts, slice, image_size)
@@ -168,7 +169,7 @@ class Acdc(VisionDataset):
             AcdcTags.gt: gt,
             AcdcTags.slice_index: slice_index,
             AcdcTags.voxel_spacing: voxel[:2],
-            AcdcTags.id: set_patient_instant_key + "_" + str(slice),
+            AcdcTags.id: f"{set_patient_instant_key}_{slice}",
         }
 
         return d
@@ -187,7 +188,7 @@ class Acdc(VisionDataset):
             patient_data = PatientData(id=patient_key)
 
             for instant in dataset[patient_key]:
-                patient_instant_key = "{}/{}".format(patient_key, instant)
+                patient_instant_key = f"{patient_key}/{instant}"
 
                 # Collect and process data
                 imgs, gts = Acdc._get_data(dataset, patient_instant_key, AcdcTags.img, AcdcTags.gt)
@@ -198,7 +199,7 @@ class Acdc(VisionDataset):
                 imgs = torch.stack([self.transform(img) for img in imgs])
                 gts = torch.stack([self.target_transform(gt) for gt in gts])
 
-                gts = gts.argmax(1)
+                gts = to_categorical(gts)
 
                 # Extract metadata concerning the registering applied
                 registering_parameters = None
@@ -208,7 +209,7 @@ class Acdc(VisionDataset):
                         for reg_step in AcdcRegisteringTransformer.registering_steps
                     }
 
-                (voxel,) = Acdc._get_metadata(dataset, patient_instant_key, AcdcTags.voxel_spacing)
+                voxel = Acdc._get_metadata(dataset, patient_instant_key, AcdcTags.voxel_spacing)
 
                 patient_data.instants[instant] = InstantData(
                     img=imgs, gt=gts, registering=registering_parameters, voxelspacing=voxel
@@ -217,33 +218,35 @@ class Acdc(VisionDataset):
         return patient_data
 
     @staticmethod
+    @squeeze
     def _get_data(file: h5py.File, set_patient_instant_key: str, *data_tags: str) -> List[np.ndarray]:
-        """Fetches the requested data for a specific set/patient/view dataset from the HDF5 file.
+        """Fetches the requested data for a specific set/patient/instant dataset from the HDF5 file.
 
         Args:
             file: the HDF5 dataset file.
-            set_patient_instant_key: the `set/patient/view` access path of the desired view group.
-            *data_tags: names of the datasets to fetch from the view.
+            set_patient_instant_key: the `set/patient/instant` access path of the desired instant group.
+            *data_tags: names of the datasets to fetch from the instant.
 
         Returns:
-            dataset content for each tag passed in the parameters.
+            Dataset content for each tag passed in the parameters.
         """
         set_patient_instant = file[set_patient_instant_key]
         return [set_patient_instant[data_tag][()] for data_tag in data_tags]
 
     @staticmethod
-    def _get_metadata(file: h5py.File, set_patient_key: str, *metadata_tags: str) -> List[np.ndarray]:
-        """Fetches the requested metadata for a specific set/patient/view dataset from the HDF5 file.
+    @squeeze
+    def _get_metadata(file: h5py.File, set_patient_instant_key: str, *metadata_tags: str) -> List[np.ndarray]:
+        """Fetches the requested metadata for a specific set/patient/instant dataset from the HDF5 file.
 
         Args:
             file: the HDF5 dataset file.
-            set_patient_view_key: the `set/patient/view` access path of the desired view group.
-            *metadata_tags: names of attributes to fetch from the view.
+            set_patient_instant_key: the `set/patient/instant` access path of the desired instant group.
+            *metadata_tags: names of attributes to fetch from the instant.
 
         Returns:
-            attribute values for each tag passed in the parameters.
+            Attribute values for each tag passed in the parameters.
         """
-        set_patient = file[set_patient_key]
+        set_patient = file[set_patient_instant_key]
         return [set_patient.attrs[attr_tag] for attr_tag in metadata_tags]
 
     @staticmethod
@@ -304,6 +307,9 @@ class Acdc(VisionDataset):
         return np.array([sample[AcdcTags.voxel_spacing][0:2] for sample in dataset])
 
 
+"""
+This script can be run to test and visualize the data from the dataset.
+"""
 if __name__ == "__main__":
     import random
     from argparse import ArgumentParser

@@ -1,12 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
 
 class UNet(nn.Module):
     """Architecture based on U-Net: Convolutional Networks for Biomedical Image Segmentation.
 
-    Link - https://arxiv.org/abs/1505.04597
+    References:
+    - Paper that introduced the U-Net model: https://arxiv.org/abs/1505.04597
     """
 
     def __init__(
@@ -26,23 +28,23 @@ class UNet(nn.Module):
                 maps in following layers.
             use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
                 convolutional blocks.
-            bilinear (bool): Whether to use bilinear interpolation or transposed
+            bilinear: Whether to use bilinear interpolation or transposed
                 convolutions for upsampling.
-            dropout_prob (float): probability from dropout layers.
+            dropout_prob: probability from dropout layers.
         """
         super().__init__()
-        self.layer1 = DoubleConv(in_channels, init_channels // 2, dropout_prob / 2, use_batchnorm)
-        self.layer2 = Down(init_channels // 2, init_channels, dropout_prob, use_batchnorm)
-        self.layer3 = Down(init_channels, init_channels * 2, dropout_prob, use_batchnorm)
-        self.layer4 = Down(init_channels * 2, init_channels * 4, dropout_prob, use_batchnorm)
-        self.layer5 = Down(init_channels * 4, init_channels * 8, dropout_prob, use_batchnorm)
-        self.layer6 = Down(init_channels * 8, init_channels * 16, dropout_prob, use_batchnorm)
+        self.layer1 = _DoubleConv(in_channels, init_channels // 2, dropout_prob / 2, use_batchnorm)
+        self.layer2 = _Down(init_channels // 2, init_channels, dropout_prob, use_batchnorm)
+        self.layer3 = _Down(init_channels, init_channels * 2, dropout_prob, use_batchnorm)
+        self.layer4 = _Down(init_channels * 2, init_channels * 4, dropout_prob, use_batchnorm)
+        self.layer5 = _Down(init_channels * 4, init_channels * 8, dropout_prob, use_batchnorm)
+        self.layer6 = _Down(init_channels * 8, init_channels * 16, dropout_prob, use_batchnorm)
 
-        self.layer7 = Up(init_channels * 16, init_channels * 8, dropout_prob, use_batchnorm, bilinear=bilinear)
-        self.layer8 = Up(init_channels * 8, init_channels * 4, dropout_prob, use_batchnorm, bilinear=bilinear)
-        self.layer9 = Up(init_channels * 4, init_channels * 2, dropout_prob, use_batchnorm, bilinear=bilinear)
-        self.layer10 = Up(init_channels * 2, init_channels, dropout_prob, use_batchnorm, bilinear=bilinear)
-        self.layer11 = Up(init_channels, init_channels // 2, 0, use_batchnorm, bilinear=bilinear)
+        self.layer7 = _Up(init_channels * 16, init_channels * 8, dropout_prob, use_batchnorm, bilinear=bilinear)
+        self.layer8 = _Up(init_channels * 8, init_channels * 4, dropout_prob, use_batchnorm, bilinear=bilinear)
+        self.layer9 = _Up(init_channels * 4, init_channels * 2, dropout_prob, use_batchnorm, bilinear=bilinear)
+        self.layer10 = _Up(init_channels * 2, init_channels, dropout_prob, use_batchnorm, bilinear=bilinear)
+        self.layer11 = _Up(init_channels, init_channels // 2, 0, use_batchnorm, bilinear=bilinear)
 
         self.layer12 = nn.Conv2d(init_channels // 2, out_channels, kernel_size=1)
 
@@ -51,7 +53,7 @@ class UNet(nn.Module):
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
                 nn.init.xavier_uniform_(m.weight)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         """Defines the computation performed at every call.
 
         Args:
@@ -76,13 +78,13 @@ class UNet(nn.Module):
         return self.layer12(out)
 
 
-class DoubleConv(nn.Module):
+class _DoubleConv(nn.Module):
     """Double Convolution and BN and ReLU.
 
     (3x3 conv -> BN -> ReLU) ** 2
     """
 
-    def __init__(self, in_ch, out_ch, dropout_prob, use_batchnorm):  # noqa: D102, D205,D212,D415
+    def __init__(self, in_ch: int, out_ch: int, dropout_prob: float, use_batchnorm: bool):
         super().__init__()
         if use_batchnorm:
             self.net = nn.Sequential(
@@ -105,31 +107,31 @@ class DoubleConv(nn.Module):
                 nn.Dropout(p=dropout_prob),
             )
 
-    def forward(self, x):  # noqa: D102, D205,D212,D415
+    def forward(self, x: Tensor) -> Tensor:
         return self.net(x)
 
 
-class Down(nn.Module):
+class _Down(nn.Module):
     """Combination of MaxPool2d and DoubleConv in series."""
 
-    def __init__(self, in_ch, out_ch, dropout_prob, use_batchnorm):  # noqa: D102, D205,D212,D415
+    def __init__(self, in_ch: int, out_ch: int, dropout_prob: float, use_batchnorm: bool):
         super().__init__()
         self.net = nn.Sequential(
-            nn.MaxPool2d(kernel_size=2, stride=2), DoubleConv(in_ch, out_ch, dropout_prob, use_batchnorm)
+            nn.MaxPool2d(kernel_size=2, stride=2), _DoubleConv(in_ch, out_ch, dropout_prob, use_batchnorm)
         )
 
     def forward(self, x):  # noqa: D102, D205,D212,D415
         return self.net(x)
 
 
-class Up(nn.Module):
+class _Up(nn.Module):
     """Upsampling (by either bilinear interpolation or transpose convolutions).
 
     followed by concatenation of feature map from contracting path,
     followed by double 3x3 convolution.
     """
 
-    def __init__(self, in_ch, out_ch, dropout_prob, use_batchnorm, bilinear=False):  # noqa: D102, D205,D212,D415
+    def __init__(self, in_ch, out_ch: int, dropout_prob: float, use_batchnorm: bool, bilinear: bool = False):
         super().__init__()
         self.upsample = None
         if bilinear:
@@ -137,22 +139,26 @@ class Up(nn.Module):
         else:
             self.upsample = nn.ConvTranspose2d(in_ch, in_ch // 2, kernel_size=2, stride=2)
 
-        self.conv = DoubleConv(in_ch, out_ch, dropout_prob, use_batchnorm)
+        self.conv = _DoubleConv(in_ch, out_ch, dropout_prob, use_batchnorm)
 
-    def forward(self, x1, x2):  # noqa: D102, D205,D212,D415
-        x1 = self.upsample(x1)
+    def forward(self, x: Tensor, connected_encoder_features: Tensor) -> Tensor:
+        x = self.upsample(x)
 
-        # Pad x1 to the size of x2
-        diff_h = x2.shape[2] - x1.shape[2]
-        diff_w = x2.shape[3] - x1.shape[3]
+        # Pad ``x`` to the size of ``connected_encoder_features``
+        diff_h = connected_encoder_features.shape[2] - x.shape[2]
+        diff_w = connected_encoder_features.shape[3] - x.shape[3]
 
-        x1 = F.pad(x1, [diff_w // 2, diff_w - diff_w // 2, diff_h // 2, diff_h - diff_h // 2])
+        x = F.pad(x, [diff_w // 2, diff_w - diff_w // 2, diff_h // 2, diff_h - diff_h // 2])
 
         # Concatenate along the channels axis
-        x = torch.cat([x2, x1], dim=1)
+        x = torch.cat([connected_encoder_features, x], dim=1)
+
         return self.conv(x)
 
 
+"""
+This script can be run to visualize the network layers.
+"""
 if __name__ == "__main__":
     from torchsummary import summary
 

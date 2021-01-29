@@ -1,20 +1,14 @@
-# ACDC project
-
-### Description
+# Description
 
 This folder contains the necessary file to use the ACDC dataset: [ACDC](www.creatis.insa-lyon
 .fr/Challenge/acdc/) 2017 dataset (Automatic Cardiac Delineation Challenge).
 
-# Scripts
+# How to run
 
-## ACDC Dataset Generator
-
-### Description
+## Dataset Generator
 
 The script can be used to generate the semantic segmentation dataset into the hdf5 format, from the nifti MRIs and
 groundtruths.
-
-### How to use `dataset_generator.py`
 
 The raw data must be downloaded and organized in the following format
 
@@ -35,19 +29,22 @@ The raw data must be downloaded and organized in the following format
         - patient101: ...
         ...
         - patient150: ...
+
 ```
+Once you have downloaded the dataset and extracted its content to the format mentioned above:
 
 ```bash
 python dataset_generator.py --path='path/of/the/raw_MRI_nifti_data' --name='name/of/the/output.hdf5'
 ```
-### Parameters explanation
-
-* `--path`, the parent directory of all the pathologies.
-* `--name`, name of the generated hdf5 file.
-* `--data_augmentation`, `-d`, add data augmentation to the dataset (rotation -60 to 60).
-* `--registering`, `-r`, apply registering (registering and rotation). Only works when groundtruths are provided.
 
 
+### Options
+To list all the options available when generating a dataset, run:
+```bash
+python dataset_generator.py -h
+```
+
+### Format
 Once you've finished generating the dataset, it can be used through the
 [ACDC `VisionDataset` interface](dataset.py) to train and evaluate models. The data inside in the HDF5 dataset is
 structured according to the following format:

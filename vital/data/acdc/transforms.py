@@ -1,25 +1,26 @@
 import torch
 import torchvision.transforms.functional as F
+from torch import Tensor
 
 
 class NormalizeSample(torch.nn.Module):
     """Normalize a tensor image with its mean and standard deviation.
 
     Args:
-        inplace(bool,optional): Bool to make this operation in-place.
+        inplace: Whether to make this operation in-place.
     """
 
-    def __init__(self, inplace=False):
+    def __init__(self, inplace: bool = False):
         super().__init__()
         self.inplace = inplace
 
-    def __call__(self, tensor: torch.Tensor):
+    def __call__(self, tensor: torch.Tensor) -> Tensor:
         """Apply normalization to tensor.
 
         Args:
-            tensor (Tensor): Tensor image of size (1, H, W) to be normalized.
+            tensor: image of size (1, H, W) to be normalized.
 
         Returns:
-            Tensor: Normalized Tensor image.
+            Normalized image.
         """
         return F.normalize(tensor, [float(tensor.mean())], [float(tensor.std())], self.inplace)

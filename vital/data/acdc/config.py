@@ -23,11 +23,11 @@ class Label(DataTag):
 
 
 class Instant(DataTag):
-    """Collection of tags related to noteworthy instants in ultrasound sequences.
+    """Collection of tags related to noteworthy 3D volumes of 2D MRI slices.
 
     Args:
-        ED: Tag referring to the end-diastolic instant.
-        ES: Tag referring to the end-systolic instant.
+        ED: Tag referring to the end-diastolic volume.
+        ES: Tag referring to the end-systolic volume.
         MID: Tag referring to a sample between ED and ES.
     """
 
@@ -44,6 +44,7 @@ class AcdcTags(Tags):
         registered: name of the tag indicating whether the dataset was registered.
         voxel_spacing: name of the tag referring to metadata indicating the voxel size used in the output
         slice_index: name of the tag referring to the index of the slice
+        proc_slices: Tag referring to metadata indicating which image where affected by the postprocessing.
     """
 
     registered: str = "register"
@@ -59,7 +60,7 @@ in_channels: int = 1
 """Number of input channels of the images in the dataset."""
 
 img_save_options: Dict[str, Any] = {"dtype": np.float32, "compression": "gzip", "compression_opts": 4}
-"""Options to pass along when saving the ultrasound image in an HDF5 file."""
+"""Options to pass along when saving the mri image in an HDF5 file."""
 
 seg_save_options: Dict[str, Any] = {"dtype": np.uint8, "compression": "gzip", "compression_opts": 4}
 """Options to pass along when saving the segmentation mask in an HDF5 file."""
