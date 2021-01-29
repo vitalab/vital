@@ -144,14 +144,12 @@ class Acdc(VisionDataset):
             img = patient_imgs[slice]
             gt = patient_gts[slice]
 
-            # img, gt = self.center(img=img, gt=gt, output_shape=(image_size, image_size))
-
             voxel = Acdc._get_metadata(dataset, set_patient_instant_key, AcdcTags.voxel_spacing)
 
         # Get slice index
         slice_index = self.get_normalized_slice(patient_gts, slice, image_size)
 
-        # Data augmentation transforms applied before Normalization and ToTensor
+        # Data augmentation transforms applied before Normalization and ToTensor as it is done on np.ndarray
         if self.da_transforms:
             transformed = self.da_transforms(image=img, mask=gt)
             img = transformed["image"]
@@ -159,8 +157,6 @@ class Acdc(VisionDataset):
 
         img = self.transform(img)
         gt = self.target_transform(gt).squeeze()
-
-        # gt = gt.argmax(0)
 
         d = {
             AcdcTags.img: img,
@@ -191,13 +187,9 @@ class Acdc(VisionDataset):
                 # Collect and process data
                 imgs, gts = Acdc._get_data(dataset, patient_instant_key, AcdcTags.img, AcdcTags.gt)
 
-                # imgs, gts = self.center(img=imgs, gt=gts, output_shape=(image_size, image_size))
-
                 # Transform arrays to tensor
                 imgs = torch.stack([self.transform(img) for img in imgs])
                 gts = torch.stack([self.target_transform(gt) for gt in gts]).squeeze()
-
-                # gts = to_categorical(gts)
 
                 # Extract metadata concerning the registering applied
                 registering_parameters = None
@@ -333,5 +325,3 @@ if __name__ == "__main__":
     plt.imshow(img, cmap="gray")
     plt.imshow(gt, alpha=0.2)
     plt.show()
-
-    print(gt[100:150, 100:150])

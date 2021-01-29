@@ -1,10 +1,5 @@
-# flake8: noqa
-# -*- coding: utf-8 -*-
-
-"""
-This file contains any helpful generic functions concerning datasets.
-"""
-from typing import Sequence, Tuple
+"""This file contains any helpful generic functions concerning acdc dataset."""
+from typing import Tuple
 
 import numpy as np
 from skimage.util import crop
@@ -45,7 +40,6 @@ def centered_crop(image: np.ndarray, crop_size: Tuple[int, int]) -> np.ndarray:
     Returns:
         4D image cropped of the size of crop_size.
     """
-
     if image.ndim == 4:
         to_crop = (np.array(image.shape[1:3]) - crop_size) // 2
         to_crop = np.array(to_crop, dtype=np.int)
@@ -68,7 +62,6 @@ def centered_resize(image: np.ndarray, size: Tuple[int, int], c_val: float = 0) 
     Returns:
         Image with the needed output size.
     """
-
     if image.ndim == 4:
         isize = image.shape[1:3]
     else:

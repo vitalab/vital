@@ -69,44 +69,31 @@ def _mass_center(imgs):
     Args:
         imgs: images
     """
-    print(imgs.shape)
-    # print(np.equal(imgs, 3).shape)
-    # centers = np.array([ndimage.measurements.center_of_mass(img[:, :, 3]) for img in imgs])
     centers = np.array([ndimage.measurements.center_of_mass(np.equal(img, 3)) for img in imgs])
-    # print("Mass center: ", centers.shape)
     # Need to fix the Nan when the ground truth slice is a slice of zeros.
     # Set it to center 256 // 2 = 128
     centers[np.isnan(centers)] = 128
     return centers.astype(np.int16)
 
 
-def _generate_centered_prob_map(image, shape, center, label):
+def _generate_centered_prob_map(image: np.ndarray, shape: np.ndarray, center: np.ndarray, label: int):
     """Function to extract the information from the ground truth image given the centers.
 
     Args:
-        image: np.array, Numpy array of the ground truth.
-        shape: np.array, Shape of the desired prior image.
-        center: np.array, Numpy array of shape (slices, 2).
-        label: int, Which label to extract from the ground truth.
+        image: Numpy array of the ground truth.
+        shape: Shape of the desired prior image.
+        center: Numpy array of shape (slices, 2).
+        label: Which label to extract from the ground truth.
 
     Returns:
         Array of shape (slices, 100, 100, 1)
     """
-    # print(image.shape)
     image = np.equal(image, label)[..., None]
-    # print("IMage: ", image.shape)
-    # print("Shape: ", shape.shape)
-    # print("Center: ", center.shape)
     res = np.zeros(shape)
     # Nearest neighbour slice index between the number of slice
     # of the image and the ground truth
     space = np.linspace(0, shape[0] - 1, num=image.shape[0]).astype(np.int32)
     for i, (s, c) in enumerate(zip(space, center)):
-        # print(" IMg: ", image[
-        #           i,
-        #           c[0] - PRIOR_HALF_SIZE: c[0] + PRIOR_HALF_SIZE,
-        #           c[1] - PRIOR_HALF_SIZE: c[1] + PRIOR_HALF_SIZE].shape)
-        # print(" res", res.shape)
         res[s] += image[
             i,
             c[0] - PRIOR_HALF_SIZE : c[0] + PRIOR_HALF_SIZE,
@@ -115,12 +102,12 @@ def _generate_centered_prob_map(image, shape, center, label):
     return res
 
 
-def generate_probability_map(h5f, group):
+def generate_probability_map(h5f: h5py.File, group: h5py.Group):
     """Generate the probability map from all unrotated training exemples.
 
     Args:
-    h5f: hdf5 File, Handle of the hdf5 file containing all the dataset.
-    group: hdf5 File, Group where to create the prior shape (train, valid or test) train should be the
+    h5f: Handle of the hdf5 file containing all the dataset.
+    group: Group where to create the prior shape (train, valid or test) train should be the
         default.
     """
     patient_keys = [key for key in group.keys() if key.endswith("_0")]
@@ -129,11 +116,8 @@ def generate_probability_map(h5f, group):
         for k2 in group[k1].keys():
             image_keys.append("{}/{}/{}".format(k1, k2, AcdcTags.gt))
 
-    # images = [centered_resize(group[k][:], (256, 256)) for k in image_keys]
     images = [group[k][:] for k in image_keys]
     images_center = [_mass_center(img) for img in images]
-
-    # print("Images: ", images.shape)
 
     prior_shape = np.array([15, PRIOR_SIZE, PRIOR_SIZE, 1])
 
@@ -254,20 +238,28 @@ def write_instant_group(
 
 
 def create_database_structure(
-    group, data_augmentation, registering, data_ed, gt_ed, data_es, gt_es, data_mid=None, gt_mid=None
+    group: h5py.Group,
+    data_augmentation: bool,
+    registering: bool,
+    data_ed: str,
+    gt_ed: str,
+    data_es: str,
+    gt_es: str,
+    data_mid: Optional[str] = None,
+    gt_mid: Optional[str] = None,
 ):
     """Create the dataset for the End-Systolic and End-Diastolic phases.
 
     If some data augmentation is involved we create also the rotation for each phase.
 
     Args:
-        group: hdf5 Group, Group where we add each image by its name and the rotation associated to it.
-        data_augmentation: bool, Enable/Disable data augmentation.
-        registering: bool, Enable/Disable registering.
-        data_ed: string, Path of the nifti diastolic MRI image.
-        gt_ed: string, Path of the nifti diastolic MRI segmentation of data_ed.
-        data_es: string, Path of the nifti systolic MRI image.
-        gt_es: string, Path of the nifti systolic MRI segmentation of data_ed.
+        group: Group where we add each image by its name and the rotation associated to it.
+        data_augmentation: Enable/Disable data augmentation.
+        registering: Enable/Disable registering.
+        data_ed: Path of the nifti diastolic MRI image.
+        gt_ed: Path of the nifti diastolic MRI segmentation of data_ed.
+        data_es: Path of the nifti systolic MRI image.
+        gt_es: Path of the nifti systolic MRI segmentation of data_ed.
         data_mid: Path of the nifti MRI image at a time step between ED and ES.
         gt_mid: Path of the nifti MRI segmentation of data_mid.
 
@@ -303,16 +295,16 @@ def create_database_structure(
             write_instant_group(patient, Instant.MID.value, mid_img, midg_img, mid_voxel, rot, registering_transformer)
 
 
-def generate_dataset(path, name, data_augmentation=False, registering=False):
+def generate_dataset(path: str, name: str, data_augmentation: bool = False, registering: bool = False):
     """Function that generates each dataset, train, valid and test.
 
     Args:
-        path: string, Path where we can find the images from the downloaded ACDC challenge.
-        name: string, Name of the hdf5 file to generate.
-        data_augmentation: bool, Enable/Disable data augmentation.
-        registering: bool, Enable/Disable registering.
+        path: Path where we can find the images from the downloaded ACDC challenge.
+        name: Name of the hdf5 file to generate.
+        data_augmentation: Enable/Disable data augmentation.
+        registering: Enable/Disable registering.
 
-    # Raises:
+    Raises:
         ValueError if names don't match
     """
     if data_augmentation:
