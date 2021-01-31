@@ -8,8 +8,6 @@ pandas
 h5py
 tqdm
 SimpleITK
-torch>=1.7
-torchvision>=0.8
 pytorch-lightning>=1.1
 torch-summary
 comet-ml
