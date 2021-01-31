@@ -1,97 +1,21 @@
-from functools import wraps
 from numbers import Real
-from typing import Callable, Tuple, Type, TypeVar
+from typing import Tuple, TypeVar
 
 import numpy as np
-import torch
-from skimage import measure
-from skimage.measure._regionprops import RegionProperties
 from torch import Tensor
 
 from vital.data.config import SemanticStructureId
+from vital.utils.decorators import auto_cast_data
 
 T = TypeVar("T", np.ndarray, Tensor)
-DATA_TYPES = [np.ndarray, Tensor]
-
-
-def _check_data_type(data: T) -> Type[T]:
-    """Inspects the type of `data` and ensures it is part of `DATA_TYPES`.
-
-    Args:
-        data: Data whose type to inspect.
-
-    Returns:
-        The type of data, if it is part of `DATA_TYPES`.
-
-    Raises:
-        ValueError: If the type of data is not part of `DATA_TYPES`.
-    """
-    dtype = type(data)
-    if dtype not in DATA_TYPES:
-        raise ValueError(
-            f"The `Measure` API is not supported for data of type '{dtype}'. Either provide the implementation "
-            f"of the API for your target data type, or cast your data to one of the following supported types: "
-            f"{DATA_TYPES}."
-        )
-    return dtype
-
-
-def auto_cast_data(cls_method: Callable) -> Callable:
-    """Decorator to allow `Measure` classmethods relying on numpy arrays to accept any `DATA_TYPES`.
-
-    Args:
-        cls_method: `Measure` classmethod to wrap.
-
-    Returns:
-        Classmethod that can accept any `DATA_TYPES` by converting between them and numpy arrays.
-    """
-
-    @wraps(cls_method)
-    def _call_func_with_cast_data(cls, data, *args, **kwargs):
-        dtype = _check_data_type(data)
-        if dtype == Tensor:
-            data_device = data.device
-            data = data.detach().cpu().numpy()
-        result = cls_method(cls, data, *args, **kwargs)
-        if dtype == Tensor:
-            result = torch.tensor(result, device=data_device)
-        return result
-
-    return _call_func_with_cast_data
 
 
 class Measure:
     """Generic implementations of various measures on images represented as numpy arrays or torch tensors."""
 
-    @classmethod
-    def _region_prop(
-        cls, segmentation: np.ndarray, labels: SemanticStructureId, prop_fn: Callable[[RegionProperties], Real]
-    ) -> np.ndarray:
-        """Abstract method to compute a property of a structure in a (batch of) segmentation map(s).
-
-        Args:
-            segmentation: ([N], H, W), Segmentation map(s).
-            labels: Labels of the classes that are part of the structure of interest.
-            prop_fn: Function that computes the desired property from the segmentation's `RegionProperties`.
-
-        Returns:
-            ([N], 1), Property of the structure, in each segmentation of the batch.
-        """
-        if is_single_sample := segmentation.ndim == 2:  # If we don't have a batch of segmentations
-            segmentation = segmentation[None]
-        prop = np.array(
-            [
-                prop_fn(measure.regionprops(binary_sample)[0])
-                for binary_sample in np.isin(segmentation, labels).astype(np.uint8)
-            ]
-        )
-        if not is_single_sample:
-            prop = prop[..., None]
-        return prop
-
-    @classmethod
+    @staticmethod
     @auto_cast_data
-    def bbox(cls, segmentation: T, labels: SemanticStructureId, bbox_margin: Real = 0.05, normalize: bool = False) -> T:
+    def bbox(segmentation: T, labels: SemanticStructureId, bbox_margin: Real = 0.05, normalize: bool = False) -> T:
         """Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 
         Args:
@@ -134,9 +58,9 @@ class Measure:
 
         return roi_bbox
 
-    @classmethod
+    @staticmethod
     @auto_cast_data
-    def denormalize_bbox(cls, roi_bbox: T, output_size: Tuple[int, int], check_bounds: bool = False) -> T:
+    def denormalize_bbox(roi_bbox: T, output_size: Tuple[int, int], check_bounds: bool = False) -> T:
         """Gives the pixel-indices of a bounding box (bbox) w.r.t an output size based on the bbox's normalized coord.
 
         Args:
