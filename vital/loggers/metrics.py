@@ -39,8 +39,7 @@ class MetricsLogger(Logger):
         self.input_tag = input
         self.target_tag = target
 
-    @classmethod
-    def aggregate_logs(cls, logs: Mapping[str, Log], output_path: Path) -> None:
+    def aggregate_logs(self, logs: Mapping[str, Log], output_path: Path) -> None:
         """Writes the computed metrics, with the aggregated results at the top, to csv format.
 
         Args:
@@ -50,15 +49,14 @@ class MetricsLogger(Logger):
         df_metrics = pd.DataFrame.from_dict(logs, orient="index")
 
         # Build a dataframe with the aggregated metrics at the top and relevant index names
-        aggregated_metrics = cls._aggregate_metrics(df_metrics)
+        aggregated_metrics = self._aggregate_metrics(df_metrics)
         df_full_metrics = pd.concat([aggregated_metrics, df_metrics])
-        df_full_metrics.index.name = cls.IterableResultT.desc
+        df_full_metrics.index.name = self.IterableResultT.desc
 
         # Save the combination of aggregated and detailed metrics to the csv file
         pd.DataFrame(df_full_metrics).to_csv(output_path, na_rep="Nan")
 
-    @classmethod
-    def _aggregate_metrics(cls, metrics: pd.DataFrame) -> pd.DataFrame:
+    def _aggregate_metrics(self, metrics: pd.DataFrame) -> pd.DataFrame:
         """Computes global statistics on the metrics computed over each result.
 
         Args:
