@@ -56,8 +56,11 @@ class VitalRunner(ABC):
                 logger=logger
             )
 
-        # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
-        log_dir = Path(trainer.log_dir) if trainer.log_dir else hparams.default_root_dir
+        try:
+            # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
+            log_dir = Path(trainer.log_dir)
+        except:
+            log_dir = hparams.default_root_dir
 
         if not hparams.fast_dev_run:
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
