@@ -1,13 +1,17 @@
+import os
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from shutil import copy2
 from typing import List, Type
 
+import torch
 from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.loggers import CometLogger
 
 from vital.systems.system import VitalSystem
+from vital.utils.cometlogging import find_config_file, read_comet_config, load_or_download_weigths
 from vital.utils.logging import configure_logging
 from vital.utils.parsing import StoreDictKeyPair
 
@@ -34,8 +38,13 @@ class VitalRunner(ABC):
         Args:
             hparams: Arguments parsed from the CLI.
         """
+        logger = True
+        if not hparams.comet and not hparams.fast_dev_run:
+            comet_config = find_config_file(os.getcwd())  # Find .comet.config file if it exists
+            logger = CometLogger(**read_comet_config(comet_config)) if comet_config else True
+
         if hparams.resume:
-            trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path)
+            trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path, logger=logger)
         else:
             trainer = Trainer.from_argparse_args(
                 hparams,
@@ -44,6 +53,7 @@ class VitalRunner(ABC):
                     EarlyStopping(**hparams.early_stopping_kwargs),
                     *cls._get_callbacks(hparams),
                 ],
+                logger=logger
             )
         if not hparams.fast_dev_run:
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
@@ -54,6 +64,12 @@ class VitalRunner(ABC):
             model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams))
         else:
             model = system_cls(**vars(hparams))
+            if hparams.weights:
+                print("Loading weights from {}".format(hparams.weights))
+                checkpoint_path = load_or_download_weigths(hparams.weights)
+                map_location = None if torch.cuda.is_available() else torch.device('cpu')
+                checkpoint = torch.load(checkpoint_path, map_location=map_location)
+                model.load_state_dict(checkpoint['state_dict'], strict=False)
 
         if hparams.train:
             trainer.fit(model)
@@ -65,6 +81,9 @@ class VitalRunner(ABC):
 
                 # Ensure we use the best weights (and not the latest ones) by loading back the best model
                 model = system_cls.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+
+                # Log model
+                trainer.logger.experiment.log_model(os.path.basename(best_model_path), best_model_path)
 
         if hparams.test:
             trainer.test(model)
@@ -173,7 +192,17 @@ class VitalRunner(ABC):
         )
 
         # save/load parameters
-        parser.add_argument("--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system")
+        loading_group = parser.add_mutually_exclusive_group()
+        loading_group.add_argument(
+            "--ckpt_path",
+            type=Path,
+            help="Path to Lightning module checkpoints to restore system"
+        )
+        loading_group.add_argument(
+            "--weights",
+            type=Path,
+            help="Path to Lightning module checkpoints to restore system weights"
+        )
         parser.add_argument(
             "--resume",
             action="store_true",
@@ -185,6 +214,9 @@ class VitalRunner(ABC):
             "--skip_train", dest="train", action="store_false", help="Skip training and do test/evaluation phase"
         )
         parser.add_argument("--skip_test", dest="test", action="store_false", help="Skip test/evaluation phase")
+
+        # Logging
+        parser.add_argument("--no_comet", dest="comet", action='store_true', help='Disable Comet ML logging')
 
         return parser
 
