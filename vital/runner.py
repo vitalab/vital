@@ -45,7 +45,6 @@ class VitalRunner(ABC):
                     *cls._get_callbacks(hparams),
                 ],
             )
-
         if not hparams.fast_dev_run:
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
             cls._configure_logging(Path(trainer.log_dir), hparams)
