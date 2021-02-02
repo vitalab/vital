@@ -90,7 +90,8 @@ class VitalRunner(ABC):
                 model = system_cls.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
                 # Log model
-                trainer.logger.experiment.log_model(os.path.basename(best_model_path), best_model_path)
+                trainer.logger.experiment.log_model(os.path.basename(best_model_path),
+                                                    trainer.checkpoint_callback.best_model_path)
 
         if hparams.test:
             trainer.test(model)
