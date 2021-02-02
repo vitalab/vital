@@ -55,9 +55,13 @@ class VitalRunner(ABC):
                 ],
                 logger=logger
             )
+
+        # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
+        log_dir = Path(trainer.log_dir) if trainer.log_dir else hparams.default_root_dir
+
         if not hparams.fast_dev_run:
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
-            cls._configure_logging(Path(trainer.log_dir), hparams)
+            cls._configure_logging(Path(log_dir), hparams)
 
         system_cls = cls._get_selected_system(hparams)
         if hparams.ckpt_path:  # Load pretrained model if checkpoint is provided
@@ -76,7 +80,7 @@ class VitalRunner(ABC):
 
             if not hparams.fast_dev_run:
                 # Copy best model checkpoint to a predictable path
-                best_model_path = cls._best_model_path(Path(trainer.log_dir), hparams)
+                best_model_path = cls._best_model_path(Path(log_dir), hparams)
                 copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
 
                 # Ensure we use the best weights (and not the latest ones) by loading back the best model
