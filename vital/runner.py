@@ -5,6 +5,7 @@ from pathlib import Path
 from shutil import copy2
 from typing import List, Type
 
+import comet_ml # noqa Necessary to avoid import error.
 import torch
 from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
