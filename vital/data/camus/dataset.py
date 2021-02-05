@@ -24,7 +24,7 @@ class Camus(VisionDataset):
         path: Path,
         fold: int,
         image_set: Subset,
-        labels: Sequence[Label],
+        labels: Sequence[Label] = Label,
         use_sequence: bool = False,
         predict: bool = False,
         transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
