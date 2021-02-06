@@ -24,7 +24,7 @@ class InstantData:
 
     Args:
         img: Resized images, used as input when training models.
-        gt: Resized groundtruths, used as input when training models.
+        gt: Resized groundtruths, used as target when training models.
         voxelspacing: Size of the segmentations' voxels along each (height, width, depth) dimension (in mm).
         registering: Parameters applied originally to register the images and groundtruths.
     """

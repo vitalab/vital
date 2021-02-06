@@ -2,7 +2,7 @@ import argparse
 import os
 from glob import glob
 from os.path import basename
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import h5py
 import nibabel as nib
@@ -32,11 +32,11 @@ PRIOR_HALF_SIZE = PRIOR_SIZE // 2
 ROTATIONS = [-60, -45, -15, 0, 15, 45, 60]
 
 
-def generate_list_directory(path):
+def generate_list_directory(path: str):
     """Generate the list of nifti images from the path.
 
     Args:
-        path: string, path to nifti images
+        path: path to nifti images
     """
     if not os.path.exists(path):
         return []
@@ -48,13 +48,13 @@ def generate_list_directory(path):
     return paths
 
 
-def _to_categorical(matrix, nb_classes):
-    """Transform a matrix containing integer label class into a matrix containing categorical class labels.
+def _to_onehot(matrix: np.ndarray, nb_classes: int):
+    """Transform a matrix containing integer label class into a matrix containing one hot class labels.
 
     The last dim of the matrix should be the category (classes).
 
     Args:
-        matrix: ndarray, A numpy matrix to convert into a categorical matrix.
+        matrix: A numpy matrix to convert into a categorical matrix.
         nb_classes: int, number of classes
 
     Returns:
@@ -63,7 +63,7 @@ def _to_categorical(matrix, nb_classes):
     return matrix == np.arange(nb_classes)[np.newaxis, np.newaxis, np.newaxis, :]
 
 
-def _mass_center(imgs):
+def _mass_center(imgs: List[np.ndarray]):
     """Function to extract the center of masses of a 3D ground truth image.
 
     Args:
@@ -106,9 +106,9 @@ def generate_probability_map(h5f: h5py.File, group: h5py.Group):
     """Generate the probability map from all unrotated training exemples.
 
     Args:
-    h5f: Handle of the hdf5 file containing all the dataset.
-    group: Group where to create the prior shape (train, valid or test) train should be the
-        default.
+        h5f: Handle of the hdf5 file containing all the dataset.
+        group: Group where to create the prior shape (train, valid or test) train should be the
+            default.
     """
     patient_keys = [key for key in group.keys() if key.endswith("_0")]
     image_keys = []
@@ -182,7 +182,7 @@ def load_instant_data(img_path: str, gt_path: Optional[str]) -> Tuple[np.ndarray
         gt = ni_img.get_fdata()
         gt = gt.transpose(2, 0, 1)[..., np.newaxis]
 
-        gt = _to_categorical(gt, Label.count()).astype(np.uint8)
+        gt = _to_onehot(gt, Label.count()).astype(np.uint8)
 
         gt = centered_resize(gt, (image_size, image_size))
 
@@ -285,7 +285,8 @@ def create_database_structure(
         registering_transformer = None
 
     for rot in iterable:
-        patient = group.create_group("{}_{}".format(p_name, rot))
+        name = f"{p_name}_{rot}" if len(iterable) > 1 else p_name
+        patient = group.create_group(name)
 
         write_instant_group(patient, Instant.ED.value, ed_img, edg_img, ed_voxel, rot, registering_transformer)
         write_instant_group(patient, Instant.ES.value, es_img, esg_img, es_voxel, rot, registering_transformer)
