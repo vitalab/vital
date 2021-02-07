@@ -7,7 +7,7 @@ from vital.data.config import DataTag, Tags
 
 
 class Label(DataTag):
-    """Enumeration of tags related to the different anatomical structures segmented in the dataset.
+    """Enumeration of tags related to the different anatomical structures segmented in the short axis MRI dataset.
 
     Attributes:
         BG: Label of the background.
@@ -22,6 +22,7 @@ class Label(DataTag):
     LV = 3
 
 
+@dataclass()
 class Instant(DataTag):
     """Collection of tags related to noteworthy 3D volumes of 2D MRI slices.
 
@@ -37,7 +38,7 @@ class Instant(DataTag):
 
 
 @dataclass(frozen=True)
-class AcdcTags(Tags):
+class MRITags(Tags):
     """Class to gather the tags referring to the different types of data stored in the HDF5 datasets.
 
     Args:

@@ -7,7 +7,7 @@ from torch import Tensor
 
 @dataclass
 class PatientData:
-    """Data structure that bundles data from the ACDC dataset for one patient.
+    """Data structure that bundles data from the MRI dataset for one patient.
 
     Args:
         id: patient's identifier (in format "patient0123").
@@ -20,7 +20,7 @@ class PatientData:
 
 @dataclass
 class InstantData:
-    """Data structure that bundles data from the ACDC dataset for one Instant (ED or ES).
+    """Data structure that bundles data from the MRI dataset for one Instant (ED or ES).
 
     Args:
         img: Resized images, used as input when training models.

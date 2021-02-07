@@ -11,10 +11,10 @@ from natsort import natsorted
 from scipy import ndimage
 from scipy.ndimage.interpolation import rotate
 
-from vital.data.acdc.config import AcdcTags, Instant, Label, image_size
-from vital.data.acdc.utils.acdc import AcdcRegisteringTransformer
-from vital.data.acdc.utils.utils import centered_resize
 from vital.data.config import Subset
+from vital.data.mri.acdc.utils.acdc import AcdcRegisteringTransformer
+from vital.data.mri.config import Instant, Label, MRITags, image_size
+from vital.data.mri.utils import centered_resize, centered_resize_gt, to_onehot
 
 try:
     from tqdm import tqdm
@@ -46,21 +46,6 @@ def generate_list_directory(path: str):
     paths = [path for path in paths if "Info" not in path]
     paths = [path for path in paths if path.find("_4d") < 0]
     return paths
-
-
-def _to_onehot(matrix: np.ndarray, nb_classes: int):
-    """Transform a matrix containing integer label class into a matrix containing one hot class labels.
-
-    The last dim of the matrix should be the category (classes).
-
-    Args:
-        matrix: A numpy matrix to convert into a categorical matrix.
-        nb_classes: int, number of classes
-
-    Returns:
-        A numpy array representing the categorical matrix of the input.
-    """
-    return matrix == np.arange(nb_classes)[np.newaxis, np.newaxis, np.newaxis, :]
 
 
 def _mass_center(imgs: List[np.ndarray]):
@@ -114,7 +99,7 @@ def generate_probability_map(h5f: h5py.File, group: h5py.Group):
     image_keys = []
     for k1 in patient_keys:
         for k2 in group[k1].keys():
-            image_keys.append("{}/{}/{}".format(k1, k2, AcdcTags.gt))
+            image_keys.append("{}/{}/{}".format(k1, k2, MRITags.gt))
 
     images = [group[k][:] for k in image_keys]
     images_center = [_mass_center(img) for img in images]
@@ -182,14 +167,9 @@ def load_instant_data(img_path: str, gt_path: Optional[str]) -> Tuple[np.ndarray
         gt = ni_img.get_fdata()
         gt = gt.transpose(2, 0, 1)[..., np.newaxis]
 
-        gt = _to_onehot(gt, Label.count()).astype(np.uint8)
+        gt = to_onehot(gt, Label.count()).astype(np.uint8)
 
-        gt = centered_resize(gt, (image_size, image_size))
-
-        # Need to redo the background class due to resize
-        # that set the image border to 0
-        summed = np.clip(gt[..., 1:].sum(axis=-1), 0, 1)
-        gt[..., 0] = np.abs(1 - summed)
+        gt = centered_resize_gt(gt, (image_size, image_size))
 
         # Put data to categorical format.
         gt = gt.argmax(-1)
@@ -230,11 +210,11 @@ def write_instant_group(
         registering_parameters, gt_data, r_img = registering_transformer.register_batch(gt_data, r_img)
         instant.attrs.update(registering_parameters)
 
-    instant.create_dataset(AcdcTags.img, data=r_img)
+    instant.create_dataset(MRITags.img, data=r_img)
 
     if gt_data is not None:
         r_img = rotate(gt_data, rotation, axes=(1, 2), output=np.uint8, reshape=False)
-        instant.create_dataset(AcdcTags.gt, data=r_img)
+        instant.create_dataset(MRITags.gt, data=r_img)
 
 
 def create_database_structure(
@@ -362,7 +342,7 @@ def generate_dataset(path: str, name: str, data_augmentation: bool = False, regi
 
     with h5py.File(name, "w") as h5f:
 
-        h5f.attrs[AcdcTags.registered] = registering
+        h5f.attrs[MRITags.registered] = registering
 
         # Training samples ###
         group = h5f.create_group(Subset.TRAIN.value)
