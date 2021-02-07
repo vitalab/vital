@@ -52,11 +52,13 @@ class Subset(DataTag):
         TRAIN: Label of the training subset.
         VAL: Label of the validation subset.
         TEST: Label of the testing subset.
+        UNLABELED: Label of the unlabeled training subset.
     """
 
     TRAIN = "train"
     VAL = "val"
     TEST = "test"
+    UNLABELED = "unlabeled"
 
 
 @dataclass(frozen=True)

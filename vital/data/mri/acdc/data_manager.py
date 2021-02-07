@@ -4,9 +4,9 @@ from typing import Dict, Literal
 
 from torch.utils.data import DataLoader
 
-from vital.data.acdc.config import Label, image_size, in_channels
-from vital.data.acdc.dataset import Acdc
 from vital.data.config import DataParameters, Subset
+from vital.data.mri.acdc.dataset import Acdc
+from vital.data.mri.config import Label, image_size, in_channels
 from vital.systems.system import SystemDataManagerMixin
 
 

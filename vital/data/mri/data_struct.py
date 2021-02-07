@@ -7,7 +7,7 @@ from torch import Tensor
 
 @dataclass
 class PatientData:
-    """Data structure that bundles data from the ACDC dataset for one patient.
+    """Data structure that bundles data from the MRI dataset for one patient.
 
     Args:
         id: patient's identifier (in format "patient0123").
@@ -20,11 +20,11 @@ class PatientData:
 
 @dataclass
 class InstantData:
-    """Data structure that bundles data from the ACDC dataset for one Instant (ED or ES).
+    """Data structure that bundles data from the MRI dataset for one Instant (ED or ES).
 
     Args:
         img: Resized images, used as input when training models.
-        gt: Resized groundtruths, used as input when training models.
+        gt: Resized groundtruths, used as target when training models.
         voxelspacing: Size of the segmentations' voxels along each (height, width, depth) dimension (in mm).
         registering: Parameters applied originally to register the images and groundtruths.
     """

@@ -55,7 +55,7 @@ structured according to the following format:
         - patient{XXXX}:
           - ED:
               - img # MRI image (N, 256, 256, 1)
-              - gt # segmentation (N x 256 x 256 x 4)
+              - gt # segmentation (N x 256 x 256)
           - ES:
               - img # MRI image
               - gt # segmentation

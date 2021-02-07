@@ -120,7 +120,7 @@ class _Down(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2), _DoubleConv(in_ch, out_ch, dropout_prob, use_batchnorm)
         )
 
-    def forward(self, x):  # noqa: D102, D205,D212,D415
+    def forward(self, x: Tensor) -> Tensor:  # noqa: D102
         return self.net(x)
 
 

@@ -1,4 +1,4 @@
-from vital.data.acdc.config import Label
+from vital.data.mri.config import Label
 from vital.metrics.evaluate.anatomical_structure import Anatomical2DStructureMetrics
 from vital.metrics.evaluate.segmentation import Segmentation2DMetrics
 

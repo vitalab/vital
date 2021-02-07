@@ -2,7 +2,7 @@ import numpy as np
 from scipy.ndimage import distance_transform_edt
 from skimage import morphology
 
-from vital.data.acdc.config import Label
+from vital.data.mri.config import Label
 from vital.metrics.evaluate.segmentation import Segmentation2DMetrics
 
 

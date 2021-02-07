@@ -7,7 +7,7 @@ from vital.data.config import DataTag, Tags
 
 
 class Label(DataTag):
-    """Enumeration of tags related to the different anatomical structures segmented in the dataset.
+    """Enumeration of tags related to the different anatomical structures segmented in the short axis MRI dataset.
 
     Attributes:
         BG: Label of the background.
@@ -22,6 +22,7 @@ class Label(DataTag):
     LV = 3
 
 
+@dataclass()
 class Instant(DataTag):
     """Collection of tags related to noteworthy 3D volumes of 2D MRI slices.
 
@@ -37,14 +38,14 @@ class Instant(DataTag):
 
 
 @dataclass(frozen=True)
-class AcdcTags(Tags):
+class MRITags(Tags):
     """Class to gather the tags referring to the different types of data stored in the HDF5 datasets.
 
     Args:
         registered: name of the tag indicating whether the dataset was registered.
         voxel_spacing: name of the tag referring to metadata indicating the voxel size used in the output
         slice_index: name of the tag referring to the index of the slice
-        proc_slices: Tag referring to metadata indicating which image where affected by the postprocessing.
+        proc_slices: Tag referring to metadata indicating which image were affected by the postprocessing.
     """
 
     registered: str = "register"
@@ -60,7 +61,7 @@ in_channels: int = 1
 """Number of input channels of the images in the dataset."""
 
 img_save_options: Dict[str, Any] = {"dtype": np.float32, "compression": "gzip", "compression_opts": 4}
-"""Options to pass along when saving the mri image in an HDF5 file."""
+"""Options to pass along when saving the MRI image in an HDF5 file."""
 
 seg_save_options: Dict[str, Any] = {"dtype": np.uint8, "compression": "gzip", "compression_opts": 4}
 """Options to pass along when saving the segmentation mask in an HDF5 file."""

@@ -1,20 +1,10 @@
-import json
-import os
-from multiprocessing import Pool
-from os.path import join as pjoin
-
-import h5py
-import pandas as pd
-from tqdm import tqdm
-
-from vital.data.acdc.config import Label
-from vital.data.acdc.metrics.anatomical.config import domains, ideal_value, thresholds
-from vital.data.acdc.metrics.anatomical.frontier_metrics import FrontierMetrics
-from vital.data.acdc.metrics.anatomical.lv_metrics import LeftVentricleMetrics
-from vital.data.acdc.metrics.anatomical.myo_metrics import MyocardiumMetrics
-from vital.data.acdc.metrics.anatomical.rv_metrics import RightVentricleMetrics
-
-from vital.data.acdc.metrics.anatomical.score import score_metric
+from vital.data.mri.acdc.metrics.anatomical.config import domains, ideal_value, thresholds
+from vital.data.mri.acdc.metrics.anatomical.frontier_metrics import FrontierMetrics
+from vital.data.mri.acdc.metrics.anatomical.lv_metrics import LeftVentricleMetrics
+from vital.data.mri.acdc.metrics.anatomical.myo_metrics import MyocardiumMetrics
+from vital.data.mri.acdc.metrics.anatomical.rv_metrics import RightVentricleMetrics
+from vital.data.mri.acdc.metrics.anatomical.score import score_metric
+from vital.data.mri.config import Label
 from vital.metrics.evaluate.segmentation import Segmentation2DMetrics, check_metric_validity
 
 
@@ -153,4 +143,3 @@ def _extract_anatomical_metric_scores_by_segmentation(segmentation, voxelspacing
         for name, value in metrics.items()
     )
     return metrics
-

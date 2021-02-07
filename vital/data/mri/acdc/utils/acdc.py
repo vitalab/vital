@@ -2,7 +2,7 @@ from math import degrees
 
 import numpy as np
 
-from vital.data.acdc.config import Label
+from vital.data.mri.config import Label
 from vital.utils.image.register.affine import AffineRegisteringTransformer, Rotation, Shift
 
 

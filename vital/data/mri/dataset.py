@@ -8,16 +8,16 @@ import torch
 from torchvision.datasets import VisionDataset
 from torchvision.transforms import ToTensor, transforms
 
-from vital.data.acdc.config import AcdcTags, Instant, image_size
-from vital.data.acdc.data_struct import InstantData, PatientData
-from vital.data.acdc.transforms import NormalizeSample, SegmentationToTensor
-from vital.data.acdc.utils.acdc import AcdcRegisteringTransformer
 from vital.data.config import Subset
+from vital.data.mri.acdc.utils.acdc import AcdcRegisteringTransformer
+from vital.data.mri.config import Instant, MRITags, image_size
+from vital.data.mri.data_struct import InstantData, PatientData
+from vital.data.mri.transforms import NormalizeSample, SegmentationToTensor
 from vital.utils.decorators import squeeze
 
 
-class Acdc(VisionDataset):
-    """Implementation of torchvision's ``VisionDataset`` for the ACDC dataset."""
+class ShortAxisMRI(VisionDataset):
+    """Implementation of torchvision's ``VisionDataset`` for short axis MRI segmentation datasets."""
 
     def __init__(
         self,
@@ -58,8 +58,8 @@ class Acdc(VisionDataset):
         self.image_set = image_set.value
 
         with h5py.File(path, "r") as f:
-            if AcdcTags.registered in f.attrs.keys():
-                self.registered_dataset = f.attrs[AcdcTags.registered]
+            if MRITags.registered in f.attrs.keys():
+                self.registered_dataset = f.attrs[MRITags.registered]
             else:
                 self.registered_dataset = False
 
@@ -121,7 +121,7 @@ class Acdc(VisionDataset):
         instant_paths = self.list_groups(level="instant")
         with h5py.File(self.root, "r") as dataset:
             for instant_path in instant_paths:
-                num_slices = len(dataset[instant_path][AcdcTags.img])
+                num_slices = len(dataset[instant_path][MRITags.img])
                 image_paths.extend((instant_path, slice) for slice in range(num_slices))
 
         return image_paths
@@ -139,12 +139,12 @@ class Acdc(VisionDataset):
 
         with h5py.File(self.root, "r") as dataset:
             # Collect and process data
-            patient_imgs, patient_gts = self._get_data(dataset, set_patient_instant_key, AcdcTags.img, AcdcTags.gt)
+            patient_imgs, patient_gts = self._get_data(dataset, set_patient_instant_key, MRITags.img, MRITags.gt)
 
             img = patient_imgs[slice]
             gt = patient_gts[slice]
 
-            voxel = Acdc._get_metadata(dataset, set_patient_instant_key, AcdcTags.voxel_spacing)
+            voxel = ShortAxisMRI._get_metadata(dataset, set_patient_instant_key, MRITags.voxel_spacing)
 
         # Get slice index
         slice_index = self.get_normalized_slice(patient_gts, slice, image_size)
@@ -159,11 +159,11 @@ class Acdc(VisionDataset):
         gt = self.target_transform(gt).squeeze()
 
         d = {
-            AcdcTags.img: img,
-            AcdcTags.gt: gt,
-            AcdcTags.slice_index: slice_index,
-            AcdcTags.voxel_spacing: voxel[:2],
-            AcdcTags.id: f"{set_patient_instant_key}_{slice}",
+            MRITags.img: img,
+            MRITags.gt: gt,
+            MRITags.slice_index: slice_index,
+            MRITags.voxel_spacing: voxel[:2],
+            MRITags.id: f"{set_patient_instant_key}_{slice}",
         }
 
         return d
@@ -185,7 +185,7 @@ class Acdc(VisionDataset):
                 patient_instant_key = f"{patient_key}/{instant}"
 
                 # Collect and process data
-                imgs, gts = Acdc._get_data(dataset, patient_instant_key, AcdcTags.img, AcdcTags.gt)
+                imgs, gts = ShortAxisMRI._get_data(dataset, patient_instant_key, MRITags.img, MRITags.gt)
 
                 # Transform arrays to tensor
                 imgs = torch.stack([self.transform(img) for img in imgs])
@@ -195,11 +195,11 @@ class Acdc(VisionDataset):
                 registering_parameters = None
                 if self.registered_dataset:
                     registering_parameters = {
-                        reg_step: Acdc._get_metadata(dataset, patient_instant_key, reg_step)
+                        reg_step: ShortAxisMRI._get_metadata(dataset, patient_instant_key, reg_step)
                         for reg_step in AcdcRegisteringTransformer.registering_steps
                     }
 
-                voxel = Acdc._get_metadata(dataset, patient_instant_key, AcdcTags.voxel_spacing)
+                voxel = ShortAxisMRI._get_metadata(dataset, patient_instant_key, MRITags.voxel_spacing)
 
                 patient_data.instants[instant] = InstantData(
                     img=imgs, gt=gts, registering=registering_parameters, voxelspacing=voxel
@@ -273,28 +273,22 @@ class Acdc(VisionDataset):
         Returns:
             np.ndarry of 2D voxel spacings
         """
-        return np.array([sample[AcdcTags.voxel_spacing][0:2] for sample in dataset])
+        return np.array([sample[MRITags.voxel_spacing][0:2] for sample in dataset])
 
 
-"""
-This script can be run to test and visualize the data from the dataset.
-"""
-if __name__ == "__main__":
+def visualize_dataset(dataset: ShortAxisMRI, predict: bool):
+    """Visualize the datasets images and gt.
+
+    Args:
+        dataset: dataset from which to get samples
+        predict: whether the dataset is in predict mode
+    """
     import random
-    from argparse import ArgumentParser
 
     from matplotlib import pyplot as plt
 
-    args = ArgumentParser(add_help=False)
-    args.add_argument("path", type=str)
-    args.add_argument("--use_da", action="store_true")
-    args.add_argument("--predict", action="store_true")
-    params = args.parse_args()
-
-    ds = Acdc(Path(params.path), image_set=Subset.TRAIN, predict=params.predict, use_da=params.use_da)
-
-    if params.predict:
-        patient = ds[random.randint(0, len(ds) - 1)]
+    if predict:
+        patient = dataset[random.randint(0, len(dataset) - 1)]
         instant = patient.instants[Instant.ED.value]
         img = instant.img
         gt = instant.gt
@@ -308,13 +302,13 @@ if __name__ == "__main__":
         gt = gt[slice]
 
     else:
-        sample = ds[random.randint(0, len(ds) - 1)]
-        img = sample[AcdcTags.img].squeeze()
-        gt = sample[AcdcTags.gt]
+        sample = dataset[random.randint(0, len(dataset) - 1)]
+        img = sample[MRITags.img].squeeze()
+        gt = sample[MRITags.gt]
         print("Image shape: {}".format(img.shape))
         print("GT shape: {}".format(gt.shape))
-        print("Voxel_spacing: {}".format(sample[AcdcTags.voxel_spacing]))
-        print("Slice index: {}".format(sample[AcdcTags.slice_index]))
+        print("Voxel_spacing: {}".format(sample[MRITags.voxel_spacing]))
+        print("Slice index: {}".format(sample[MRITags.slice_index]))
 
     f, (ax1, ax2) = plt.subplots(1, 2)
     ax1.imshow(img)

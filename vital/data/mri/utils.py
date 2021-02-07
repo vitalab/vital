@@ -1,8 +1,23 @@
-"""This file contains any helpful generic functions concerning acdc dataset."""
+"""This file contains any helpful generic functions concerning MRI datasets."""
 from typing import Tuple
 
 import numpy as np
 from skimage.util import crop
+
+
+def to_onehot(matrix: np.ndarray, nb_classes: int):
+    """Transform a matrix containing integer label class into a matrix containing one hot class labels.
+
+    The last dim of the matrix should be the category (classes).
+
+    Args:
+        matrix: A numpy matrix to convert into a categorical matrix.
+        nb_classes: int, number of classes
+
+    Returns:
+        A numpy array representing the categorical matrix of the input.
+    """
+    return matrix == np.arange(nb_classes)[np.newaxis, np.newaxis, np.newaxis, :]
 
 
 def centered_padding(image: np.ndarray, pad_size: Tuple[int, int], c_val: float = 0) -> np.ndarray:
@@ -80,3 +95,23 @@ def centered_resize(image: np.ndarray, size: Tuple[int, int], c_val: float = 0) 
         image = centered_padding(image, size, c_val)
 
     return image
+
+
+def centered_resize_gt(gt: np.ndarray, size: Tuple[int, int]) -> np.ndarray:
+    """Center and resize Gt.
+
+    Args:
+        gt: gt one hot segmentation map
+        size: size of the segmentation map after resize.
+
+    Returns:
+        Centered and resized gt.
+    """
+    gt = centered_resize(gt, size)
+
+    # Need to redo the background class due to resize
+    # that set the image border to 0
+    summed = np.clip(gt[..., 1:].sum(axis=-1), 0, 1)
+    gt[..., 0] = np.abs(1 - summed)
+
+    return gt
