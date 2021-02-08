@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Callable, Dict
 
 import h5py
+import numpy as np
 import torch
 
 from vital.data.config import Subset
@@ -36,6 +37,22 @@ class MandM(ShortAxisMRI):
         if self.image_set == Subset.UNLABELED.value:
             self.item_list = self._get_instant_paths()
             self.getter = self._get_unlabled_item
+
+    @staticmethod
+    def correct_gt_labels(gt: np.ndarray) -> np.ndarray:
+        """Correct the labels values for different datasets.
+
+        Args:
+            gt: categorical segmentation map either  ([N], H, W) or (H, W)
+
+        Returns:
+            gt with corrected class values
+        """
+        # FLip RV and LV class labels
+        copy = np.copy(gt)
+        copy[gt == 1] = 3
+        copy[gt == 3] = 1
+        return copy
 
     def _get_unlabled_item(self, index: int) -> Dict[str, torch.Tensor]:
         """Fetches data required for training on a labeled item (single image without groundtruth).

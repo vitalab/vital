@@ -142,7 +142,7 @@ class ShortAxisMRI(VisionDataset):
             patient_imgs, patient_gts = self._get_data(dataset, set_patient_instant_key, MRITags.img, MRITags.gt)
 
             img = patient_imgs[slice]
-            gt = patient_gts[slice]
+            gt = self.correct_gt_labels(patient_gts[slice])
 
             voxel = ShortAxisMRI._get_metadata(dataset, set_patient_instant_key, MRITags.voxel_spacing)
 
@@ -189,7 +189,7 @@ class ShortAxisMRI(VisionDataset):
 
                 # Transform arrays to tensor
                 imgs = torch.stack([self.transform(img) for img in imgs])
-                gts = torch.stack([self.target_transform(gt) for gt in gts]).squeeze()
+                gts = torch.stack([self.target_transform(self.correct_gt_labels(gt)) for gt in gts]).squeeze()
 
                 # Extract metadata concerning the registering applied
                 registering_parameters = None
@@ -206,6 +206,18 @@ class ShortAxisMRI(VisionDataset):
                 )
 
         return patient_data
+
+    @staticmethod
+    def correct_gt_labels(gt: np.ndarray) -> np.ndarray:
+        """Correct the labels values for different datasets.
+
+        Args:
+            gt: categorical segmentation map either  ([N], H, W) or (H, W)
+
+        Returns:
+            gt with corrected class values
+        """
+        return gt
 
     @staticmethod
     @squeeze
