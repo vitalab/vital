@@ -11,7 +11,7 @@ from pytorch_lightning.core.memory import ModelSummary
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
-from torchsummary import summary
+from torchinfo import summary
 
 from vital.data.config import DataParameters, Subset
 
@@ -67,9 +67,10 @@ class VitalSystem(pl.LightningModule, ABC):
             model_summary = summary(
                 self,
                 input_data=self.example_input_array,
-                verbose=0,
-                depth=sys.maxsize,
                 col_names=["input_size", "output_size", "kernel_size", "num_params"],
+                depth=sys.maxsize,
+                device=self.device,
+                verbose=0,
             )
             (self.log_dir / "summary.txt").write_text(str(model_summary))
         return super().summarize(mode)
