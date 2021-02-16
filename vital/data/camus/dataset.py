@@ -52,7 +52,7 @@ class Camus(VisionDataset):
         """
         super().__init__(path, transforms=transforms, transform=transform, target_transform=target_transform)
         self.fold = fold
-        self.image_set = image_set.value
+        self.image_set = image_set
         self.labels = labels
         self.use_sequence = use_sequence
         self.predict = predict
@@ -112,7 +112,7 @@ class Camus(VisionDataset):
             # List the patients
             groups = [
                 patient_path_byte.decode()
-                for patient_path_byte in dataset[f"cross_validation/fold_{self.fold}/{self.image_set}"]
+                for patient_path_byte in dataset[f"cross_validation/fold_{self.fold}/{self.image_set.value}"]
             ]
             if level == "view":
                 groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys()]
