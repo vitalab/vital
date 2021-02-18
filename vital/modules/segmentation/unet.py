@@ -53,7 +53,7 @@ class UNet(nn.Module):
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
                 nn.init.xavier_uniform_(m.weight)
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, features=False) -> Tensor:
         """Defines the computation performed at every call.
 
         Args:
@@ -75,7 +75,12 @@ class UNet(nn.Module):
         out = self.layer10(out, x2)
         out = self.layer11(out, x1)
 
-        return self.layer12(out)
+        out =  self.layer12(out)
+
+        if features:
+            return out, x6
+        else:
+            return out
 
 
 class _DoubleConv(nn.Module):
