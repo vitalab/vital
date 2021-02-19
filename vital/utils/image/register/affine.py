@@ -4,9 +4,7 @@ from typing import Dict, Mapping, Tuple, Union, overload
 import numpy as np
 from keras_preprocessing.image import ImageDataGenerator
 from PIL.Image import LINEAR
-from scipy import ndimage
 
-from vital.data.config import SemanticStructureId
 from vital.utils.format.numpy import to_categorical, to_onehot
 from vital.utils.image.transform import resize_image
 
@@ -324,25 +322,6 @@ class AffineRegisteringTransformer:
         if is_2d:  # If the segmentation was originally categorical
             image = np.squeeze(image)
         return image
-
-    @staticmethod
-    def _find_structure_center(
-        segmentation: np.ndarray, struct_label: SemanticStructureId, default_center: Shift = None
-    ) -> Shift:
-        """Extract the center of mass of a structure in a segmentation.
-
-        Args:
-            segmentation: Segmentation map for which to find the center of mass of a structure.
-            struct_label: Label(s) identifying the structure for which to find the center of mass.
-            default_center: Default center of mass to use in case the structure is not present in the segmentation.
-
-        Returns:
-            Center of mass of the structure in the segmentation.
-        """
-        center = ndimage.measurements.center_of_mass(np.isin(to_categorical(segmentation), struct_label))
-        if any(np.isnan(center)):
-            center = default_center if default_center else (segmentation.shape[0] // 2, segmentation.shape[1] // 2)
-        return center
 
     def _compute_shift_parameters(self, segmentation: np.ndarray) -> Shift:
         """Computes the pixel shift to apply along each axis to center the segmentation.
