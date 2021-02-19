@@ -19,14 +19,14 @@ class Measure:
         """Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 
         Args:
-            segmentation: (H, W), Segmentation in which to identify the coordinates of the bbox.
+            segmentation: ([N], H, W), Segmentation in which to identify the coordinates of the bbox.
             labels: Labels of the classes that are part of the ROI.
             bbox_margin: Ratio by which to enlarge the bbox from the closest possible fit, so as to leave a slight
                 margin at the edges of the bbox.
             normalize: If ``True``, normalizes the bbox coordinates from between 0 and H or W to between 0 and 1.
 
         Returns:
-            Coordinates of the bbox, in the following order: row_min, col_min, row_max, col_max.
+            ([N], 4), Coordinates of the bbox, in the following order: row_min, col_min, row_max, col_max.
         """
         # Only keep ROI from the groundtruth
         roi_mask = np.isin(segmentation, labels)
@@ -64,7 +64,7 @@ class Measure:
         """Gives the pixel-indices of a bounding box (bbox) w.r.t an output size based on the bbox's normalized coord.
 
         Args:
-            roi_bbox: (N, 4), Normalized coordinates of the bbox, in the following order:
+            roi_bbox: ([N], 4), Normalized coordinates of the bbox, in the following order:
                 row_min, col_min, row_max, col_max.
             output_size: (H, W), Size for which to compute pixel-indices based on the normalized coordinates.
             check_bounds: If ``True``, perform various checks on the denormalized coordinates:
@@ -73,7 +73,7 @@ class Measure:
                 - ensure that the bbox is at least one pixel wide in each dimension
 
         Returns:
-            Coordinates of the bbox, in the following order: row_min, col_min, row_max, col_max.
+            ([N], 4), Coordinates of the bbox, in the following order: row_min, col_min, row_max, col_max.
         """
         # Copy input data to ensure we don't write over user data
         roi_bbox = np.copy(roi_bbox)
