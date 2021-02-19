@@ -15,6 +15,20 @@ class Measure:
 
     @staticmethod
     @auto_cast_data
+    def structure_area(segmentation: T, labels: SemanticStructureId) -> T:
+        """Computes the number of pixels, in a segmentation map, associated to a structure.
+
+        Args:
+            segmentation: ([N], H, W), Segmentation in which to identify the number of pixels of the structure.
+            labels: Labels of the classes that are part of the structure for which to count the number of pixels.
+
+        Returns:
+            ([N], 1), Number of pixels associated to the structure, in each segmentation of the batch.
+        """
+        return np.isin(segmentation, labels).sum((-2, -1))[..., None]
+
+    @staticmethod
+    @auto_cast_data
     def bbox(segmentation: T, labels: SemanticStructureId, bbox_margin: Real = 0.05, normalize: bool = False) -> T:
         """Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 
