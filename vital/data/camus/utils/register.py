@@ -53,9 +53,9 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
         Returns:
             Angle of the rotation to align the major axis of the left ventricle with the vertical axis.
         """
-        return tuple(
-            Measure.structure_orientation(to_categorical(segmentation), Label.ENDO.value, reference_orientation=90)
-        )
+        return Measure.structure_orientation(
+            to_categorical(segmentation), Label.ENDO.value, reference_orientation=90
+        ).item()
 
     def _compute_crop_parameters(self, segmentation: np.ndarray, margin: float = 0.05) -> Crop:
         """Computes the coordinates of an isotropic bounding box around all segmented classes.
