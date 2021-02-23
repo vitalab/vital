@@ -54,8 +54,8 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
         if stage == "test":
             self.dataset[Subset.TEST] = Camus(image_set=Subset.TEST, predict=True, **self._dataset_kwargs)
 
-    def train_group_ids(self, level: Literal["patient", "view"] = "view") -> List[str]:
-        """Lists the IDs of the different levels of groups/clusters samples in the training data can belong to.
+    def group_ids(self, subset: Subset, level: Literal["patient", "view"] = "view") -> List[str]:
+        """Lists the IDs of the different levels of groups/clusters samples in the data can belong to.
 
         Args:
             level: Hierarchical level at which to group data samples.
@@ -63,24 +63,10 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
                 - 'view': all the data from the same view of a patient is associated to a unique ID.
 
         Returns:
-            IDs of the different levels of groups/clusters samples in the training data can belong to.
+            IDs of the different levels of groups/clusters samples in the data can belong to.
         """
-        train_data = self.dataset.get(Subset.TRAIN, Camus(image_set=Subset.TRAIN, **self._dataset_kwargs))
-        return train_data.list_groups(level=level)
-
-    def val_group_ids(self, level: Literal["patient", "view"] = "view") -> List[str]:
-        """Lists the IDs of the different levels of groups/clusters samples in the validation data can belong to.
-
-        Args:
-            level: Hierarchical level at which to group data samples.
-                - 'patient': all the data from the same patient is associated to a unique ID.
-                - 'view': all the data from the same view of a patient is associated to a unique ID.
-
-        Returns:
-            IDs of the different levels of groups/clusters samples in the validation data can belong to.
-        """
-        val_data = self.dataset.get(Subset.VAL, Camus(image_set=Subset.VAL, **self._dataset_kwargs))
-        return val_data.list_groups(level=level)
+        subset_data = self.dataset.get(subset, Camus(image_set=subset, **self._dataset_kwargs))
+        return subset_data.list_groups(level=level)
 
     def train_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(
