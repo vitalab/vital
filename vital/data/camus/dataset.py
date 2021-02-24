@@ -1,3 +1,4 @@
+import itertools
 from pathlib import Path
 from typing import Callable, Dict, List, Literal, Sequence, Tuple, Union
 
@@ -30,6 +31,7 @@ class Camus(VisionDataset):
         labels: Sequence[Label] = Label,
         use_sequence: bool = False,
         predict: bool = False,
+        neighbors: Union[int, Sequence[int]] = 0,
         transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
         transform: Callable[[Tensor], Tensor] = None,
         target_transform: Callable[[Tensor], Tensor] = None,
@@ -42,6 +44,9 @@ class Camus(VisionDataset):
             labels: Labels of the segmentation classes to take into account.
             use_sequence: Whether to use the complete sequence between ED and ES for each view.
             predict: Whether to receive the data in a format fit for inference (``True``) or training (``False``).
+            neighbors: Neighboring frames to include in a train/val item. The value either indicates the number of
+                neighboring frames on each side of the item's frame (`int`), or a list of offsets w.r.t the item's
+                frame (`Sequence[int]`).
             transforms: Function that takes in an input/target pair and transforms them in a corresponding way.
                 (only applied when `predict` is `False`, i.e. in train/validation mode)
             transform: Function that takes in an input and transforms it.
@@ -59,6 +64,7 @@ class Camus(VisionDataset):
         self.labels = labels
         self.use_sequence = use_sequence
         self.predict = predict
+        self.neighbors = neighbors
 
         with h5py.File(path, "r") as f:
             self.registered_dataset = f.attrs[CamusTags.registered]
@@ -149,11 +155,15 @@ class Camus(VisionDataset):
                         image_paths.append((view_path, instant))
         return image_paths
 
-    def _get_train_item(self, index: int) -> Dict[str, Union[str, Tensor]]:
+    def _get_train_item(
+        self, index: int, include_neighbors: bool = True
+    ) -> Dict[str, Union[str, Tensor, Dict[str, Union[str, Tensor]]]]:
         """Fetches data required for training on a train/val item (single image/groundtruth pair).
 
         Args:
             index: Index of the train/val sample in the train/val set's ``self.item_list``.
+            include_neighbors: Flag to indicate whether to search this item's neighbors. Useful parameter to break
+                infinite recursion when the method was called on an item's neighbors.
 
         Returns:
             Data for training on a train/val item.
@@ -173,6 +183,23 @@ class Camus(VisionDataset):
         if self.transforms:
             img, gt = self.transforms(img, gt)
 
+        neighbors = {}
+        if self.neighbors and include_neighbors:
+            # Determine the requested neighbors' offset to the current item
+            if isinstance(self.neighbors, int):  # If `neighbors` indicates the number of neighbors on each side
+                instant_diffs = itertools.chain(range(-self.neighbors, 0), range(1, self.neighbors + 1))
+            else:  # If `neighbors` is a list of the neighbors offset w.r.t the current item
+                instant_diffs = neighbors
+
+            # Fetch the neighbors' data
+            neighbors = {
+                instant_diff: self._get_train_item(
+                    self.item_list.index((patient_view_key, (instant + instant_diff) % len(img))),
+                    include_neighbors=False,
+                )
+                for instant_diff in instant_diffs
+            }
+
         # Compute attributes on the data
         frame_pos = torch.tensor([instant / len(view_imgs)])
         gt_attrs = get_segmentation_attributes(gt, self.labels)
@@ -184,6 +211,7 @@ class Camus(VisionDataset):
             CamusTags.gt: gt,
             CamusTags.frame_pos: frame_pos,
             **gt_attrs,
+            CamusTags.neighbors: neighbors,
         }
 
     def _get_test_item(self, index: int) -> PatientData:

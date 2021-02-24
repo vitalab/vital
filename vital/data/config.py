@@ -66,6 +66,7 @@ class Tags:
     Args:
         id: Tag referring to a unique identifier for the data.
         group: Tag referring to an identifier for the group the data belongs to.
+        neighbors: Tag referring to an item's neighbor, provided alongside the item itself.
         img: Tag referring to images.
         gt: Tag referring to groundtruths, used as reference when evaluating models' scores.
         pred: Tag referring to original predictions.
@@ -75,6 +76,7 @@ class Tags:
 
     id: str = "id"
     group: str = "group"
+    neighbors: str = "neighbors"
     img: str = "img"
     gt: str = "gt"
     pred: str = "pred"
