@@ -2,14 +2,12 @@ from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from shutil import copy2
-from typing import List, Type
+from typing import Type
 
-from pytorch_lightning import Callback, Trainer
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning import Trainer
 
 from vital.systems.system import VitalSystem
 from vital.utils.logging import configure_logging
-from vital.utils.parsing import StoreDictKeyPair
 
 
 class VitalRunner(ABC):
@@ -37,14 +35,7 @@ class VitalRunner(ABC):
         if hparams.resume:
             trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path)
         else:
-            trainer = Trainer.from_argparse_args(
-                hparams,
-                callbacks=[
-                    ModelCheckpoint(**hparams.model_checkpoint_kwargs),
-                    EarlyStopping(**hparams.early_stopping_kwargs),
-                    *cls._get_callbacks(hparams),
-                ],
-            )
+            trainer = Trainer.from_argparse_args(hparams)
 
         if not hparams.fast_dev_run:
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
@@ -136,18 +127,6 @@ class VitalRunner(ABC):
         raise NotImplementedError
 
     @classmethod
-    def _get_callbacks(cls, hparams: Namespace) -> List[Callback]:
-        """Initialize, through the parameters specified in the CLI, the callbacks to use in this run.
-
-        Args:
-            hparams: Arguments parsed from the CLI.
-
-        Returns:
-            Callbacks to pass to the Lightning `Trainer`.
-        """
-        return []
-
-    @classmethod
     def _add_generic_args(cls, parser: ArgumentParser) -> ArgumentParser:
         """Adds to the parser object some generic arguments useful for running a system.
 
@@ -157,22 +136,6 @@ class VitalRunner(ABC):
         Returns:
             Parser object to which generic custom arguments have been added.
         """
-        # callback parameters
-        parser.add_argument(
-            "--model_checkpoint_kwargs",
-            action=StoreDictKeyPair,
-            default=dict(),
-            metavar="ARG1=VAL1,ARG2=VAL2...",
-            help="Parameters for Lightning's built-in model checkpoint callback",
-        )
-        parser.add_argument(
-            "--early_stopping_kwargs",
-            action=StoreDictKeyPair,
-            default=dict(),
-            metavar="ARG1=VAL1,ARG2=VAL2...",
-            help="Parameters for Lightning's built-in early stopping callback",
-        )
-
         # save/load parameters
         parser.add_argument("--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system")
         parser.add_argument(
