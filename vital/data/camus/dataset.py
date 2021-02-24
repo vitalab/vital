@@ -15,6 +15,8 @@ from vital.data.config import Subset
 from vital.utils.decorators import squeeze
 from vital.utils.image.transform import remove_labels, segmentation_to_tensor
 
+ItemId = Tuple[str, int]
+
 
 class Camus(VisionDataset):
     """Implementation of torchvision's ``VisionDataset`` for the CAMUS dataset."""
@@ -119,7 +121,7 @@ class Camus(VisionDataset):
 
         return groups
 
-    def _get_instant_paths(self) -> List[Tuple[str, int]]:
+    def _get_instant_paths(self) -> List[ItemId]:
         """Lists paths to the instants, from the requested ``self.image_set``, inside the HDF5 file.
 
         Returns:
@@ -173,7 +175,13 @@ class Camus(VisionDataset):
             img, gt = self.transforms(img, gt)
         frame_pos = torch.tensor([frame_pos])
 
-        return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.frame_pos: frame_pos}
+        return {
+            CamusTags.id: f"{patient_view_key}/{instant}",
+            CamusTags.group: patient_view_key,
+            CamusTags.img: img,
+            CamusTags.gt: gt,
+            CamusTags.frame_pos: frame_pos,
+        }
 
     def _get_test_item(self, index: int) -> PatientData:
         """Fetches data required for inference on a test item, i.e. a patient.
