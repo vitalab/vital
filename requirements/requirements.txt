@@ -11,7 +11,7 @@ tqdm
 SimpleITK
 torch>=1.7
 torchvision>=0.8
-pytorch-lightning>=1.1
+pytorch-lightning>=1.2
 torchinfo
 comet-ml
 Keras-Preprocessing

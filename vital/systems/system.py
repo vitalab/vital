@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Literal, Mapping, Union
 
 import pytorch_lightning as pl
 import torch
+from pytorch_lightning import Callback
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.core.memory import ModelSummary
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
@@ -14,6 +16,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchinfo import summary
 
 from vital.data.config import DataParameters, Subset
+from vital.utils.parsing import StoreDictKeyPair
 
 
 class VitalSystem(pl.LightningModule, ABC):
@@ -75,6 +78,12 @@ class VitalSystem(pl.LightningModule, ABC):
             (self.log_dir / "summary.txt").write_text(str(model_summary))
         return super().summarize(mode)
 
+    def configure_callbacks(self) -> List[Callback]:  # noqa: D102
+        return [
+            ModelCheckpoint(**self.hparams.model_checkpoint_kwargs),
+            EarlyStopping(**self.hparams.early_stopping_kwargs),
+        ]
+
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
 
@@ -94,6 +103,20 @@ class VitalSystem(pl.LightningModule, ABC):
             Parser object that supports command line arguments specific to a system.
         """
         parser = ArgumentParser(add_help=False)
+        parser.add_argument(
+            "--model_checkpoint_kwargs",
+            action=StoreDictKeyPair,
+            default=dict(),
+            metavar="ARG1=VAL1,ARG2=VAL2...",
+            help="Parameters for Lightning's built-in model checkpoint callback",
+        )
+        parser.add_argument(
+            "--early_stopping_kwargs",
+            action=StoreDictKeyPair,
+            default=dict(),
+            metavar="ARG1=VAL1,ARG2=VAL2...",
+            help="Parameters for Lightning's built-in early stopping callback",
+        )
         return cls.add_evaluation_args(cls.add_computation_args(cls.add_data_manager_args(parser)))
 
 
