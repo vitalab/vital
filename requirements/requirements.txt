@@ -7,6 +7,7 @@ scikit-image
 scikit-learn
 pandas
 h5py
+PyYAML
 tqdm
 SimpleITK
 torch>=1.7
