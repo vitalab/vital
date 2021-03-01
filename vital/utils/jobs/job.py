@@ -79,7 +79,7 @@ class Job(ABC):
         if submit_success := result.returncode == 0:
             logger.info(f"Launched job {self._job_script_path} \n")
         else:
-            logger.info("Launch failed... \n")
+            logger.warning("Launch failed... \n")
         return submit_success
 
     @abstractmethod
