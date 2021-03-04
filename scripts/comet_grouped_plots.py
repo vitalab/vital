@@ -130,6 +130,11 @@ def plot_mean_std_curve(
         scale: Scale to use when plotting the metric's values.
             Valid scales are those supported by matplotlib (link in the refs).
     """
+    # Ensure that matplotlib is using 'agg' backend
+    # to avoid possible 'Could not connect to any X display' errors
+    # when no X server is available, e.g. in remote terminal
+    plt.switch_backend("agg")
+
     plot_title = f"{metric} w.r.t. {group_by}"
     logger.info(f"Generating {plot_title} plot ...")
 
