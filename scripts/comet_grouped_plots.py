@@ -34,6 +34,9 @@ def get_workspace_experiment_keys(
     Returns:
         Keys of some experiments from the workspace/project.
     """
+    exclude_tags = exclude_tags if exclude_tags else []
+    include_by_default = include_tags is None
+
     # Get all the experiments in workspace
     config = get_config()
     workspace, project = config["comet.workspace"], config["comet.project_name"]
@@ -45,7 +48,7 @@ def get_workspace_experiment_keys(
     # Only keep experiments with the requested metadata
     experiment_keys = []
     for experiment in workspace_experiments:
-        any_include_tag = any(experiment_has_tag(experiment, tag) for tag in include_tags)
+        any_include_tag = include_by_default or any(experiment_has_tag(experiment, tag) for tag in include_tags)
         any_exclude_tag = any(experiment_has_tag(experiment, tag) for tag in exclude_tags)
         if any_include_tag and not any_exclude_tag:
             experiment_keys.append(experiment.id)
