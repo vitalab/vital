@@ -4,7 +4,8 @@ from pathlib import Path
 from shutil import copy2
 from typing import List, Type
 
-from pytorch_lightning import Callback, Trainer
+import torch
+from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import CometLogger
 
@@ -36,6 +37,8 @@ class VitalRunner(ABC):
         Args:
             hparams: Arguments parsed from the CLI.
         """
+        seed_everything(hparams.seed)
+
         # Use Comet for logging if a path to a Comet config file is provided
         # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
         logger = True
@@ -67,6 +70,10 @@ class VitalRunner(ABC):
             model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams))
         else:
             model = system_cls(**vars(hparams))
+            if hparams.weights:
+                map_location = None if torch.cuda.is_available() else torch.device("cpu")
+                checkpoint = torch.load(hparams.weights, map_location=map_location)
+                model.load_state_dict(checkpoint["state_dict"], strict=False)
 
         if hparams.train:
             trainer.fit(model)
@@ -213,7 +220,13 @@ class VitalRunner(ABC):
         )
 
         # save/load parameters
-        parser.add_argument("--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system")
+        loading_group = parser.add_mutually_exclusive_group()
+        loading_group.add_argument(
+            "--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system"
+        )
+        loading_group.add_argument(
+            "--weights", type=Path, help="Path to Lightning module checkpoints to restore system weights"
+        )
         parser.add_argument(
             "--resume",
             action="store_true",
@@ -225,6 +238,14 @@ class VitalRunner(ABC):
             "--skip_train", dest="train", action="store_false", help="Skip training and do test/evaluation phase"
         )
         parser.add_argument("--skip_test", dest="test", action="store_false", help="Skip test/evaluation phase")
+
+        # seed parameter
+        parser.add_argument(
+            "--seed",
+            type=int,
+            default=None,
+            help="Seed for reproducibility. If None, seed will be set randomly",
+        )
 
         return parser
 
