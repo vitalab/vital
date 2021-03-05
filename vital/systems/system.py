@@ -45,6 +45,9 @@ class VitalSystem(pl.LightningModule, ABC):
         # By default, assumes the provided data shape is in channel-first format
         self.example_input_array = torch.randn((self.hparams.batch_size, *self.hparams.data_params.in_shape))
 
+    def on_pretrain_routine_start(self) -> None:  # noqa: D102
+        self.log_dir.mkdir(parents=True, exist_ok=True)  # Ensure output directory exists
+
     @property
     def log_dir(self) -> Path:
         """Returns the root directory where test logs get saved."""
@@ -61,15 +64,14 @@ class VitalSystem(pl.LightningModule, ABC):
               device incompatibilities in clusters.
         """
         if mode is not None:
-            with open(str(self.log_dir / "summary.txt"), "w") as f:
-                model_summary = summary(
-                    self,
-                    input_data=self.example_input_array,
-                    verbose=0,
-                    depth=sys.maxsize,
-                    col_names=["input_size", "output_size", "kernel_size", "num_params"],
-                )
-                f.write(str(model_summary))
+            model_summary = summary(
+                self,
+                input_data=self.example_input_array,
+                verbose=0,
+                depth=sys.maxsize,
+                col_names=["input_size", "output_size", "kernel_size", "num_params"],
+            )
+            (self.log_dir / "summary.txt").write_text(str(model_summary))
         return super().summarize(mode)
 
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
@@ -77,7 +79,7 @@ class VitalSystem(pl.LightningModule, ABC):
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
-        """Builds a parser object that supports CL arguments specific to a system.
+        """Builds a parser object that supports command line arguments specific to a system.
 
         Must be overridden to add generic arguments whose default values are implementation specific (listed below).
             - 'batch_size'
@@ -88,7 +90,7 @@ class VitalSystem(pl.LightningModule, ABC):
         Generic arguments with model specific values:
 
         Returns:
-            Parser object that supports CL arguments specific to a system.
+            Parser object that supports command line arguments specific to a system.
         """
         parser = ArgumentParser(add_help=False)
         return cls.add_evaluation_args(cls.add_computation_args(cls.add_data_manager_args(parser)))
@@ -100,11 +102,15 @@ class SystemDataManagerMixin(VitalSystem, ABC):
     data_params: DataParameters
     dataset: Mapping[Subset, Dataset]
 
-    def prepare_data(self) -> None:  # noqa: D102
+    def prepare_data(self) -> None:
+        """Runs data setup might write to disk or that need to be done only from a single GPU in distributed settings.
+
+        This is the ideal place to download the dataset.
+        """
         pass
 
     def setup(self, stage: Literal["fit", "test"]) -> None:
-        """Set state to the model before requesting the dataloaders.
+        """Runs data setup you might want to perform on every GPU, e.g. assigning the state.
 
         This is the ideal place to initialize the ``Dataset`` instances.
         """

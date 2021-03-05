@@ -10,9 +10,9 @@ from torchvision.transforms.functional import to_tensor
 
 from vital.data.camus.config import CamusTags, Label
 from vital.data.camus.data_struct import PatientData, ViewData
+from vital.data.camus.utils.register import CamusRegisteringTransformer
 from vital.data.config import Subset
 from vital.utils.decorators import squeeze
-from vital.utils.image.register.camus import CamusRegisteringTransformer
 from vital.utils.image.transform import remove_labels, segmentation_to_tensor
 
 

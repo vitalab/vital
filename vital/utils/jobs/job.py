@@ -41,7 +41,7 @@ class Job(ABC):
             job_name: Name of the job registered to SLURM.
             save_dir: Path of the directory where to save the generated script and the optional SLURM logs produced.
             setup_options: Collection of configuration options describing how to setup the job to run inside the script.
-            script_args: Literal string of arguments to pass to the main script.
+            script_args: String of arguments to pass to the main script.
             enable_log_out: Whether to enable a dedicated log for the standard output of the script.
                 Output log saved to `save_dir`/'output.out' if enabled.
             enable_log_err: Whether to enable a dedicated log for the error output of the script.
@@ -61,10 +61,9 @@ class Job(ABC):
 
         This method is mainly expected to be used for testing, i.e. to check the generated script before launching it.
         """
-        logger.info(f"writing {self._job_name} job's script...")
+        logger.info(f"Writing {self._job_name} job's script...")
         self._job_script_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self._job_script_path, mode="w") as file:
-            file.write(self._build_script_str())
+        self._job_script_path.write_text(self._build_script_str())
 
     def submit(self) -> bool:
         """Writes the job's script to disk and launches the job using `self.RUN_CMD`.
@@ -75,12 +74,12 @@ class Job(ABC):
         self.write_script()
 
         # run script to launch job
-        logger.info("launching job...")
+        logger.info("Launching job...")
         result = subprocess.run(f"{self.RUN_CMD} {self._job_script_path}", shell=True)
         if submit_success := result.returncode == 0:
-            logger.info(f"launched job {self._job_script_path} \n")
+            logger.info(f"Launched job {self._job_script_path} \n")
         else:
-            logger.info("launch failed... \n")
+            logger.warning("Launch failed... \n")
         return submit_success
 
     @abstractmethod
