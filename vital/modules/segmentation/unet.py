@@ -1,3 +1,5 @@
+from typing import Union, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,6 +21,7 @@ class UNet(nn.Module):
         use_batchnorm: bool = True,
         bilinear: bool = False,
         dropout_prob: float = 0.0,
+        return_features=False,
     ):  # noqa: D205,D212,D415
         """
         Args:
@@ -33,6 +36,7 @@ class UNet(nn.Module):
             dropout_prob: probability from dropout layers.
         """
         super().__init__()
+        self.return_features = return_features
         self.layer1 = _DoubleConv(in_channels, init_channels // 2, dropout_prob / 2, use_batchnorm)
         self.layer2 = _Down(init_channels // 2, init_channels, dropout_prob, use_batchnorm)
         self.layer3 = _Down(init_channels, init_channels * 2, dropout_prob, use_batchnorm)
@@ -53,7 +57,7 @@ class UNet(nn.Module):
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
                 nn.init.xavier_uniform_(m.weight)
 
-    def forward(self, x: Tensor, features=False) -> Tensor:
+    def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """Defines the computation performed at every call.
 
         Args:
@@ -75,9 +79,9 @@ class UNet(nn.Module):
         out = self.layer10(out, x2)
         out = self.layer11(out, x1)
 
-        out =  self.layer12(out)
+        out = self.layer12(out)
 
-        if features:
+        if self.return_features:
             return out, x6
         else:
             return out
