@@ -78,9 +78,11 @@ class VitalRunner(ABC):
             trainer.fit(model)
 
             if not hparams.fast_dev_run:
-                # Copy best model checkpoint to a predictable path
+                # Copy best model checkpoint to a predictable path + online tracker (if used)
                 best_model_path = cls._best_model_path(log_dir, hparams)
                 copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
+                if hparams.comet_config:
+                    trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
 
                 # Ensure we use the best weights (and not the latest ones) by loading back the best model
                 model = system_cls.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
