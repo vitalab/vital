@@ -4,7 +4,8 @@ from pathlib import Path
 from shutil import copy2
 from typing import List, Type
 
-from pytorch_lightning import Callback, Trainer
+import torch
+from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import CometLogger
 
@@ -36,6 +37,8 @@ class VitalRunner(ABC):
         Args:
             hparams: Arguments parsed from the CLI.
         """
+        seed_everything(hparams.seed)
+
         # Use Comet for logging if a path to a Comet config file is provided
         # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
         logger = True
@@ -63,10 +66,13 @@ class VitalRunner(ABC):
             cls._configure_logging(log_dir, hparams)
 
         system_cls = cls._get_selected_system(hparams)
-        if hparams.ckpt_path:  # Load pretrained model if checkpoint is provided
-            model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams))
+        if hparams.ckpt_path and not hparams.weights_only:  # Load pretrained model if checkpoint is provided
+            model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams), strict=hparams.strict_load)
         else:
             model = system_cls(**vars(hparams))
+            if hparams.ckpt_path and hparams.weights_only:
+                checkpoint = torch.load(hparams.weights, map_location=model.device)
+                model.load_state_dict(checkpoint["state_dict"], strict=hparams.strict_load)
 
         if hparams.train:
             trainer.fit(model)
@@ -214,6 +220,13 @@ class VitalRunner(ABC):
 
         # save/load parameters
         parser.add_argument("--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system")
+        parser.add_argument("--weights_only", action="store_true", help="Load only weights from ckpt_path")
+        parser.add_argument(
+            "--no_strict_load",
+            dest="strict_load",
+            action="store_false",
+            help="Disable strict enforcing of keys when loading state dict",
+        )
         parser.add_argument(
             "--resume",
             action="store_true",
@@ -225,6 +238,9 @@ class VitalRunner(ABC):
             "--skip_train", dest="train", action="store_false", help="Skip training and do test/evaluation phase"
         )
         parser.add_argument("--skip_test", dest="test", action="store_false", help="Skip test/evaluation phase")
+
+        # seed parameter
+        parser.add_argument("--seed", type=int, help="Seed for reproducibility. If None, seed will be set randomly")
 
         return parser
 
