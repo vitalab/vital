@@ -67,7 +67,7 @@ class VitalRunner(ABC):
 
         system_cls = cls._get_selected_system(hparams)
         if hparams.ckpt_path and not hparams.weights_only:  # Load pretrained model if checkpoint is provided
-            model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams))
+            model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams), strict=hparams.strict_load)
         else:
             model = system_cls(**vars(hparams))
             if hparams.ckpt_path and hparams.weights_only:
@@ -225,7 +225,7 @@ class VitalRunner(ABC):
             "--no_strict_load",
             dest="strict_load",
             action="store_false",
-            help="Whether to NOT strictly enforce keys when loading state dict",
+            help="Disable strict enforcing of keys when loading state dict",
         )
         parser.add_argument(
             "--resume",
