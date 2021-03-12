@@ -4,9 +4,12 @@ from pathlib import Path
 from shutil import copy2
 from typing import Type
 
-from pytorch_lightning import Trainer
+import torch
+from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning.loggers import CometLogger
 
 from vital.systems.system import VitalSystem
+from vital.utils.config import read_ini_config
 from vital.utils.logging import configure_logging
 
 
@@ -32,28 +35,44 @@ class VitalRunner(ABC):
         Args:
             hparams: Arguments parsed from the CLI.
         """
+        seed_everything(hparams.seed)
+
+        # Use Comet for logging if a path to a Comet config file is provided
+        # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
+        logger = True
+        if hparams.comet_config and not hparams.fast_dev_run:
+            logger = cls._configure_comet_logger(hparams)
+
         if hparams.resume:
-            trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path)
+            trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path, logger=logger)
         else:
-            trainer = Trainer.from_argparse_args(hparams)
+            trainer = Trainer.from_argparse_args(hparams, logger=logger)
+
+        # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
+        log_dir = Path(trainer.log_dir) if trainer.log_dir else hparams.default_root_dir
 
         if not hparams.fast_dev_run:
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
-            cls._configure_logging(Path(trainer.log_dir), hparams)
+            cls._configure_logging(log_dir, hparams)
 
         system_cls = cls._get_selected_system(hparams)
-        if hparams.ckpt_path:  # Load pretrained model if checkpoint is provided
-            model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams))
+        if hparams.ckpt_path and not hparams.weights_only:  # Load pretrained model if checkpoint is provided
+            model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams), strict=hparams.strict_load)
         else:
             model = system_cls(**vars(hparams))
+            if hparams.ckpt_path and hparams.weights_only:
+                checkpoint = torch.load(hparams.weights, map_location=model.device)
+                model.load_state_dict(checkpoint["state_dict"], strict=hparams.strict_load)
 
         if hparams.train:
             trainer.fit(model)
 
             if not hparams.fast_dev_run:
-                # Copy best model checkpoint to a predictable path
-                best_model_path = cls._best_model_path(Path(trainer.log_dir), hparams)
+                # Copy best model checkpoint to a predictable path + online tracker (if used)
+                best_model_path = cls._best_model_path(log_dir, hparams)
                 copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
+                if hparams.comet_config:
+                    trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
 
                 # Ensure we use the best weights (and not the latest ones) by loading back the best model
                 model = system_cls.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
@@ -73,6 +92,26 @@ class VitalRunner(ABC):
             hparams: Arguments parsed from the CLI.
         """
         configure_logging(log_to_console=True, log_file=log_dir / "run.log")
+
+    @classmethod
+    def _configure_comet_logger(cls, hparams: Namespace) -> CometLogger:
+        """Builds a ``CometLogger`` instance using the content of the Comet configuration file.
+
+        Notes:
+            - The Comet configuration file should follow the `.comet.config` format. See Comet's documentation for more
+              details: https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables
+
+        Args:
+            hparams: Arguments parsed from the CLI.
+
+        Returns:
+            Instance of ``CometLogger`` built using the content of the Comet configuration file.
+        """
+        comet_config = read_ini_config(hparams.comet_config)["comet"]
+        offline = comet_config.getboolean("offline", fallback=False)
+        if "offline" in comet_config:
+            del comet_config["offline"]
+        return CometLogger(**dict(comet_config), offline=offline)
 
     @classmethod
     def _best_model_path(cls, log_dir: Path, hparams: Namespace) -> Path:
@@ -136,8 +175,22 @@ class VitalRunner(ABC):
         Returns:
             Parser object to which generic custom arguments have been added.
         """
+        # logging parameters
+        parser.add_argument(
+            "--comet_config",
+            type=Path,
+            help="Path to Comet configuration file, if you want to track the experiment using Comet",
+        )
+
         # save/load parameters
         parser.add_argument("--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system")
+        parser.add_argument("--weights_only", action="store_true", help="Load only weights from ckpt_path")
+        parser.add_argument(
+            "--no_strict_load",
+            dest="strict_load",
+            action="store_false",
+            help="Disable strict enforcing of keys when loading state dict",
+        )
         parser.add_argument(
             "--resume",
             action="store_true",
@@ -149,6 +202,9 @@ class VitalRunner(ABC):
             "--skip_train", dest="train", action="store_false", help="Skip training and do test/evaluation phase"
         )
         parser.add_argument("--skip_test", dest="test", action="store_false", help="Skip test/evaluation phase")
+
+        # seed parameter
+        parser.add_argument("--seed", type=int, help="Seed for reproducibility. If None, seed will be set randomly")
 
         return parser
 
