@@ -1,7 +1,7 @@
 import torch
-from pytorch_lightning.metrics.utils import reduce
 from torch import Tensor
 from torch.nn import functional as F
+from torchmetrics.utilities.distributed import reduce
 
 
 def tversky_score(
