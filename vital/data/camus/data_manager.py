@@ -22,8 +22,9 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
         Args:
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
-        # Skip inferring the data params from the dataset if we're loading from a checkpoint,
-        # since the info is provided by the checkpoint, and we might not be able to load the dataset from the same path
+        # If we're initializing a model for the first time, infer the shape of the data from the content of the dataset.
+        # If we're loading a model from a checkpoint, skip the data shape inference since it was saved inside the
+        # checkpoint, plus we should not assume that we could load the dataset from the path used during training.
         if not kwargs["ckpt_path"]:
             # Extract the shape of the images from the dataset
             try:
