@@ -276,10 +276,10 @@ class Acdc(VisionDataset):
         return np.array([sample[AcdcTags.voxel_spacing][0:2] for sample in dataset])
 
 
-"""
-This script can be run to test and visualize the data from the dataset.
-"""
 if __name__ == "__main__":
+    """
+    This script can be run to test and visualize the data from the dataset.
+    """
     import random
     from argparse import ArgumentParser
 

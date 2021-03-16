@@ -36,9 +36,9 @@ class SegmentationToTensor(torch.nn.Module):
         """Converts the segmentation map to a tensor.
 
         Args:
-            segmentation: ([N], H, W, [C]), Segmentation map to convert to a tensor.
+            segmentation: ([N], H, W), Segmentation map to convert to a tensor.
 
         Returns:
-            ([N], [C], H, W), Segmentation map converted to a tensor.
+            ([N], H, W), Segmentation map converted to a tensor.
         """
         return segmentation_to_tensor(data)
