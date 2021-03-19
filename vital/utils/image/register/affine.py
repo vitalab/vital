@@ -9,9 +9,17 @@ from vital.utils.format.numpy import to_categorical, to_onehot
 from vital.utils.image.transform import resize_image
 
 Shift = Tuple[int, int]
+"""Pixel shift along each axis."""
+
 Rotation = float
-Zoom = Tuple[int, int]
+"""Angle of the rotation."""
+
+Zoom = Tuple[float, float]
+"""Zoom along each axis."""
+
 Crop = Tuple[int, int, int, int, int, int]
+"""Original shape and coord. of the bbox, in the following order: height, width, row_min, col_min, row_max, col_max."""
+
 RegisteringParameter = Union[Shift, Rotation, Zoom, Crop]
 
 
