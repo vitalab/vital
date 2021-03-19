@@ -4,7 +4,7 @@ from typing import Dict, List, Literal
 
 from torch.utils.data import DataLoader
 
-from vital.data.camus.config import Label, image_size, in_channels
+from vital.data.camus.config import CamusTags, Label, in_channels
 from vital.data.camus.dataset import Camus
 from vital.data.config import DataParameters, Subset
 from vital.data.mixins import StructuredDataMixin
@@ -22,12 +22,24 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
         Args:
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
-        # Propagate data_params to allow model to adapt to data config
-        # Overrides saved data_params for models loaded from a checkpoint
-        kwargs["data_params"] = DataParameters(
-            in_shape=(in_channels, image_size, image_size),
-            out_shape=(len(kwargs["labels"]), image_size, image_size),
-        )
+        # If we're initializing a model for the first time, infer the shape of the data from the content of the dataset.
+        # If we're loading a model from a checkpoint, skip the data shape inference since it was saved inside the
+        # checkpoint, plus we should not assume that we could load the dataset from the path used during training.
+        if not kwargs["ckpt_path"]:
+            # Extract the shape of the images from the dataset
+            try:
+                # First try to get the first item from the training set
+                image_shape = Camus(kwargs["dataset_path"], kwargs["fold"], Subset.TRAIN)[0][CamusTags.gt].shape
+            except IndexError:
+                # If there is no training set, try to get the first item from the testing set
+                image_shape = Camus(kwargs["dataset_path"], kwargs["fold"], Subset.TEST)[0][CamusTags.gt].shape
+
+            # Propagate data_params to allow model to adapt to data config
+            kwargs["data_params"] = DataParameters(
+                in_shape=(in_channels, *image_shape),
+                out_shape=(len(kwargs["labels"]), *image_shape),
+            )
+
         super().__init__(**kwargs)
 
         self.labels = [str(label) for label in self.hparams.labels]
@@ -46,8 +58,8 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
         if stage == "test":
             self.dataset[Subset.TEST] = Camus(image_set=Subset.TEST, predict=True, **self._dataset_kwargs)
 
-    def train_group_ids(self, level: Literal["patient", "view"] = "view") -> List[str]:
-        """Lists the IDs of the different levels of groups/clusters samples in the training data can belong to.
+    def group_ids(self, subset: Subset, level: Literal["patient", "view"] = "view") -> List[str]:
+        """Lists the IDs of the different levels of groups/clusters samples in the data can belong to.
 
         Args:
             level: Hierarchical level at which to group data samples.
@@ -55,24 +67,10 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
                 - 'view': all the data from the same view of a patient is associated to a unique ID.
 
         Returns:
-            IDs of the different levels of groups/clusters samples in the training data can belong to.
+            IDs of the different levels of groups/clusters samples in the data can belong to.
         """
-        train_data = self.dataset.get(Subset.TRAIN, Camus(image_set=Subset.TRAIN, **self._dataset_kwargs))
-        return train_data.list_groups(level=level)
-
-    def val_group_ids(self, level: Literal["patient", "view"] = "view") -> List[str]:
-        """Lists the IDs of the different levels of groups/clusters samples in the validation data can belong to.
-
-        Args:
-            level: Hierarchical level at which to group data samples.
-                - 'patient': all the data from the same patient is associated to a unique ID.
-                - 'view': all the data from the same view of a patient is associated to a unique ID.
-
-        Returns:
-            IDs of the different levels of groups/clusters samples in the validation data can belong to.
-        """
-        val_data = self.dataset.get(Subset.VAL, Camus(image_set=Subset.VAL, **self._dataset_kwargs))
-        return val_data.list_groups(level=level)
+        subset_data = self.dataset.get(subset, Camus(image_set=subset, **self._dataset_kwargs))
+        return subset_data.list_groups(level=level)
 
     def train_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(

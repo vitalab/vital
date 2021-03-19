@@ -2,17 +2,15 @@ from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from shutil import copy2
-from typing import List, Type
+from typing import Type
 
 import torch
-from pytorch_lightning import Callback, Trainer, seed_everything
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger
 
 from vital.systems.system import VitalSystem
 from vital.utils.config import read_ini_config
 from vital.utils.logging import configure_logging
-from vital.utils.parsing import StoreDictKeyPair
 
 
 class VitalRunner(ABC):
@@ -48,15 +46,7 @@ class VitalRunner(ABC):
         if hparams.resume:
             trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path, logger=logger)
         else:
-            trainer = Trainer.from_argparse_args(
-                hparams,
-                callbacks=[
-                    ModelCheckpoint(**hparams.model_checkpoint_kwargs),
-                    EarlyStopping(**hparams.early_stopping_kwargs),
-                    *cls._get_callbacks(hparams),
-                ],
-                logger=logger,
-            )
+            trainer = Trainer.from_argparse_args(hparams, logger=logger)
 
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
         log_dir = Path(trainer.log_dir) if trainer.log_dir else hparams.default_root_dir
@@ -118,10 +108,11 @@ class VitalRunner(ABC):
             Instance of ``CometLogger`` built using the content of the Comet configuration file.
         """
         comet_config = read_ini_config(hparams.comet_config)["comet"]
-        offline = comet_config.getboolean("offline", fallback=False)
+        offline_kwargs = {"offline": comet_config.getboolean("offline", fallback=False)}
         if "offline" in comet_config:
             del comet_config["offline"]
-        return CometLogger(**dict(comet_config), offline=offline)
+            offline_kwargs["save_dir"] = str(hparams.default_root_dir)
+        return CometLogger(**dict(comet_config), **offline_kwargs)
 
     @classmethod
     def _best_model_path(cls, log_dir: Path, hparams: Namespace) -> Path:
@@ -176,18 +167,6 @@ class VitalRunner(ABC):
         raise NotImplementedError
 
     @classmethod
-    def _get_callbacks(cls, hparams: Namespace) -> List[Callback]:
-        """Initialize, through the parameters specified in the CLI, the callbacks to use in this run.
-
-        Args:
-            hparams: Arguments parsed from the CLI.
-
-        Returns:
-            Callbacks to pass to the Lightning `Trainer`.
-        """
-        return []
-
-    @classmethod
     def _add_generic_args(cls, parser: ArgumentParser) -> ArgumentParser:
         """Adds to the parser object some generic arguments useful for running a system.
 
@@ -202,22 +181,6 @@ class VitalRunner(ABC):
             "--comet_config",
             type=Path,
             help="Path to Comet configuration file, if you want to track the experiment using Comet",
-        )
-
-        # callback parameters
-        parser.add_argument(
-            "--model_checkpoint_kwargs",
-            action=StoreDictKeyPair,
-            default=dict(),
-            metavar="ARG1=VAL1,ARG2=VAL2...",
-            help="Parameters for Lightning's built-in model checkpoint callback",
-        )
-        parser.add_argument(
-            "--early_stopping_kwargs",
-            action=StoreDictKeyPair,
-            default=dict(),
-            metavar="ARG1=VAL1,ARG2=VAL2...",
-            help="Parameters for Lightning's built-in early stopping callback",
         )
 
         # save/load parameters

@@ -7,12 +7,14 @@ scikit-image
 scikit-learn
 pandas
 h5py
+PyYAML
 tqdm
 SimpleITK
 torch>=1.7
 torchvision>=0.8
-pytorch-lightning>=1.1
-torch-summary
+pytorch-lightning>=1.2
+torchmetrics
+torchinfo
 comet-ml
 Keras-Preprocessing
 medpy
