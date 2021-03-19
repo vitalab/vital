@@ -22,20 +22,24 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
         Args:
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
-        # Extract the shape of the images from the dataset
-        try:
-            # First try to get the first item from the training set
-            image_shape = Camus(kwargs["dataset_path"], kwargs["fold"], Subset.TRAIN)[0][CamusTags.gt].shape
-        except IndexError:
-            # If there is no training set, try to get the first item from the testing set
-            image_shape = Camus(kwargs["dataset_path"], kwargs["fold"], Subset.TEST)[0][CamusTags.gt].shape
+        # If we're initializing a model for the first time, infer the shape of the data from the content of the dataset.
+        # If we're loading a model from a checkpoint, skip the data shape inference since it was saved inside the
+        # checkpoint, plus we should not assume that we could load the dataset from the path used during training.
+        if not kwargs["ckpt_path"]:
+            # Extract the shape of the images from the dataset
+            try:
+                # First try to get the first item from the training set
+                image_shape = Camus(kwargs["dataset_path"], kwargs["fold"], Subset.TRAIN)[0][CamusTags.gt].shape
+            except IndexError:
+                # If there is no training set, try to get the first item from the testing set
+                image_shape = Camus(kwargs["dataset_path"], kwargs["fold"], Subset.TEST)[0][CamusTags.gt].shape
 
-        # Propagate data_params to allow model to adapt to data config
-        # Overrides saved data_params for models loaded from a checkpoint
-        kwargs["data_params"] = DataParameters(
-            in_shape=(in_channels, *image_shape),
-            out_shape=(len(kwargs["labels"]), *image_shape),
-        )
+            # Propagate data_params to allow model to adapt to data config
+            kwargs["data_params"] = DataParameters(
+                in_shape=(in_channels, *image_shape),
+                out_shape=(len(kwargs["labels"]), *image_shape),
+            )
+
         super().__init__(**kwargs)
 
         self.labels = [str(label) for label in self.hparams.labels]

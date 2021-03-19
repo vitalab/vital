@@ -103,7 +103,7 @@ def auto_cast_data(func: Callable) -> Callable:
         if dtype not in dtypes:
             raise ValueError(
                 f"Decorator 'auto_cast_data' used by function '{func.__name__}' does not support casting inputs of "
-                f"type '{cast_types}' to numpy arrays. Either provide the implementation for casting to numpy arrays "
+                f"type '{dtype}' to numpy arrays. Either provide the implementation for casting to numpy arrays "
                 f"from '{cast_types}' in 'auto_cast_data' decorator, or manually convert the input of '{func.__name__}'"
                 f"to one of the following supported types: {dtypes}."
             )

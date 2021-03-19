@@ -108,10 +108,11 @@ class VitalRunner(ABC):
             Instance of ``CometLogger`` built using the content of the Comet configuration file.
         """
         comet_config = read_ini_config(hparams.comet_config)["comet"]
-        offline = comet_config.getboolean("offline", fallback=False)
+        offline_kwargs = {"offline": comet_config.getboolean("offline", fallback=False)}
         if "offline" in comet_config:
             del comet_config["offline"]
-        return CometLogger(**dict(comet_config), offline=offline)
+            offline_kwargs["save_dir"] = str(hparams.default_root_dir)
+        return CometLogger(**dict(comet_config), **offline_kwargs)
 
     @classmethod
     def _best_model_path(cls, log_dir: Path, hparams: Namespace) -> Path:

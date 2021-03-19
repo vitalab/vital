@@ -79,10 +79,11 @@ class VitalSystem(pl.LightningModule, ABC):
         return super().summarize(mode)
 
     def configure_callbacks(self) -> List[Callback]:  # noqa: D102
-        return [
-            ModelCheckpoint(**self.hparams.model_checkpoint_kwargs),
-            EarlyStopping(**self.hparams.early_stopping_kwargs),
-        ]
+        callbacks = [ModelCheckpoint(**self.hparams.model_checkpoint_kwargs)]
+        if self.hparams.early_stopping_kwargs:
+            # Disable EarlyStopping by default and only enable it if some of its parameters are provided
+            callbacks.append(EarlyStopping(**self.hparams.early_stopping_kwargs))
+        return callbacks
 
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
