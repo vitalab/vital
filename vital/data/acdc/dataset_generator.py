@@ -60,7 +60,7 @@ def _mass_center(imgs: List[np.ndarray]):
     return centers.astype(np.int16)
 
 
-def _generate_centered_prob_map(image: np.ndarray, shape: np.ndarray, center: np.ndarray, label: int):
+def _generate_centered_prob_map(image: np.ndarray, shape: np.ndarray, center: np.ndarray, label: int) -> np.array:
     """Extracts the information from the ground truth image given the centers.
 
     Args:
@@ -93,7 +93,7 @@ def generate_probability_map(dataset: h5py.File, group: h5py.Group, data_augment
         dataset: Handle of the hdf5 file containing all the dataset.
         group: Group where to create the prior shape. One of either train, valid or test.
             If in doubt, train should be the default.
-                data_augmentation: Indicates if data augmentation was used.
+        data_augmentation: Indicates if data augmentation was used.
     """
     patient_keys = [key for key in group.keys() if key.endswith("_0")] if data_augmentation else list(group.keys())
     image_keys = []
@@ -121,7 +121,7 @@ def generate_probability_map(dataset: h5py.File, group: h5py.Group, data_augment
     dataset.create_dataset("prior", data=p_img[:, :, :, 1:])
 
 
-def load_instant_data(img_path: Path, gt_path: Optional[Path]) -> Tuple[np.ndarray, Optional[np.ndarray], Tuple]:
+def load_instant_data(img_path: Path, gt_path: Optional[Path] = None) -> Tuple[np.ndarray, Optional[np.ndarray], Tuple]:
     """Loads data, gt (when available) and voxel_size spacing from NIFTI file.
 
     Args:
@@ -170,10 +170,10 @@ def write_instant_group(
     rotation: float,
     registering_transformer: Optional[AcdcRegisteringTransformer],
 ):
-    """Writes an instant group to the patient group.
+    """Writes the data related to an instant to its HDF5 group.
 
     Args:
-        instant_group: instant group for which the instant is saved
+        instant_group: HDF5 group in which to save the instant's data
         img_data: Array (N, H, W, 1) containing the img data
         gt_data: Array (N, H, W) containing the gt data
         voxel_size: Voxel size of the instant (3,)
@@ -224,7 +224,7 @@ def create_database_structure(
         gt_mid: Path of the NIFTI MRI segmentation of `data_mid`.
 
     """
-    p_name = data_ed.parts[-2]
+    p_name = data_ed.parent.name
 
     ed_img, edg_img, ed_voxel_size = load_instant_data(data_ed, gt_ed)
     es_img, esg_img, es_voxel_size = load_instant_data(data_es, gt_es)
@@ -352,7 +352,7 @@ def generate_dataset(data_path: Path, output_path: Path, data_augmentation: bool
         for p_ed, g_ed, p_es, g_es in tqdm(valid_paths, desc="Validation"):
             # Find missmatch in the zip
             if str(p_ed) != str(g_ed).replace("_gt", "") or str(p_es) != str(g_es).replace("_gt", ""):
-                raise ValueError("File name don't match: {p_ed} instead of {p_ed}, {p_es} instead of {g_es}.")
+                raise ValueError(f"File name don't match: {p_ed} instead of {p_ed}, {p_es} instead of {g_es}.")
 
             create_database_structure(group, False, registering, p_ed, g_ed, p_es, g_es)
 
@@ -365,9 +365,7 @@ def generate_dataset(data_path: Path, output_path: Path, data_augmentation: bool
             if str(basename(p_ed)) != str(basename(g_ed)).replace("_gt", "") or str(basename(p_es)) != str(
                 basename(g_es)
             ).replace("_gt", ""):
-                raise ValueError(
-                    f"File name don't match: {p_ed} instead of {g_ed}, {p_es} instead of {g_es}.",
-                )
+                raise ValueError(f"File name don't match: {p_ed} instead of {g_ed}, {p_es} instead of {g_es}.")
             create_database_structure(
                 group, data_augmentation, registering, p_ed, g_ed, p_es, g_es, data_mid=p_mid, gt_mid=g_mid
             )
@@ -384,7 +382,7 @@ def main():
         )
     )
     parser.add_argument("data_path", type=Path, help="Path to the root directory of the downloaded ACDC data")
-    parser.add_argument("--output_path", type=Path, default=Path("acdc.h5"), help="Path to the HDF5 file to generate")
+    parser.add_argument("--output_path", type=Path, default="acdc.h5", help="Path to the HDF5 file to generate")
     data_processing_group = parser.add_mutually_exclusive_group()
     data_processing_group.add_argument(
         "-d", "--data_augmentation", action="store_true", help="Add data augmentation (rotation -60 to 60)."
