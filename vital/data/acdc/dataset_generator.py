@@ -10,7 +10,6 @@ import h5py
 import nibabel as nib
 import numpy as np
 from natsort import natsorted
-from scipy import ndimage
 from scipy.ndimage.interpolation import rotate
 from tqdm import tqdm
 
@@ -19,6 +18,7 @@ from vital.data.acdc.utils.acdc import AcdcRegisteringTransformer
 from vital.data.acdc.utils.utils import centered_resize
 from vital.data.config import Subset
 from vital.utils.format.numpy import to_categorical, to_onehot
+from vital.utils.image.measure import Measure
 from vital.utils.logging import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -45,19 +45,6 @@ def extract_image_paths(root_dir: Path) -> List[Path]:
     paths = natsorted(glob(str(glob_exp)))
     paths = [Path(path) for path in paths if "Info" not in path and path.find("_4d") < 0]
     return paths
-
-
-def _mass_center(imgs: List[np.ndarray]):
-    """Function to extract the center of masses of a 3D ground truth image.
-
-    Args:
-        imgs: images
-    """
-    centers = np.array([ndimage.measurements.center_of_mass(np.equal(img, 3)) for img in imgs])
-    # Need to fix the Nan when the ground truth slice is a slice of zeros.
-    # Set it to center 256 // 2 = 128
-    centers[np.isnan(centers)] = 128
-    return centers.astype(np.int16)
 
 
 def _generate_centered_prob_map(image: np.ndarray, shape: np.ndarray, center: np.ndarray, label: int) -> np.array:
@@ -102,7 +89,8 @@ def generate_probability_map(dataset: h5py.File, group: h5py.Group, data_augment
             image_keys.append(f"{k1}/{k2}/{AcdcTags.gt}")
 
     images = [group[k][:] for k in image_keys]
-    images_center = [_mass_center(img) for img in images]
+
+    images_center = [Measure.structure_center(img, 3).astype(np.int16) for img in images]
 
     prior_shape = np.array([15, PRIOR_SIZE, PRIOR_SIZE, 1])
 
