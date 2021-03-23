@@ -18,7 +18,6 @@ from vital.data.camus.config import (
     Instant,
     Label,
     View,
-    image_size,
     img_save_options,
     seg_save_options,
 )
@@ -56,7 +55,7 @@ class CrossValidationDatasetGenerator:
         data: Path,
         output: Path,
         folds: Sequence[int] = range(1, 11),
-        target_image_size: Tuple[int, int] = (image_size, image_size),
+        target_image_size: Tuple[int, int] = (256, 256),
         sequence_type: Literal["half_cycle", "full_cycle"] = "half_cycle",
         sequence: bool = False,
         register: bool = False,
@@ -80,8 +79,9 @@ class CrossValidationDatasetGenerator:
         self.data = data
         self.flags = {CamusTags.full_sequence: sequence, CamusTags.registered: register}
         self.labels_to_remove = [] if labels is None else [label for label in Label if label not in labels]
+        self.target_image_size = target_image_size
         self.registering_transformer = CamusRegisteringTransformer(
-            num_classes=Label.count(), crop_shape=target_image_size
+            num_classes=Label.count(), crop_shape=self.target_image_size
         )
         self.sequence_type = sequence_type
         self.sequence_type_instants = asdict(Instant.from_sequence_type(sequence_type)).values()
@@ -159,8 +159,8 @@ class CrossValidationDatasetGenerator:
                     data_y, data_x
                 )
             else:
-                data_x_proc = np.array([resize_image(x, (image_size, image_size), resample=LINEAR) for x in data_x])
-                data_y_proc = np.array([resize_image(y, (image_size, image_size)) for y in data_y])
+                data_x_proc = np.array([resize_image(x, self.target_image_size, resample=LINEAR) for x in data_x])
+                data_y_proc = np.array([resize_image(y, self.target_image_size) for y in data_y])
 
             # Write image and groundtruth data
             patient_view_group = patient_group.create_group(view)
@@ -288,8 +288,9 @@ def main():
     )
     parser.add_argument(
         "--image_size",
-        type=Tuple[int, int],
-        default=(image_size, image_size),
+        type=int,
+        nargs=2,
+        default=(256, 256),
         help="Target height and width at which to resize the image and groundtruth",
     )
     parser.add_argument(

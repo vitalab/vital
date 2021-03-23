@@ -15,6 +15,8 @@ from vital.data.config import Subset
 from vital.utils.decorators import squeeze
 from vital.utils.image.transform import remove_labels, segmentation_to_tensor
 
+ItemId = Tuple[str, int]
+
 
 class Camus(VisionDataset):
     """Implementation of torchvision's ``VisionDataset`` for the CAMUS dataset."""
@@ -24,7 +26,7 @@ class Camus(VisionDataset):
         path: Path,
         fold: int,
         image_set: Subset,
-        labels: Sequence[Label],
+        labels: Sequence[Label] = Label,
         use_sequence: bool = False,
         predict: bool = False,
         transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
@@ -52,7 +54,7 @@ class Camus(VisionDataset):
         """
         super().__init__(path, transforms=transforms, transform=transform, target_transform=target_transform)
         self.fold = fold
-        self.image_set = image_set.value
+        self.image_set = image_set
         self.labels = labels
         self.use_sequence = use_sequence
         self.predict = predict
@@ -112,14 +114,14 @@ class Camus(VisionDataset):
             # List the patients
             groups = [
                 patient_path_byte.decode()
-                for patient_path_byte in dataset[f"cross_validation/fold_{self.fold}/{self.image_set}"]
+                for patient_path_byte in dataset[f"cross_validation/fold_{self.fold}/{self.image_set.value}"]
             ]
             if level == "view":
                 groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys()]
 
         return groups
 
-    def _get_instant_paths(self) -> List[Tuple[str, int]]:
+    def _get_instant_paths(self) -> List[ItemId]:
         """Lists paths to the instants, from the requested ``self.image_set``, inside the HDF5 file.
 
         Returns:
@@ -173,7 +175,13 @@ class Camus(VisionDataset):
             img, gt = self.transforms(img, gt)
         frame_pos = torch.tensor([frame_pos])
 
-        return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.frame_pos: frame_pos}
+        return {
+            CamusTags.id: f"{patient_view_key}/{instant}",
+            CamusTags.group: patient_view_key,
+            CamusTags.img: img,
+            CamusTags.gt: gt,
+            CamusTags.frame_pos: frame_pos,
+        }
 
     def _get_test_item(self, index: int) -> PatientData:
         """Fetches data required for inference on a test item, i.e. a patient.
