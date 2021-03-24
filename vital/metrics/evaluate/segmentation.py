@@ -10,7 +10,7 @@ from vital.data.config import SemanticStructureId
 
 
 class Segmentation2DMetrics:
-    """Class that implements algorithms to compute metrics on segmentations."""
+    """Wraps a segmentation map and implements algorithms that operate on it to compute metrics."""
 
     def __init__(
         self,
