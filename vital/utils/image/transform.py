@@ -93,11 +93,9 @@ def centered_pad(image: np.ndarray, pad_size: Tuple[int, int], pad_val: float = 
 
     if image.ndim == 4:
         to_pad = (im_size - image.shape[1:3]) // 2
-        to_pad = np.array(to_pad)
         to_pad = ((0, 0), (to_pad[0], to_pad[0]), (to_pad[1], to_pad[1]), (0, 0))
     else:
         to_pad = (im_size - image.shape[:2]) // 2
-        to_pad = np.array(to_pad)
         to_pad = ((to_pad[0], to_pad[0]), (to_pad[1], to_pad[1]), (0, 0))
 
     return np.pad(image, to_pad, mode="constant", constant_values=pad_val)

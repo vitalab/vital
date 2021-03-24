@@ -7,7 +7,7 @@ from vital.utils.image.transform import segmentation_to_tensor
 
 
 class NormalizeSample(torch.nn.Module):
-    """Normalize a tensor image w.r.t. to its mean and standard deviation.
+    """Normalizes a tensor w.r.t. to its mean and standard deviation.
 
     Args:
         inplace: Whether to make this operation in-place.
@@ -21,7 +21,7 @@ class NormalizeSample(torch.nn.Module):
         """Normalizes input tensor.
 
         Args:
-            tensor: image of size (1, H, W) to be normalized.
+            tensor: Tensor to normalize.
 
         Returns:
             Normalized image.
