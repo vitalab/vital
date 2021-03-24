@@ -10,9 +10,9 @@ from torchvision.transforms import ToTensor, transforms
 
 from vital.data.acdc.config import AcdcTags, Instant, image_size
 from vital.data.acdc.data_struct import InstantData, PatientData
-from vital.data.acdc.transforms import NormalizeSample, SegmentationToTensor
-from vital.data.acdc.utils.acdc import AcdcRegisteringTransformer
+from vital.data.acdc.utils.register import AcdcRegisteringTransformer
 from vital.data.config import Subset
+from vital.data.transforms import NormalizeSample, SegmentationToTensor
 from vital.utils.decorators import squeeze
 
 

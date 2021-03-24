@@ -14,11 +14,11 @@ from scipy.ndimage.interpolation import rotate
 from tqdm import tqdm
 
 from vital.data.acdc.config import AcdcTags, Instant, Label, image_size
-from vital.data.acdc.utils.acdc import AcdcRegisteringTransformer
-from vital.data.acdc.utils.utils import centered_resize
+from vital.data.acdc.utils.register import AcdcRegisteringTransformer
 from vital.data.config import Subset
 from vital.utils.format.numpy import to_categorical, to_onehot
 from vital.utils.image.measure import Measure
+from vital.utils.image.transform import centered_resize
 from vital.utils.logging import configure_logging
 
 logger = logging.getLogger(__name__)
