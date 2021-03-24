@@ -168,12 +168,18 @@ class Camus(VisionDataset):
             # that output ``FloatTensor`` by default (and not ``DoubleTensor``)
             frame_pos = np.float32(instant / view_imgs.shape[0])
 
+            info = Camus._get_metadata(dataset, patient_view_key, CamusTags.info)
+
         img, gt = to_tensor(img), segmentation_to_tensor(gt)
         if self.transforms:
             img, gt = self.transforms(img, gt)
         frame_pos = torch.tensor([frame_pos])
 
-        return {CamusTags.id: patient_view_key, CamusTags.img: img, CamusTags.gt: gt, CamusTags.frame_pos: frame_pos}
+        return {CamusTags.id: patient_view_key,
+                CamusTags.img: img,
+                CamusTags.gt: gt,
+                CamusTags.frame_pos: frame_pos,
+                CamusTags.voxelspacing: np.array(info[6:8])[-1]}
 
     def _get_test_item(self, index: int) -> PatientData:
         """Fetches data required for inference on a test item, i.e. a patient.
