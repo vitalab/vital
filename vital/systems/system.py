@@ -75,7 +75,7 @@ class VitalSystem(pl.LightningModule, ABC):
                 device=self.device,
                 verbose=0,
             )
-            (self.log_dir / "summary.txt").write_text(str(model_summary))
+            (self.log_dir / "summary.txt").write_text(str(model_summary), encoding="utf-8")
         return super().summarize(mode)
 
     def configure_callbacks(self) -> List[Callback]:  # noqa: D102
