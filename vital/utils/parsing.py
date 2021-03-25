@@ -17,6 +17,6 @@ class StoreDictKeyPair(argparse.Action):
         """
         # Hack converting `values` to a YAML document to use the YAML parser's type inference
         yaml_str = values.replace("=", ": ").replace(",", "\n")
-        args_map = yaml.load(yaml_str)
+        args_map = yaml.safe_load(yaml_str)
 
         setattr(namespace, self.dest, args_map)
