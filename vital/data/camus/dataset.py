@@ -1,12 +1,14 @@
 from pathlib import Path
 from typing import Callable, Dict, List, Literal, Sequence, Tuple, Union
 
+import cv2
 import h5py
 import numpy as np
 import torch
 from torch import Tensor
 from torchvision.datasets import VisionDataset
 from torchvision.transforms.functional import to_tensor
+import albumentations as A
 
 from vital.data.camus.config import CamusTags, Label
 from vital.data.camus.data_struct import PatientData, ViewData
@@ -25,6 +27,7 @@ class Camus(VisionDataset):
         fold: int,
         image_set: Subset,
         labels: Sequence[Label],
+        use_da: bool,
         use_sequence: bool = False,
         predict: bool = False,
         transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
@@ -56,6 +59,11 @@ class Camus(VisionDataset):
         self.labels = labels
         self.use_sequence = use_sequence
         self.predict = predict
+
+        if use_da and image_set is Subset.TRAIN:
+            self.da_transforms = A.Compose([A.Rotate(limit=30, border_mode=cv2.BORDER_CONSTANT, value=0)])
+        else:
+            self.da_transforms = None
 
         with h5py.File(path, "r") as f:
             self.registered_dataset = f.attrs[CamusTags.registered]
@@ -169,6 +177,12 @@ class Camus(VisionDataset):
             frame_pos = np.float32(instant / view_imgs.shape[0])
 
             info = Camus._get_metadata(dataset, patient_view_key, CamusTags.info)
+
+        # Data augmentation transforms applied before Normalization and ToTensor as it is done on np.ndarray
+        if self.da_transforms:
+            transformed = self.da_transforms(image=img, mask=gt)
+            img = transformed["image"]
+            gt = transformed["mask"]
 
         img, gt = to_tensor(img), segmentation_to_tensor(gt)
         if self.transforms:
@@ -298,3 +312,29 @@ class Camus(VisionDataset):
         """
         patient_view = file[patient_view_key]
         return [patient_view.attrs[attr_tag] for attr_tag in metadata_tags]
+
+
+if __name__ == '__main__':
+    from matplotlib import pyplot as plt
+    ds = Camus(
+        image_set=Subset.TRAIN,
+        path=Path("/home/local/USHERBROOKE/judt3001/dev/data/camus.h5"),
+        fold=5,
+        labels=list(Label),
+        transform=None,
+        use_da=True
+    )
+
+    sample = ds[0]
+    img = sample[CamusTags.img].squeeze()
+    gt = sample[CamusTags.gt]
+
+    f, (ax1, ax2) = plt.subplots(1, 2)
+    ax1.imshow(img)
+    ax2.imshow(gt)
+    plt.show(block=False)
+
+    plt.figure(2)
+    plt.imshow(img, cmap="gray")
+    plt.imshow(gt, alpha=0.2)
+    plt.show()
