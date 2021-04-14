@@ -17,7 +17,7 @@ class DeepLabv3(nn.Module):
             backbone: The network used by the DeepLabv3 architecture to compute the features for the model.
             num_classes: Number of output classes to segment.
             convert_grayscale_to_rgb: If ``True``, the forward pass will automatically convert single channel grayscale
-                inputs to 3-channel RGB, where r==g==b, to fit with DeepLabv3's hardcoded 3 channel input layer.
+                inputs to 3-channel RGB, where r == g == b, to fit with DeepLabv3's hardcoded 3 channel input layer.
                 If ``False``, the input is assumed to already be 3 channel and is not transformed in any way.
         """
         super().__init__()
@@ -31,10 +31,10 @@ class DeepLabv3(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            x: (N, ``in_channels``, H, W), Input image to segment.
+            x: (N, 1|3, H, W), Input image to segment.
 
         Returns:
-            (N, ``out_channels``, H, W), Raw, unnormalized scores for each class in the input's segmentation.
+            (N, ``num_classes``, H, W), Raw, unnormalized scores for each class in the input's segmentation.
         """
         if self._convert_grayscale_to_rgb and x.shape[1] != 3:
             x = self._grayscale_trans(x)
