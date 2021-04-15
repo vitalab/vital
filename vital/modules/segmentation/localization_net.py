@@ -6,6 +6,7 @@ from typing import Tuple, Type
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
+from torchmetrics.utilities.data import to_onehot
 from torchvision.ops import roi_align
 
 from vital.utils.image.measure import Measure
@@ -134,9 +135,9 @@ class LocalizationNet(nn.Module):
             (N, ``out_channels``, H, W), Input's segmentation, in one-hot format.
         """
         _, roi_bbox_hat, localized_y_hat = self(x)
-        y_hat = self._revert_crop(localized_y_hat.argmax(dim=1, keepdim=True), roi_bbox_hat).squeeze()  # (N, H, W)
-        y_hat = F.one_hot(y_hat.squeeze(), num_classes=self.out_shape[0])  # (N, H, W, ``out_channels``)
-        return y_hat.permute(0, 3, 1, 2)  # (N, ``out_channels``, H, W)
+        y_hat = self._revert_crop(localized_y_hat.argmax(dim=1, keepdim=True), roi_bbox_hat)  # (N, 1, H, W)
+        y_hat = to_onehot(y_hat.squeeze(dim=1), num_classes=self.out_shape[0])  # (N, ``out_channels``, H, W)
+        return y_hat
 
     def _revert_crop(self, localized_segmentation: Tensor, roi_bbox: Tensor) -> Tensor:
         """Fits the localized segmentation back to its original position the image.
