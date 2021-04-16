@@ -114,9 +114,13 @@ class LocalizationNet(nn.Module):
         features = torch.flatten(features, 1)  # Format bottleneck output to match expected bbox module input
         roi_bbox_hat = self.roi_bbox_module(features)
 
+        # Denormalize bbox while allowing gradients to flow through
+        boxes = roi_bbox_hat.clone()
+        boxes[:, (1, 3)] *= self.in_shape[1]
+        boxes[:, (0, 2)] *= self.in_shape[2]
+
         # Crop and resize ``x`` based on ``roi_bbox_hat`` predicted by the previous modules
-        boxes = torch.split(Measure.denormalize_bbox(roi_bbox_hat, self.in_shape[1:][::-1]), 1)
-        cropped_x = roi_align(x, boxes, self.cropped_shape, aligned=True)
+        cropped_x = roi_align(x, torch.split(boxes, 1), self.cropped_shape, aligned=True)
 
         # Second segmentation module: Segment cropped RoI
         # Segmentation module trained to take as input the image cropped around the predicted segmentation's RoI, and
