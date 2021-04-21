@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable, Dict, Literal, List
 
 import h5py
 import numpy as np
@@ -13,6 +13,8 @@ from vital.data.mri.dataset import ShortAxisMRI, visualize_dataset
 class MandM(ShortAxisMRI):
     """Implementation of torchvision's ``VisionDataset`` for the M&Ms dataset."""
 
+    VENDORS = ['Canon', 'GE', 'Philips', 'Siemens']
+
     def __init__(
         self,
         path: Path,
@@ -21,6 +23,7 @@ class MandM(ShortAxisMRI):
         predict: bool = False,
         transform: Callable = None,
         target_transform: Callable = None,
+        vendors: List[str] = None
     ):  # noqa: D205,D212,D415
         """
         Args:
@@ -31,12 +34,43 @@ class MandM(ShortAxisMRI):
             transform: a function/transform that takes in a numpy array and returns a transformed version.
             target_transform: a function/transform that takes in the target and transforms it.
         """
+        self.vendors = vendors or self.VENDORS
+        assert set(self.VENDORS).issuperset(set(self.vendors))
+
         super().__init__(path, image_set, use_da, predict, transform, target_transform)
 
         assert not (predict and self.image_set == Subset.UNLABELED.value)
         if self.image_set == Subset.UNLABELED.value:
             self.item_list = self._get_instant_paths()
             self.getter = self._get_unlabled_item
+
+    def list_groups(self, level: Literal["patient", "instant"] = "instant") -> List[str]:
+        """Lists the paths of the different levels of groups/clusters data samples in ``self.image_set`` can belong to.
+
+        Args:
+            level: Hierarchical level at which to group data samples.
+                - 'patient': all the data from the same patient is associated to a unique ID.
+                - 'instant': all the data from the same instant of a patient is associated to a unique ID.
+
+        Returns:
+            IDs of the different levels of groups/clusters data samples in ``self.image_set`` can belong to.
+        """
+        groups = super().list_groups(level)
+
+        accepted_vendor_patients = []
+
+        with h5py.File(self.root, "r") as dataset:
+            for vendor in dataset['vendors']:
+                if vendor in self.vendors:
+                        accepted_vendor_patients.extend(dataset['vendors'][vendor])
+
+        accepted_vendor_patients = [x.decode("utf-8") for x in accepted_vendor_patients]
+
+        print(accepted_vendor_patients)
+
+        groups = [x for x in groups if x.split('/')[1] in accepted_vendor_patients]
+
+        return groups
 
     @staticmethod
     def correct_gt_labels(gt: np.ndarray) -> np.ndarray:
@@ -100,7 +134,11 @@ if __name__ == "__main__":
     args.add_argument("--predict", action="store_true")
     params = args.parse_args()
 
-    ds = MandM(Path(params.path), image_set=Subset.TRAIN, predict=params.predict, use_da=params.use_da)
+    ds = MandM(Path(params.path), image_set=Subset.TRAIN, predict=params.predict, use_da=params.use_da,
+               vendors=['Canon', 'GE', 'Philips'])
+
+    print(ds.list_groups('instant'))
+    print(ds.list_groups('patient'))
 
     print(len(ds))
 
