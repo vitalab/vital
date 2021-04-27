@@ -1,9 +1,8 @@
-from math import degrees
-
 import numpy as np
-from skimage.measure import inertia_tensor, regionprops
+from skimage.measure import regionprops
 
 from vital.data.camus.config import Label
+from vital.utils.format.numpy import to_categorical
 from vital.utils.image.measure import Measure
 from vital.utils.image.register.affine import AffineRegisteringTransformer, Crop, Rotation, Shift
 
@@ -38,7 +37,7 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
 
         # Find the center of mass of the epicardium (union of the left ventricle and myocardium)
         segmentation_center = segmentation.shape[0] // 2, segmentation.shape[1] // 2
-        epicardium_center = self._find_structure_center(segmentation, [Label.ENDO.value, Label.EPI.value])
+        epicardium_center = Measure.structure_center(to_categorical(segmentation), [Label.ENDO.value, Label.EPI.value])
 
         # Center the image as closely as possible around the epicardium without cutting off the left atrium
         rows_shift = max(epicardium_center[0] - segmentation_center[0], -distance_from_left_atrium_to_border)
@@ -54,21 +53,9 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
         Returns:
             Angle of the rotation to align the major axis of the left ventricle with the vertical axis.
         """
-        left_ventricle_mask = segmentation[..., Label.ENDO.value]
-        if np.any(left_ventricle_mask):  # If the left ventricle is present in the image
-            # Get the right eigenvectors of the left ventricle mass
-            left_ventricle_inertia_tensors = inertia_tensor(left_ventricle_mask)
-            _, evecs = np.linalg.eigh(left_ventricle_inertia_tensors)
-
-            # Find the 1st eigenvector, that corresponds to the orientation of the left ventricle's longest axis
-            evec1 = evecs[-1]
-
-            # Compute the rotation necessary to align it with the x-axis (horizontal)
-            rotation_angle = degrees(np.arctan2(evec1[1], evec1[0]))
-            rotation_angle -= 90  # Get angle with y-axis from angle with x-axis
-        else:  # If the left ventricle is not present in the image
-            rotation_angle = 0
-        return rotation_angle
+        return Measure.structure_orientation(
+            to_categorical(segmentation), Label.ENDO.value, reference_orientation=90
+        ).item()
 
     def _compute_crop_parameters(self, segmentation: np.ndarray, margin: float = 0.05) -> Crop:
         """Computes the coordinates of an isotropic bounding box around all segmented classes.

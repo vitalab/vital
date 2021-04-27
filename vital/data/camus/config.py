@@ -111,9 +111,6 @@ class CamusTags(Tags):
     frame_pos: str = "frame_pos"
 
 
-image_size: int = 256
-"""Dimension of the images in the dataset (in pixels)."""
-
 in_channels: int = 1
 """Number of input channels of the images in the dataset."""
 

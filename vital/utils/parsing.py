@@ -1,5 +1,7 @@
 import argparse
 
+import yaml
+
 
 class StoreDictKeyPair(argparse.Action):
     """Action that can parse a python dictionary from comma-separated key-value pairs passed to the parser."""
@@ -13,8 +15,8 @@ class StoreDictKeyPair(argparse.Action):
             values: Values specified for the option using the current action.
             option_string: Option flag.
         """
-        args_map = {}
-        for kv in values.split(","):
-            k, v = kv.split("=")
-            args_map[k] = v
+        # Hack converting `values` to a YAML document to use the YAML parser's type inference
+        yaml_str = values.replace("=", ": ").replace(",", "\n")
+        args_map = yaml.safe_load(yaml_str)
+
         setattr(namespace, self.dest, args_map)

@@ -18,7 +18,6 @@ from vital.data.camus.config import (
     Instant,
     Label,
     View,
-    image_size,
     img_save_options,
     seg_save_options,
 )
@@ -56,7 +55,7 @@ class CrossValidationDatasetGenerator:
         data: Path,
         output: Path,
         folds: Sequence[int] = range(1, 11),
-        target_image_size: Tuple[int, int] = (image_size, image_size),
+        target_image_size: Tuple[int, int] = (256, 256),
         sequence_type: Literal["half_cycle", "full_cycle"] = "half_cycle",
         sequence: bool = False,
         register: bool = False,
@@ -291,7 +290,7 @@ def main():
         "--image_size",
         type=int,
         nargs=2,
-        default=(image_size, image_size),
+        default=(256, 256),
         help="Target height and width at which to resize the image and groundtruth",
     )
     parser.add_argument(
