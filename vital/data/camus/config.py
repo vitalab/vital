@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Literal
+from typing import Any, Dict, Literal, Sequence
 
 import numpy as np
 
@@ -94,6 +94,15 @@ class CamusTags(Tags):
             predicted segmentations before post-processing, etc.)
         rec: Tag referring to data that was reconstructed by an autoencoder model.
         frame_pos: Tag referring to the frame normalized index in the sequence (normalized so that ED=0 and ES=1).
+        endo_area: Tag referring to the number of pixels, in the groundtruths, associated to the left ventricle.
+        endo_base_width: Tag referring to the width of the left ventricle's base, in the groundtruths.
+        endo_length: Tag referring to the distance between the LV's base and apex, in the groundtruths.
+        endo_orientation: Tag referring to the angle between the LV's main axis and the vertical.
+        epi_area: Tag referring to the number of pixels, in the groundtruths, associated to the myocardium.
+        epi_center_x: Tag referring to the x-coordinate of the epicardium's center of mass.
+        epi_center_y: Tag referring to the y-coordinate of the epicardium's center of mass.
+        atrium_area: Tag referring to the number of pixels, in the groundtruths, associated to the left atrium.
+        seg_attrs: Collection of tags for attributes related to the segmentation sequences.
     """
 
     registered: str = "register"
@@ -109,6 +118,24 @@ class CamusTags(Tags):
     rec: str = "rec"
 
     frame_pos: str = "frame_pos"
+    endo_area: str = "endo_area"
+    endo_base_width: str = "endo_base_width"
+    endo_length: str = "endo_length"
+    endo_orientation: str = "endo_orientation"
+    epi_area: str = "epi_area"
+    epi_center_x: str = "epi_center_x"
+    epi_center_y: str = "epi_center_y"
+    atrium_area: str = "atrium_area"
+    seg_attrs: Sequence[str] = (
+        endo_area,
+        endo_base_width,
+        endo_length,
+        endo_orientation,
+        epi_area,
+        epi_center_x,
+        epi_center_y,
+        atrium_area,
+    )
 
 
 in_channels: int = 1
@@ -119,3 +146,15 @@ img_save_options: Dict[str, Any] = {"dtype": np.float32, "compression": "gzip", 
 
 seg_save_options: Dict[str, Any] = {"dtype": np.uint8, "compression": "gzip", "compression_opts": 4}
 """Options to pass along when saving the segmentation mask in an HDF5 file."""
+
+attr_degrees: Dict[str, int] = {
+    CamusTags.endo_area: 5,
+    CamusTags.endo_base_width: 5,
+    CamusTags.endo_length: 6,
+    CamusTags.endo_orientation: 5,
+    CamusTags.epi_area: 5,
+    CamusTags.epi_center_x: 5,
+    CamusTags.epi_center_y: 5,
+    CamusTags.atrium_area: 5,
+}
+"""Degree of the simplest polynomial model that fits each CAMUS segmentation attribute."""

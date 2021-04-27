@@ -49,6 +49,7 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
             "fold": self.hparams.fold,
             "labels": self.hparams.labels,
             "use_sequence": self.hparams.use_sequence,
+            "neighbors": self.hparams.num_neighbors,
         }
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
@@ -110,6 +111,12 @@ class CamusSystemDataManagerMixin(StructuredDataMixin, SystemDataManagerMixin):
             choices=list(Label),
             help="Labels of the segmentation classes to take into account (including background). "
             "If None, target all labels included in the data",
+        )
+        parser.add_argument(
+            "--num_neighbors",
+            type=int,
+            default=0,
+            help="Number of neighboring frames on each side of an item's frame to include as part of an item's data",
         )
 
         if cls.use_sequence:
