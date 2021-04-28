@@ -40,7 +40,7 @@ class VitalRunner(ABC):
             hparams: Arguments parsed from the CLI.
         """
         logger = True
-        if not hparams.comet and not hparams.fast_dev_run:
+        if not hparams.cd Doc   v and not hparams.fast_dev_run:
             comet_config = find_config_file(os.getcwd())  # Find .comet.config file if it exists
             logger = CometLogger(**read_comet_config(comet_config)) if comet_config else True
 
