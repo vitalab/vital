@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, List, Literal, Sequence, Tuple, Union
+from typing import Callable, Dict, List, Literal, Sequence, Tuple, Union, Optional
 
 import cv2
 import h5py
@@ -30,6 +30,7 @@ class Camus(VisionDataset):
         use_da: bool,
         use_sequence: bool = False,
         predict: bool = False,
+        excluded_patients : Optional[List[str]] = None,
         transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
         transform: Callable[[Tensor], Tensor] = None,
         target_transform: Callable[[Tensor], Tensor] = None,
@@ -59,6 +60,7 @@ class Camus(VisionDataset):
         self.labels = labels
         self.use_sequence = use_sequence
         self.predict = predict
+        self.excluded_patients = excluded_patients or []
 
         if use_da and image_set is Subset.TRAIN:
             self.da_transforms = A.Compose([A.Rotate(limit=30, border_mode=cv2.BORDER_CONSTANT, value=0)])
@@ -118,9 +120,11 @@ class Camus(VisionDataset):
         """
         with h5py.File(self.root, "r") as dataset:
             # List the patients
+
             groups = [
                 patient_path_byte.decode()
                 for patient_path_byte in dataset[f"cross_validation/fold_{self.fold}/{self.image_set}"]
+                if patient_path_byte.decode() not in self.excluded_patients
             ]
             if level == "view":
                 groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys()]
@@ -316,14 +320,30 @@ class Camus(VisionDataset):
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
+    from vital.data.camus.config import camus_100_patients
+    import torch
+
     ds = Camus(
         image_set=Subset.TRAIN,
-        path=Path("/home/local/USHERBROOKE/judt3001/dev/data/camus.h5"),
+        path=Path("C:/Users/Arnaud Judge/Documents/Vitalab/camus.h5"),
         fold=5,
         labels=list(Label),
         transform=None,
-        use_da=True
+        use_da=True,
+        excluded_patients=camus_100_patients
     )
+    ds2 = Camus(
+        image_set=Subset.VAL,
+        path=Path("C:/Users/Arnaud Judge/Documents/Vitalab/camus.h5"),
+        fold=5,
+        labels=list(Label),
+        transform=None,
+        use_da=True,
+        excluded_patients=camus_100_patients
+    )
+    ds = torch.utils.data.ConcatDataset((ds, ds2))
+
+    print(len(ds))
 
     sample = ds[0]
     img = sample[CamusTags.img].squeeze()
