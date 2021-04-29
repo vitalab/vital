@@ -1,6 +1,5 @@
-from typing import Dict, Sequence, Tuple
+from typing import Dict, Tuple
 
-import torch
 from torch import Tensor, nn
 
 from vital.modules.generative.decoder import Decoder
@@ -25,7 +24,6 @@ class Autoencoder(nn.Module):
         blocks: int,
         init_channels: int,
         latent_dim: int,
-        input_latent_dim: int = 0,
         activation: str = "ELU",
         use_batchnorm: bool = True,
     ):  # noqa: D205,D212,D415
@@ -37,8 +35,6 @@ class Autoencoder(nn.Module):
             init_channels: Number of output feature maps from the first layer, used to compute the number of feature
                 maps in following layers.
             latent_dim: Number of dimensions in the latent space.
-            input_latent_dim: Number of dimensions to add to the latent space prior to decoding. These are not predicted
-                by the encoder, but come from auxiliary inputs to the network.
             activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use across the
                 network.
             use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
@@ -60,19 +56,16 @@ class Autoencoder(nn.Module):
             out_channels=channels,
             blocks=blocks,
             init_channels=init_channels,
-            latent_dim=latent_dim + input_latent_dim,
+            latent_dim=latent_dim,
             activation=activation,
             use_batchnorm=use_batchnorm,
         )
 
-    def forward(self, x: Tensor, subencodings: Sequence[Tensor] = None) -> Dict[str, Tensor]:
+    def forward(self, x: Tensor) -> Dict[str, Tensor]:
         """Defines the computation performed at every call.
 
         Args:
             x: (N, ``channels``, H, W), Input to reconstruct.
-            subencodings: (N, ?) tensors representing subspaces of the latent space, to be concatenated to the subspace
-                predicted by the encoder to give the complete latent space vectors.
-                When summed together, the second dimensions of these tensors should equal ``input_latent_dim``.
 
         Returns:
             Dict with values:
@@ -80,8 +73,7 @@ class Autoencoder(nn.Module):
             - (N, ``latent_dim``), Encoding of the input in the latent space.
         """
         z = self.encoder(x)
-        x_hat = self.decoder(z if subencodings is None else torch.cat((*subencodings, z), dim=1))
-        return {self.reconstruction_tag: x_hat, self.encoding_tag: z}
+        return {self.reconstruction_tag: self.decoder(z), self.encoding_tag: z}
 
 
 class VariationalAutoencoder(Autoencoder):
@@ -93,14 +85,11 @@ class VariationalAutoencoder(Autoencoder):
 
     output_distribution = True
 
-    def forward(self, x: Tensor, subencodings: Sequence[Tensor] = None) -> Dict[str, Tensor]:
+    def forward(self, x: Tensor) -> Dict[str, Tensor]:
         """Defines the computation performed at every call.
 
         Args:
             x: (N, ``channels``, H, W), Input to reconstruct.
-            subencodings: (N, ?) tensors representing subspaces of the latent space, to be concatenated to the subspace
-                predicted by the encoder to give the complete latent space vectors.
-                When summed together, the second dimensions of these tensors should equal ``input_latent_dim``.
 
         Returns:
             Dict with values:
@@ -113,9 +102,8 @@ class VariationalAutoencoder(Autoencoder):
         """
         mu, logvar = self.encoder(x)
         z = reparameterize(mu, logvar)
-        x_hat = self.decoder(z if subencodings is None else torch.cat((*subencodings, z), dim=1))
         return {
-            self.reconstruction_tag: x_hat,
+            self.reconstruction_tag: self.decoder(z),
             self.encoding_tag: z,
             self.distr_mean_tag: mu,
             self.distr_logvar_tag: logvar,

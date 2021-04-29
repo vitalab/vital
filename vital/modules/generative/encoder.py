@@ -86,11 +86,11 @@ class Encoder(nn.Module):
         if self.output_distribution:
             self.logvar_head = nn.Linear(reduce(mul, feature_shape), latent_dim)
 
-    def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+    def forward(self, y: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """Defines the computation performed at every call.
 
         Args:
-            x: (N, ``channels``, H, W), Input to reconstruct.
+            y: (N, ``channels``, H, W), Input to reconstruct.
 
         Returns:
             if not ``output_distribution``:
@@ -99,7 +99,7 @@ class Encoder(nn.Module):
                 - (N, ``latent_dim``), Mean of the predicted distribution of the input in the latent space.
                 - (N, ``latent_dim``), Log variance of the predicted distribution of the input in the latent space.
         """
-        features = self.input2features(x)
+        features = self.input2features(y)
         features = torch.flatten(features, 1)
         out = self.mu_head(features)
         if self.output_distribution:

@@ -1,8 +1,9 @@
 # Disable flak8 entirely because this file was mostly copied over from external sources and
 # the quality of the codebase and documentation is not up to par with the project's standards
 # flake8: noqa
+import math
 from numbers import Real
-from typing import Tuple
+from typing import Mapping, Sequence, Tuple
 
 import numpy as np
 from skimage.measure import find_contours
@@ -11,60 +12,56 @@ from vital.utils.image.transform import resize_image
 
 
 def compute_left_ventricle_volumes(
-    a2c_ed: np.ndarray,
-    a2c_es: np.ndarray,
-    a2c_voxelspacing: Tuple[Real, Real],
-    a4c_ed: np.ndarray,
-    a4c_es: np.ndarray,
-    a4c_voxelspacing: Tuple[Real, Real],
+    segmentations: Mapping[str, np.ndarray], voxelspacings: Mapping[str, Tuple[Real, Real]]
 ) -> Tuple[Real, Real]:
-    """Computes the ED and ES volumes of the left ventricle from 2 orthogonal 2D views (A2C and A4C).
+    """Computes the ED and ES volumes of the left ventricle from 2 orthogonal 2D segmentations (2CH and 4CH).
 
     Args:
-        a2c_ed: Segmentation map of the end-diastole (ED) instant of the 2-chamber apical view (A2C).
-        a2c_es: Segmentation map of the end-systole (ES) instant of the 2-chamber apical view (A2C).
-        a2c_voxelspacing: Size (in mm) of the 2-chamber apical view's voxels along each (height, width) dimension.
-        a4c_ed: Segmentation map of the end-diastole (ED) instant of the 4-chamber apical view (A4C).
-        a4c_es: Segmentation map of the end-systole (ES) instant of the 4-chamber apical view (A4C).
-        a4c_voxelspacing: Size (in mm) of the 4-chamber apical view's voxels along each (height, width) dimension.
+        segmentations: Segmentations as a 3d array of [ED, EV] for each view.
+        voxelspacings: Size of the segmentations' voxels along each (height, width) dimension (in mm) for each view.
 
     Returns:
         Left ventricle ED and ES volumes.
     """
-    a2c_ed_diameters, a2c_ed_step_size = _compute_diameters(a2c_ed, a2c_voxelspacing)
-    a2c_es_diameters, a2c_es_step_size = _compute_diameters(a2c_es, a2c_voxelspacing)
-    a4c_ed_diameters, a4c_ed_step_size = _compute_diameters(a4c_ed, a4c_voxelspacing)
-    a4c_es_diameters, a4c_es_step_size = _compute_diameters(a4c_es, a4c_voxelspacing)
-    step_size = max((a2c_ed_step_size, a2c_es_step_size, a4c_ed_step_size, a4c_es_step_size))
+    step_sizes = []
+    diameters = {"ED": [], "ES": []}
+    for view, view_binary_masks in segmentations.items():
+        for instant_idx, instant_key in enumerate(diameters.keys()):
+            img_diameters, step_size = _compute_diameters(view_binary_masks[instant_idx], voxelspacings[view])
+            diameters[instant_key].append(img_diameters)
+            step_sizes.append(step_size)
+    step_size = max(step_sizes)
 
-    ed_volume = _compute_left_ventricle_volume_by_instant(a2c_ed_diameters, a4c_ed_diameters, step_size)
-    es_volume = _compute_left_ventricle_volume_by_instant(a2c_es_diameters, a4c_es_diameters, step_size)
+    ed_volume = _compute_left_ventricle_volume_by_instant(diameters["ED"], step_size)
+    es_volume = _compute_left_ventricle_volume_by_instant(diameters["ES"], step_size)
     return ed_volume, es_volume
 
 
-def _compute_left_ventricle_volume_by_instant(
-    a2c_diameters: np.ndarray, a4c_diameters: np.ndarray, step_size: Real
-) -> Real:
+def _compute_left_ventricle_volume_by_instant(diameters: Sequence[np.ndarray], step_size: Real) -> Real:
     """Compute left ventricle volume using Biplane Simpson's method.
 
     Args:
-        a2c_diameters: Diameters measured at each key instant of the cardiac cycle, from the 2-chamber apical view.
-        a4c_diameters: Diameters measured at each key instant of the cardiac cycle, from the 4-chamber apical view.
+        diameters: Diameters for each view.
         step_size:
 
     Returns:
         Left ventricle volume (in millilitres).
     """
-    # All measures are now in millimeters, convert to meters by dividing by 1000
-    a2c_diameters /= 1000
-    a4c_diameters /= 1000
+    diameters_2ch, diameters_4ch = diameters
+
+    # All measures are now in millimeters, convert to meters by dividing by 1000:
+    sum_over_diameters = sum(
+        (diameter_2ch / 1000) * (diameter_4ch / 1000)
+        for diameter_2ch, diameter_4ch in zip(diameters_2ch, diameters_4ch)
+    )
     step_size /= 1000
+    sum_over_diameters *= (step_size * math.pi) / 4
 
-    # Estimate left ventricle volume from orthogonal disks
-    lv_volume = np.sum(a2c_diameters * a4c_diameters) * step_size * np.pi / 4
+    # Sum is now in cubic meters
+    # Convert to milliliters (1 cubic meter = 1 000 000 milliliters)
+    sum_over_diameters *= 1e6
 
-    # Volume is now in cubic meters, so convert to milliliters (1 cubic meter = 1_000_000 milliliters)
-    return round(lv_volume * 1e6)
+    return round(sum_over_diameters)
 
 
 def _find_distance_to_edge(
@@ -106,7 +103,7 @@ def _reshape_image_to_isotropic(image: np.ndarray, spacing: Tuple[Real, Real]) -
     return resize_image(image, (new_width, new_height)), spacing[1]
 
 
-def _compute_diameters(segmentation: np.ndarray, voxelspacing: Tuple[Real, Real]) -> Tuple[np.ndarray, Real]:
+def _compute_diameters(segmentation: np.ndarray, voxelspacing: Tuple[Real, Real]) -> Tuple[Sequence[Real], Real]:
     """
 
     Args:
@@ -168,4 +165,4 @@ def _compute_diameters(segmentation: np.ndarray, voxelspacing: Tuple[Real, Real]
         diameters.append((distance1 + distance2) * isotropic_spacing)
 
     step_size = (mid_line_length * isotropic_spacing) / 20
-    return np.array(diameters), step_size
+    return diameters, step_size

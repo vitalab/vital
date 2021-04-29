@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Literal, Sequence
+from typing import Any, Dict, Literal
 
 import numpy as np
 
@@ -94,15 +94,6 @@ class CamusTags(Tags):
             predicted segmentations before post-processing, etc.)
         rec: Tag referring to data that was reconstructed by an autoencoder model.
         frame_pos: Tag referring to the frame normalized index in the sequence (normalized so that ED=0 and ES=1).
-        endo_area: Tag referring to the number of pixels, in the groundtruths, associated to the left ventricle.
-        endo_base_width: Tag referring to the width of the left ventricle's base, in the groundtruths.
-        endo_length: Tag referring to the distance between the LV's base and apex, in the groundtruths.
-        endo_orientation: Tag referring to the angle between the LV's main axis and the vertical.
-        epi_area: Tag referring to the number of pixels, in the groundtruths, associated to the myocardium.
-        epi_center_x: Tag referring to the x-coordinate of the epicardium's center of mass.
-        epi_center_y: Tag referring to the y-coordinate of the epicardium's center of mass.
-        atrium_area: Tag referring to the number of pixels, in the groundtruths, associated to the left atrium.
-        seg_attrs: Collection of tags for attributes related to the segmentation sequences.
     """
 
     registered: str = "register"
@@ -118,25 +109,10 @@ class CamusTags(Tags):
     rec: str = "rec"
 
     frame_pos: str = "frame_pos"
-    endo_area: str = "endo_area"
-    endo_base_width: str = "endo_base_width"
-    endo_length: str = "endo_length"
-    endo_orientation: str = "endo_orientation"
-    epi_area: str = "epi_area"
-    epi_center_x: str = "epi_center_x"
-    epi_center_y: str = "epi_center_y"
-    atrium_area: str = "atrium_area"
-    seg_attrs: Sequence[str] = (
-        endo_area,
-        endo_base_width,
-        endo_length,
-        endo_orientation,
-        epi_area,
-        epi_center_x,
-        epi_center_y,
-        atrium_area,
-    )
 
+
+image_size: int = 256
+"""Dimension of the images in the dataset (in pixels)."""
 
 in_channels: int = 1
 """Number of input channels of the images in the dataset."""
@@ -147,14 +123,103 @@ img_save_options: Dict[str, Any] = {"dtype": np.float32, "compression": "gzip", 
 seg_save_options: Dict[str, Any] = {"dtype": np.uint8, "compression": "gzip", "compression_opts": 4}
 """Options to pass along when saving the segmentation mask in an HDF5 file."""
 
-attr_degrees: Dict[str, int] = {
-    CamusTags.endo_area: 5,
-    CamusTags.endo_base_width: 5,
-    CamusTags.endo_length: 6,
-    CamusTags.endo_orientation: 5,
-    CamusTags.epi_area: 5,
-    CamusTags.epi_center_x: 5,
-    CamusTags.epi_center_y: 5,
-    CamusTags.atrium_area: 5,
-}
-"""Degree of the simplest polynomial model that fits each CAMUS segmentation attribute."""
+camus_100_patients = [
+'patient0002',
+'patient0004',
+'patient0005',
+'patient0008',
+'patient0010',
+'patient0012',
+'patient0013',
+'patient0014',
+'patient0016',
+'patient0017',
+'patient0018',
+'patient0019',
+'patient0020',
+'patient0021',
+'patient0022',
+'patient0023',
+'patient0024',
+'patient0025',
+'patient0027',
+'patient0028',
+'patient0029',
+'patient0031',
+'patient0034',
+'patient0035',
+'patient0036',
+'patient0038',
+'patient0040',
+'patient0041',
+'patient0043',
+'patient0044',
+'patient0046',
+'patient0047',
+'patient0049',
+'patient0051',
+'patient0053',
+'patient0056',
+'patient0057',
+'patient0059',
+'patient0060',
+'patient0061',
+'patient0063',
+'patient0064',
+'patient0066',
+'patient0069',
+'patient0071',
+'patient0072',
+'patient0073',
+'patient0074',
+'patient0076',
+'patient0080',
+'patient0082',
+'patient0083',
+'patient0085',
+'patient0088',
+'patient0091',
+'patient0092',
+'patient0093',
+'patient0094',
+'patient0097',
+'patient0100',
+'patient0101',
+'patient0103',
+'patient0104',
+'patient0107',
+'patient0108',
+'patient0110',
+'patient0111',
+'patient0112',
+'patient0113',
+'patient0115',
+'patient0116',
+'patient0117',
+'patient0118',
+'patient0120',
+'patient0122',
+'patient0123',
+'patient0124',
+'patient0125',
+'patient0126',
+'patient0128',
+'patient0129',
+'patient0133',
+'patient0136',
+'patient0138',
+'patient0139',
+'patient0140',
+'patient0141',
+'patient0142',
+'patient0143',
+'patient0144',
+'patient0146',
+'patient0148',
+'patient0149',
+'patient0150',
+'patient0151',
+'patient0152',
+'patient0156',
+'patient0228'
+]
