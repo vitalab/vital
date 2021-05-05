@@ -1,4 +1,4 @@
-from typing import Any, Dict, Mapping, Sequence, TypeVar, Union
+from typing import Any, Dict, Mapping, Sequence, TypeVar, Union, List
 
 
 def prefix(map: Mapping[str, Any], prefix: str, exclude: Union[str, Sequence[str]] = None) -> Dict[str, Any]:
@@ -35,3 +35,13 @@ def squeeze(seq: Sequence[Item]) -> Union[Item, Sequence[Item]]:
     if len(seq) == 1:
         (seq,) = seq
     return seq
+
+
+def flatten(nested_list) -> List:
+    """Flattens a (nested) list recursively.
+    Args:
+        nested_list: List to flatten.
+    Returns:
+        Flattened list.
+    """
+    return sum(map(flatten, nested_list), []) if isinstance(nested_list, list) else [nested_list]
