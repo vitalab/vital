@@ -29,9 +29,12 @@ class StructurePostProcessing:
             (H, W), Processed segmentation.
         """
         if seg.dtype != np.bool:  # If it is a categorical image containing multiple structures
+            labels = np.unique(seg[seg.nonzero()])
             post_img = np.zeros_like(seg)
-            for class_label in self._labels:
-                label_image = self._process_structure(np.isin(seg, class_label))
+            for class_label in labels:
+                label_image = np.isin(seg, class_label)
+                if class_label in self._labels:
+                    label_image = self._process_structure(label_image)
                 post_img[label_image] = class_label
         else:  # If it is a binary image containing only one structure
             post_img = self._process_structure(seg)
