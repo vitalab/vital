@@ -22,10 +22,9 @@ class CamusUnet(nn.Module):
         - Paper that fine-tuned the U-Net model for the CAMUS dataset: https://ieeexplore.ieee.org/document/8649738
     """
 
-    def __init__(
-        self, in_channels: int, out_channels: int, init_channels: int, use_batchnorm: bool = True
-    ):  # noqa: D205,D212,D415
-        """
+    def __init__(self, in_channels: int, out_channels: int, init_channels: int, use_batchnorm: bool = True):
+        """Initializes class instance.
+
         Args:
             in_channels: Number of channels of the input image to segment.
             out_channels: Number of channels of the segmentation to predict.
@@ -82,8 +81,9 @@ class CamusUnet(nn.Module):
 class _UnetEncoder(nn.Module):
     """Module making up the encoder half of the U-Net model fine-tuned for the CAMUS dataset."""
 
-    def __init__(self, in_channels: int, init_channels: int, use_batchnorm: bool = True):  # noqa: D205,D212,D415
-        """
+    def __init__(self, in_channels: int, init_channels: int, use_batchnorm: bool = True):
+        """Initializes class instance.
+
         Args:
             in_channels: Number of channels of the input image to segment.
             init_channels: Number of output feature maps from the first layer, used to compute the number of feature
@@ -140,8 +140,9 @@ class _UnetEncoder(nn.Module):
 class _UnetDecoder(nn.Module):
     """Module making up the decoder half of the U-Net model fine-tuned for the CAMUS dataset."""
 
-    def __init__(self, out_channels: int, init_channels: int, use_batchnorm: bool = True):  # noqa: D205,D212,D415
-        """
+    def __init__(self, out_channels: int, init_channels: int, use_batchnorm: bool = True):
+        """Initializes class instance.
+
         Args:
             out_channels: Number of channels of the segmentation to predict.
             init_channels: Number of output feature maps from the first layer, used to compute the number of feature

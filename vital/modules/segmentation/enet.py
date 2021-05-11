@@ -22,8 +22,9 @@ class _InitialBlock(nn.Module):
         padding: int = 0,
         bias: bool = False,
         relu: bool = True,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             in_channels: Number of input channels.
             out_channels: Number output channels.
@@ -91,8 +92,9 @@ class _RegularBottleneck(nn.Module):
         dropout: float = 0.0,
         bias: bool = False,
         relu: bool = True,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             channels: Number of input and output channels.
             internal_ratio: Scale factor applied to ``channels`` used to compute the number of channels after the
@@ -235,8 +237,9 @@ class _DownsamplingBottleneck(nn.Module):
         dropout: float = 0.0,
         bias: bool = False,
         relu: bool = True,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             in_channels: Number of input channels.
             out_channels: Number of output channels.
@@ -365,8 +368,9 @@ class _UpsamplingBottleneck(nn.Module):
         dropout: float = 0.0,
         bias: bool = False,
         relu: bool = True,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             in_channels: Number of input channels.
             out_channels: Number of output channels.
@@ -475,8 +479,9 @@ class Enet(nn.Module):
         dropout: float = 0.1,
         encoder_relu: bool = True,
         decoder_relu: bool = True,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             in_channels: Number of channels in the input images.
             out_channels: Number of classes to segment.

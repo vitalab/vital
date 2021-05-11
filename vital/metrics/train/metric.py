@@ -12,8 +12,9 @@ class DifferentiableDiceCoefficient(nn.Module):
         nan_score: float = 0.0,
         no_fg_score: float = 0.0,
         reduction: str = "elementwise_mean",
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             include_background: Whether to also compute dice for the background.
             nan_score: Score to return, if a NaN occurs during computation (denom zero).

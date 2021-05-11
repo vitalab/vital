@@ -35,8 +35,9 @@ class Job(ABC):
         script_args: str = "",
         enable_log_out: bool = False,
         enable_log_err: bool = False,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             job_name: Name of the job registered to SLURM.
             save_dir: Path of the directory where to save the generated script and the optional SLURM logs produced.
