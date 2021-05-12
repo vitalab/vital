@@ -60,7 +60,7 @@ class PostBigBlob(StructurePostProcessing):
 
     def __init__(self, labels: Sequence[SemanticStructureId], nb_blobs: Sequence[int] = None):
         super().__init__(labels)
-        self.nb_blobs = nb_blobs or list(np.ones(len(self._labels)))
+        self.nb_blobs = nb_blobs or list(np.ones(len(self._labels), dtype=np.int8))
         assert len(self.nb_blobs) == len(self._labels)
 
     def _process_structure(self, mask: np.ndarray, class_label=None, **kwargs) -> np.ndarray:
