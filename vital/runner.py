@@ -8,6 +8,7 @@ import torch
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger
 
+from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
 from vital.utils.config import read_ini_config
 from vital.utils.logging import configure_logging
@@ -55,17 +56,18 @@ class VitalRunner(ABC):
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
             cls._configure_logging(log_dir, hparams)
 
+        datamodule = cls._get_selected_data_module(hparams)(**vars(hparams))
         system_cls = cls._get_selected_system(hparams)
         if hparams.ckpt_path and not hparams.weights_only:  # Load pretrained model if checkpoint is provided
             model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams), strict=hparams.strict_load)
         else:
-            model = system_cls(**vars(hparams))
+            model = system_cls(**vars(hparams), data_params=datamodule.data_params)
             if hparams.ckpt_path and hparams.weights_only:
                 checkpoint = torch.load(hparams.weights, map_location=model.device)
                 model.load_state_dict(checkpoint["state_dict"], strict=hparams.strict_load)
 
         if hparams.train:
-            trainer.fit(model)
+            trainer.fit(model, datamodule=datamodule)
 
             if not hparams.fast_dev_run:
                 # Copy best model checkpoint to a predictable path + online tracker (if used)
@@ -78,7 +80,7 @@ class VitalRunner(ABC):
                 model = system_cls.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
         if hparams.test:
-            trainer.test(model)
+            trainer.test(model, datamodule=datamodule)
 
     @classmethod
     def _configure_logging(cls, log_dir: Path, hparams: Namespace) -> None:
@@ -153,6 +155,18 @@ class VitalRunner(ABC):
             Parser object with overridden trainer attributes.
         """
         return parser
+
+    @classmethod
+    def _get_selected_data_module(cls, hparams: Namespace) -> Type[VitalDataModule]:
+        """Identify, through the parameters specified in the CLI, the type of data module chosen by the user.
+
+        Args:
+            hparams: Arguments parsed from the CLI.
+
+        Returns:
+            Type of the data module selected by the user to be provided to the Lightning module.
+        """
+        raise NotImplementedError
 
     @classmethod
     def _get_selected_system(cls, hparams: Namespace) -> Type[VitalSystem]:
