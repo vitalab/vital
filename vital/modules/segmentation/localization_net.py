@@ -46,7 +46,7 @@ class LocalizationNet(nn.Module):
             segmentation_cls: Class of the module to use as a base segmentation model for the LocalizationNet.
             in_shape: Shape of the input data.
             out_shape: Shape of the target data.
-            cropped_shape: (H, W), Shape at which to resize RoI aligned crops.
+            cropped_shape: (H, W), Shape at which to resize RoI crops.
             data_shape: Information about the shape of the expected input and output.
             **segmentation_cls_kwargs: Arguments to initialize an instance of ``segmentation_cls``.
         """
