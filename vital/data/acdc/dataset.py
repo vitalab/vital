@@ -27,8 +27,9 @@ class Acdc(VisionDataset):
         predict: bool = False,
         transform: Callable = None,
         target_transform: Callable = None,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             path: Path to the HDF5 dataset.
             image_set: select the subset of images to use from the enumeration.

@@ -40,8 +40,9 @@ class LocalizationNet(nn.Module):
         out_shape: Tuple[int, ...],
         cropped_shape: Tuple[int, int],
         **segmentation_cls_kwargs,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             segmentation_cls: Class of the module to use as a base segmentation model for the LocalizationNet.
             in_shape: Shape of the input data.

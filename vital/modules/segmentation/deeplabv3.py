@@ -11,8 +11,9 @@ class DeepLabv3(nn.Module):
 
     def __init__(
         self, backbone: Literal["resnet50", "resnet101"], num_classes: int, convert_grayscale_to_rgb: bool = False
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             backbone: The network used by the DeepLabv3 architecture to compute the features for the model.
             num_classes: Number of output classes to segment.
