@@ -99,7 +99,7 @@ class Measure:
             normalize: If ``True``, normalizes the bbox coordinates from between 0 and H or W to between 0 and 1.
 
         Returns:
-            ([N], 4), Coordinates of the bbox, in the following order: row_min, col_min, row_max, col_max.
+            ([N], 4), Coordinates of the bbox, in (y1, x1, y2, x2) format.
         """
         # Only keep ROI from the groundtruth
         roi_mask = np.isin(segmentation, labels)
@@ -107,22 +107,22 @@ class Measure:
         # Find the coordinates of the bounding box around the ROI
         rows = roi_mask.any(1)
         cols = roi_mask.any(0)
-        row_min, row_max = np.where(rows)[0][[0, -1]]
-        col_min, col_max = np.where(cols)[0][[0, -1]]
+        y1, y2 = np.where(rows)[0][[0, -1]]
+        x1, x2 = np.where(cols)[0][[0, -1]]
 
         # Compute the size of the margin between the ROI and its bounding box
-        dy = int(bbox_margin * (col_max - col_min))
-        dx = int(bbox_margin * (row_max - row_min))
+        dx = int(bbox_margin * (x2 - x1))
+        dy = int(bbox_margin * (y2 - y1))
 
         # Apply margin to bbox coordinates
-        row_min, row_max = row_min - dx, row_max + dx + 1
-        col_min, col_max = col_min - dy, col_max + dy + 1
+        y1, y2 = y1 - dy, y2 + dy + 1
+        x1, x2 = x1 - dx, x2 + dx + 1
 
         # Check limits
-        row_min, row_max = max(0, row_min), min(row_max, roi_mask.shape[0])
-        col_min, col_max = max(0, col_min), min(col_max, roi_mask.shape[1])
+        y1, y2 = max(0, y1), min(y2, roi_mask.shape[0])
+        x1, x2 = max(0, x1), min(x2, roi_mask.shape[1])
 
-        roi_bbox = np.array([row_min, col_min, row_max, col_max])
+        roi_bbox = np.array([y1, x1, y2, x2])
 
         if normalize:
             roi_bbox = roi_bbox.astype(float)
@@ -137,16 +137,15 @@ class Measure:
         """Gives the pixel-indices of a bounding box (bbox) w.r.t an output size based on the bbox's normalized coord.
 
         Args:
-            roi_bbox: ([N], 4), Normalized coordinates of the bbox, in the following order:
-                row_min, col_min, row_max, col_max.
-            output_size: (H, W), Size for which to compute pixel-indices based on the normalized coordinates.
+            roi_bbox: ([N], 4), Normalized coordinates of the bbox, in (y1, x1, y2, x2) format.
+            output_size: (X, Y), Size for which to compute pixel-indices based on the normalized coordinates.
             check_bounds: If ``True``, perform various checks on the denormalized coordinates:
-                - ensure they fit between 0 and H or W
+                - ensure they fit between 0 and X or Y
                 - ensure that the min bounds are smaller than the max bounds
                 - ensure that the bbox is at least one pixel wide in each dimension
 
         Returns:
-            ([N], 4), Coordinates of the bbox, in the following order: row_min, col_min, row_max, col_max.
+            ([N], 4), Coordinates of the bbox, in (y1, x1, y2, x2) format.
         """
         # Copy input data to ensure we don't write over user data
         roi_bbox = np.copy(roi_bbox)
@@ -156,17 +155,17 @@ class Measure:
             roi_bbox = np.clip(roi_bbox, 0, 1)
 
         # Change ROI bbox from normalized between 0 and 1 to absolute pixel coordinates
-        roi_bbox[:, (0, 2)] = (roi_bbox[:, (0, 2)] * output_size[0]).round()  # Height
-        roi_bbox[:, (1, 3)] = (roi_bbox[:, (1, 3)] * output_size[1]).round()  # Width
+        roi_bbox[:, (0, 2)] = (roi_bbox[:, (0, 2)] * output_size[0]).round()  # Y
+        roi_bbox[:, (1, 3)] = (roi_bbox[:, (1, 3)] * output_size[1]).round()  # X
 
         if check_bounds:
             # Clamp predicted min bounds are at least two pixels smaller than image bounds
             # to allow for inclusive upper bounds
-            roi_bbox[:, 0] = np.minimum(roi_bbox[:, 0], output_size[0] - 1)  # Height
-            roi_bbox[:, 1] = np.minimum(roi_bbox[:, 1], output_size[1] - 1)  # Width
+            roi_bbox[:, 0] = np.minimum(roi_bbox[:, 0], output_size[0] - 1)  # Y
+            roi_bbox[:, 1] = np.minimum(roi_bbox[:, 1], output_size[1] - 1)  # X
 
             # Clamp predicted max bounds are at least one pixel bigger than min bounds
-            roi_bbox[:, 2] = np.maximum(roi_bbox[:, 2], roi_bbox[:, 0] + 1)  # Height
-            roi_bbox[:, 3] = np.maximum(roi_bbox[:, 3], roi_bbox[:, 1] + 1)  # Width
+            roi_bbox[:, 2] = np.maximum(roi_bbox[:, 2], roi_bbox[:, 0] + 1)  # Y
+            roi_bbox[:, 3] = np.maximum(roi_bbox[:, 3], roi_bbox[:, 1] + 1)  # X
 
         return roi_bbox

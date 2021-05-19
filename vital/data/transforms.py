@@ -42,3 +42,27 @@ class SegmentationToTensor(torch.nn.Module):
             ([N], H, W), Segmentation map converted to a tensor.
         """
         return segmentation_to_tensor(data)
+
+
+class GrayscaleToRGB(torch.nn.Module):
+    """Converts grayscale image to RGB image where r == g == b."""
+
+    def __call__(self, img: torch.Tensor) -> torch.Tensor:
+        """Converts grayscale image to RGB image where r == g == b.
+
+        Args:
+            img: (N, 1, ...), Grayscale image to convert to RGB.
+
+        Returns:
+            (N, 3, ...), RGB version of the original grayscale image, where r == g == b.
+        """
+        if img.shape[1] == 1:
+            repeat_sizes = [1] * img.ndim
+            repeat_sizes[1] = 3
+            img = img.repeat(*repeat_sizes)
+        else:
+            raise ValueError(
+                f"{self.__class__.__name__} only supports converting single channel grayscale images to RGB images "
+                f"where r == g == b. The image data you provided consists of {img.shape[1]} channel images."
+            )
+        return img
