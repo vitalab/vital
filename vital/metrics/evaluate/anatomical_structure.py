@@ -5,10 +5,9 @@ from vital.metrics.evaluate.segmentation import Segmentation2DMetrics
 class Anatomical2DStructureMetrics:
     """Abstract class to compute metrics for a specific anatomical structure in a segmentation."""
 
-    def __init__(
-        self, segmentation_metrics: Segmentation2DMetrics, struct_label: SemanticStructureId
-    ):  # noqa: D205,D212,D415
-        """
+    def __init__(self, segmentation_metrics: Segmentation2DMetrics, struct_label: SemanticStructureId):
+        """Initializes class instance.
+
         Args:
             segmentation_metrics: Instance, based on the segmentation for which to compute anatomical metrics, of the
                 class implementing various segmentation metrics.

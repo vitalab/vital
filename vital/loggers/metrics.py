@@ -17,8 +17,9 @@ class MetricsLogger(Logger):
     input_choices: Sequence[str]  #: Tags of the data on which it is possible to compute the metrics
     target_choices: Sequence[str] = None  #: Tags of reference data that can serve as target when computing the metrics
 
-    def __init__(self, input: str, target: str = None, **kwargs):  # noqa: D205,D212,D415
-        """
+    def __init__(self, input: str, target: str = None, **kwargs):
+        """Initializes class instance.
+
         Args:
             input: Tag of the data for which to compute metrics.
             target: Tag of the (optional) reference data to use as target when computing metrics.

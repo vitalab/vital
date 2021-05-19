@@ -21,10 +21,9 @@ class GroupsEmbeddingLogger(Logger):
     desc = "groups_embedding"
     Log = np.ndarray
 
-    def __init__(
-        self, embedding_params: Mapping[str, Any] = None, interactive: bool = False, **kwargs
-    ):  # noqa: D205,D212,D415
-        """
+    def __init__(self, embedding_params: Mapping[str, Any] = None, interactive: bool = False, **kwargs):
+        """Initializes class instance.
+
         Args:
             embedding_params: Parameters to initialize the UMAP object.
             interactive: If ``True``, use the interactive plot; otherwise, save a custom set of figures for later

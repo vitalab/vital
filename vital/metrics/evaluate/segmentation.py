@@ -17,8 +17,9 @@ class Segmentation2DMetrics:
         segmentation: np.ndarray,
         struct_labels: Sequence[SemanticStructureId],
         voxelspacing: Tuple[Real, Real] = (1.0, 1.0),
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             segmentation: (H, W), 2D array where the value of each entry in the array is the label of the segmentation
                 class for the pixel.

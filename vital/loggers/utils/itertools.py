@@ -11,8 +11,9 @@ class IterableResult(Iterable[Result], Sized, ABC):
 
     desc: str  #: Description of the iterable unit. Used in e.g. progress bar, metrics' index header, etc.
 
-    def __init__(self, results_path: Path):  # noqa: D205,D212,D415
-        """
+    def __init__(self, results_path: Path):
+        """Initializes class instance.
+
         Args:
             results_path: Path of the results over which to iterate. E.g. an HDF5 dataset file, the root directory of a
                 hierarchy of image files, etc.

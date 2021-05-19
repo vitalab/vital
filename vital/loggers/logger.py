@@ -24,8 +24,9 @@ class Logger:
         disable_progress_bar: bool = False,
         disable_multiprocessing: bool = False,
         **iterable_result_params,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             output_name: Name for the aggregated log, if the logger produces an aggregated log.
             disable_progress_bar: If ``True``, disables the progress bars detailing the progress of the computations.
