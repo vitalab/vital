@@ -6,6 +6,7 @@ from typing import Tuple, Type
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
+from torchmetrics.utilities.data import to_onehot
 from torchvision.ops import roi_align
 
 from vital.utils.image.measure import Measure
@@ -45,7 +46,7 @@ class LocalizationNet(nn.Module):
             segmentation_cls: Class of the module to use as a base segmentation model for the LocalizationNet.
             in_shape: Shape of the input data.
             out_shape: Shape of the target data.
-            cropped_shape: (H, W), Shape at which to resize RoI aligned crops.
+            cropped_shape: (H, W), Shape at which to resize RoI crops.
             data_shape: Information about the shape of the expected input and output.
             **segmentation_cls_kwargs: Arguments to initialize an instance of ``segmentation_cls``.
         """
@@ -94,7 +95,7 @@ class LocalizationNet(nn.Module):
 
         Returns:
             - (N, ``out_channels``, H, W), Raw, unnormalized scores for each class in the first, global segmentation.
-            - (N, 4), Coordinates of the bbox around the RoI.
+            - (N, 4), Coordinates of the bbox around the RoI, in (x1, y1, x2, y2) format.
             - (N, ``out_channels``, H, W), Raw, unnormalized scores for each class in the second segmentation, localized
               in the cropped RoI.
         """
@@ -113,9 +114,13 @@ class LocalizationNet(nn.Module):
         features = torch.flatten(features, 1)  # Format bottleneck output to match expected bbox module input
         roi_bbox_hat = self.roi_bbox_module(features)
 
+        # Denormalize bbox while allowing gradients to flow through
+        boxes = roi_bbox_hat.clone()
+        boxes[:, (1, 3)] *= self.in_shape[1]
+        boxes[:, (0, 2)] *= self.in_shape[2]
+
         # Crop and resize ``x`` based on ``roi_bbox_hat`` predicted by the previous modules
-        boxes = [box[None, :] for box in Measure.denormalize_bbox(roi_bbox_hat, self.in_shape[1:])]
-        cropped_x = roi_align(x, boxes, self.cropped_shape, aligned=True)
+        cropped_x = roi_align(x, torch.split(boxes, 1), self.cropped_shape, aligned=True)
 
         # Second segmentation module: Segment cropped RoI
         # Segmentation module trained to take as input the image cropped around the predicted segmentation's RoI, and
@@ -134,27 +139,27 @@ class LocalizationNet(nn.Module):
             (N, ``out_channels``, H, W), Input's segmentation, in one-hot format.
         """
         _, roi_bbox_hat, localized_y_hat = self(x)
-        y_hat = self._revert_crop(localized_y_hat.argmax(dim=1, keepdim=True), roi_bbox_hat).squeeze()  # (N, H, W)
-        y_hat = F.one_hot(y_hat.squeeze(), num_classes=self.out_shape[0])  # (N, H, W, ``out_channels``)
-        return y_hat.permute(0, 3, 1, 2)  # (N, ``out_channels``, H, W)
+        y_hat = self._revert_crop(localized_y_hat.argmax(dim=1, keepdim=True), roi_bbox_hat)  # (N, 1, H, W)
+        y_hat = to_onehot(y_hat.squeeze(dim=1), num_classes=self.out_shape[0])  # (N, ``out_channels``, H, W)
+        return y_hat
 
     def _revert_crop(self, localized_segmentation: Tensor, roi_bbox: Tensor) -> Tensor:
         """Fits the localized segmentation back to its original position the image.
 
         Args:
             localized_segmentation: (N, 1, H, W), Segmentation of the content of the bbox around the RoI.
-            roi_bbox: (N, 4), Normalized coordinates of the bbox around the RoI.
+            roi_bbox: (N, 4), Normalized coordinates of the bbox around the RoI, in (x1, y1, x2, y2) format.
 
         Returns:
             (N, 1, H, W), Localized segmentation fitted to its original position in the image.
         """
-        roi_bbox = Measure.denormalize_bbox(roi_bbox, self.out_shape[1:], check_bounds=True).int()
+        roi_bbox = Measure.denormalize_bbox(roi_bbox, self.out_shape[1:][::-1], check_bounds=True).int()
 
         # Fit the localized segmentation at its original location in the image, one item at a time
         segmentation = []
         for item_roi_bbox, item_localized_seg in zip(roi_bbox, localized_segmentation):
             # Get bbox size in order (width, height)
-            bbox_size = (item_roi_bbox[3] - item_roi_bbox[1], item_roi_bbox[2] - item_roi_bbox[0])
+            bbox_size = (item_roi_bbox[2] - item_roi_bbox[0], item_roi_bbox[3] - item_roi_bbox[1])
 
             # Convert segmentation tensor to array (compatible with PIL) to resize, then convert back to tensor
             pil_formatted_localized_seg = item_localized_seg.detach().byte().cpu().numpy().squeeze()
@@ -163,7 +168,7 @@ class LocalizationNet(nn.Module):
             # Place the resized localised segmentation inside an empty segmentation
             segmentation.append(torch.zeros_like(item_localized_seg))
             segmentation[-1][
-                :, item_roi_bbox[0] : item_roi_bbox[2], item_roi_bbox[1] : item_roi_bbox[3]
+                :, item_roi_bbox[1] : item_roi_bbox[3], item_roi_bbox[0] : item_roi_bbox[2]
             ] = item_resized_seg
 
         return torch.stack(segmentation)
