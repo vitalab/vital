@@ -1,6 +1,8 @@
 from abc import ABC
-from typing import Dict
+from typing import Dict, List
 
+from pytorch_lightning import Callback
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from torch import Tensor
 
 from vital.systems.system import SystemComputationMixin
@@ -38,3 +40,14 @@ class TrainValComputationMixin(SystemComputationMixin, ABC):
         result.update({"early_stop_on": result["val_loss"]})
         self.log_dict(result, **self.val_log_kwargs)
         return result
+
+    def configure_callbacks(self) -> List[Callback]:  # noqa: D102
+        checkpoint_kwargs = {"monitor": "val_loss"}
+        checkpoint_kwargs.update(self.hparams.model_checkpoint_kwargs)
+        callbacks = [ModelCheckpoint(**checkpoint_kwargs)]
+        if self.hparams.early_stopping_kwargs:
+            # Disable EarlyStopping by default and only enable it if some of its parameters are provided
+            early_stopping_kwargs = {"monitor": "val_loss"}
+            early_stopping_kwargs.update(self.hparams.early_stopping_kwargs)
+            callbacks.append(EarlyStopping(**early_stopping_kwargs))
+        return callbacks
