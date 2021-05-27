@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,8 +15,8 @@ class UNet(nn.Module):
 
     def __init__(
         self,
-        in_channels: int,
-        out_channels: int,
+        input_shape: Tuple[int],
+        ouput_shape: Tuple[int],
         init_channels: int = 32,
         use_batchnorm: bool = True,
         bilinear: bool = False,
@@ -33,6 +35,9 @@ class UNet(nn.Module):
             dropout_prob: probability from dropout layers.
         """
         super().__init__()
+        in_channels = input_shape[0]
+        out_channels = ouput_shape[0]
+
         self.layer1 = _DoubleConv(in_channels, init_channels // 2, dropout_prob / 2, use_batchnorm)
         self.layer2 = _Down(init_channels // 2, init_channels, dropout_prob, use_batchnorm)
         self.layer3 = _Down(init_channels, init_channels * 2, dropout_prob, use_batchnorm)

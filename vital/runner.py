@@ -4,7 +4,17 @@ from pathlib import Path
 from shutil import copy2
 from typing import Type
 
+import hydra
 import torch
+from config.data.acdc import AcdcConfig
+from config.data.camus import CamusConfig
+from config.data.mnist import MnistConfig
+from config.default import DefaultConfig
+from config.modules.mlp import MLPConfig
+from config.modules.unet import UnetConfig
+from config.system.supervised import FullConfig
+from hydra.core.config_store import ConfigStore
+from omegaconf import DictConfig
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger
 
@@ -18,24 +28,37 @@ class VitalRunner(ABC):
     """Abstract runner that runs the main training/val loop, etc. using Lightning Trainer."""
 
     @classmethod
-    def main(cls) -> None:
-        """Sets-up the CLI for the ``LightningModule``s runnable through this trainer and runs the requested system."""
-        # Initialize the parser with our own generic arguments, Lightning trainer arguments,
-        # and subparsers for all systems available through the trainer
-        parser = cls._add_system_args(
-            cls._override_trainer_default(cls._add_generic_args(Trainer.add_argparse_args(ArgumentParser())))
-        )
-
-        # Run target system
-        cls.run_system(cls._parse_and_check_args(parser))
+    def create_configs(cls, cs: ConfigStore):
+        cs.store(name="default", node=DefaultConfig)
+        cs.store(name="full", node=FullConfig)
 
     @classmethod
-    def run_system(cls, hparams: Namespace) -> None:
+    def store_groups(cls, cs: ConfigStore):
+        configuration = {
+            "data": {"acdc": AcdcConfig, "camus": CamusConfig, "mnist": MnistConfig},
+            "network": {"unet": UnetConfig, "mlp": MLPConfig},
+        }
+
+        for group_name, group in configuration.items():
+            for name, node in group.items():
+                cs.store(group=group_name, name=name, node=node)
+
+    @classmethod
+    def main(cls) -> None:
+        cs = ConfigStore.instance()
+        cls.create_configs(cs)
+        cls.store_groups(cs)
+        cls.run_system()
+
+    @classmethod
+    @hydra.main(config_name="default")
+    def run_system(cls, cfg: DictConfig) -> None:
         """Handles the training and evaluation of a model.
 
         Args:
             hparams: Arguments parsed from the CLI.
         """
+
         seed_everything(hparams.seed)
 
         # Use Comet for logging if a path to a Comet config file is provided
@@ -262,3 +285,7 @@ class VitalRunner(ABC):
             args.default_root_dir = Path(args.default_root_dir)
 
         return args
+
+
+if __name__ == "__main__":
+    VitalRunner.main()
