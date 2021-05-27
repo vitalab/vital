@@ -1,0 +1,45 @@
+from typing import Dict
+
+from torch import Tensor, nn
+from torch.nn import functional as F
+from vital.data.config import Tags
+from vital.systems.computation import TrainValComputationMixin
+
+
+class ClassificationComputationMixin(TrainValComputationMixin):
+    """Mixin for classification train/val step.
+
+    Implements generic classification train/val step and inference, assuming the following conditions:
+        - the ``nn.Module`` used returns as single output the raw, unnormalized scores for each class.
+    """
+
+    # Fields to initialize in implementation of ``VitalSystem``
+    #: Network called by ``ClassificationComputationMixin`` for test-time inference
+    module: nn.Module
+
+    def __init__(self, module, *args, **kwargs):
+        """Initializes the metric objects used repeatedly in the train/eval loop.
+
+        Args:
+            *args: Positional arguments to pass to the parent's constructor.
+            **kwargs: Keyword arguments to pass to the parent's constructor.
+        """
+        super().__init__(*args, **kwargs)
+
+        self.module = module
+
+    def forward(self, *args, **kwargs):  # noqa: D102
+        return self.module(*args, **kwargs)
+
+    def trainval_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:  # noqa: D102
+        x, y = batch[Tags.img], batch[Tags.gt]
+
+        # Forward
+        y_hat = self.module(x)
+
+        # Segmentation accuracy metrics
+        loss = F.cross_entropy(y_hat, y)
+        accuracy = y_hat.argmax(dim=1).eq(y).sum().item() / x.shape[0]
+
+        # Format output
+        return {"loss": loss, "accuracy": accuracy}

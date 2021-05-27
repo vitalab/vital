@@ -6,8 +6,8 @@ from config.data.acdc import AcdcConfig
 from config.data.camus import CamusConfig
 from config.data.mnist import MnistConfig
 from config.default import DefaultConfig
-from config.modules.mlp import MLPConfig
-from config.modules.unet import UnetConfig
+from config.system.modules.mlp import MLPConfig
+from config.system.modules.unet import UNetConfig
 from config.system.segmentation import SegmentationConfig
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig, OmegaConf
@@ -23,7 +23,7 @@ def create_configs(cs: ConfigStore):
 def store_groups(cs: ConfigStore):
     configuration = {
         "data": {"acdc": AcdcConfig, "camus": CamusConfig, "mnist": MnistConfig},
-        "network": {"unet": UnetConfig, "mlp": MLPConfig},
+        "network": {"unet": UNetConfig, "mlp": MLPConfig},
         "system": {"segmentation": SegmentationConfig},
     }
 

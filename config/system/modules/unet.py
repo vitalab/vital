@@ -1,11 +1,10 @@
 from dataclasses import dataclass
 
-from config.modules.network import NetworkConfig
-from omegaconf import MISSING
+from config.system.modules.module import ModuleConfig
 
 
 @dataclass
-class UnetConfig(NetworkConfig):
+class UNetConfig(ModuleConfig):
     _target_: str = "vital.modules.segmentation.unet.UNet"
 
     init_channels: int = 32

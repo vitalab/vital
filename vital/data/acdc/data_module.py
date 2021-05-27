@@ -7,6 +7,7 @@ from vital.data.acdc.config import Label, image_size, in_channels
 from vital.data.acdc.dataset import Acdc
 from vital.data.config import DataParameters, Subset
 from vital.data.data_module import VitalDataModule
+from vital.utils.path import load_env_var
 
 
 class AcdcDataModule(VitalDataModule):
@@ -28,7 +29,7 @@ class AcdcDataModule(VitalDataModule):
         )
 
         self.label_tags = [str(label) for label in list(Label)]
-        self._dataset_kwargs = {"path": Path(dataset_path), "use_da": use_da}
+        self._dataset_kwargs = {"path": Path(load_env_var(dataset_path)), "use_da": use_da}
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
         if stage == "fit":

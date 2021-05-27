@@ -4,5 +4,5 @@ from omegaconf import MISSING
 
 
 @dataclass
-class NetworkConfig:
+class ModuleConfig:
     _target_: str = MISSING

@@ -1,27 +1,28 @@
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from shutil import copy2
 from typing import Type
 
 import hydra
-import torch
-from config.data.acdc import AcdcConfig
-from config.data.camus import CamusConfig
-from config.data.mnist import MnistConfig
-from config.default import DefaultConfig
-from config.modules.mlp import MLPConfig
-from config.modules.unet import UnetConfig
-from config.system.supervised import FullConfig
+import dotenv
+from config.system.modules.unet import UNetConfig
+
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger
-
 from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
 from vital.utils.config import read_ini_config
 from vital.utils.logging import configure_logging
+
+from config.conf import DefaultConfig
+from config.data.acdc import AcdcConfig
+from config.data.camus import CamusConfig
+from config.data.mnist import MnistConfig
+from config.system.modules.mlp import MLPConfig
+from config.system.classification import ClassificationConfig
+from config.system.segmentation import SegmentationConfig
 
 
 class VitalRunner(ABC):
@@ -30,13 +31,14 @@ class VitalRunner(ABC):
     @classmethod
     def create_configs(cls, cs: ConfigStore):
         cs.store(name="default", node=DefaultConfig)
-        cs.store(name="full", node=FullConfig)
 
     @classmethod
     def store_groups(cls, cs: ConfigStore):
         configuration = {
             "data": {"acdc": AcdcConfig, "camus": CamusConfig, "mnist": MnistConfig},
-            "network": {"unet": UnetConfig, "mlp": MLPConfig},
+            "system": {'segmentation': SegmentationConfig, 'classification': ClassificationConfig},
+            # 'system.module': {'mlp': MLPConfig, 'unet': UNetConfig}
+            'module': {'mlp': MLPConfig, 'unet': UNetConfig}
         }
 
         for group_name, group in configuration.items():
@@ -45,64 +47,75 @@ class VitalRunner(ABC):
 
     @classmethod
     def main(cls) -> None:
+
+        # load environment variables from `.env` file if it exists
+        dotenv.load_dotenv(override=True)
+
         cs = ConfigStore.instance()
         cls.create_configs(cs)
         cls.store_groups(cs)
-        cls.run_system()
+        # cls.run_system()
 
     @classmethod
-    @hydra.main(config_name="default")
     def run_system(cls, cfg: DictConfig) -> None:
         """Handles the training and evaluation of a model.
 
         Args:
-            hparams: Arguments parsed from the CLI.
+            cfg:
         """
 
-        seed_everything(hparams.seed)
+        seed_everything(cfg.seed)
 
-        # Use Comet for logging if a path to a Comet config file is provided
-        # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
+        # # Use Comet for logging if a path to a Comet config file is provided
+        # # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
         logger = True
-        if hparams.comet_config and not hparams.fast_dev_run:
-            logger = cls._configure_comet_logger(hparams)
+        # if hparams.comet_config and not hparams.fast_dev_run:
+        #     logger = cls._configure_comet_logger(hparams)
 
-        if hparams.resume:
-            trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path, logger=logger)
+        if cfg.resume:
+            trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=logger)
         else:
-            trainer = Trainer.from_argparse_args(hparams, logger=logger)
+            trainer = hydra.utils.instantiate(cfg.trainer)
 
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
-        log_dir = Path(trainer.log_dir) if trainer.log_dir else hparams.default_root_dir
+        log_dir = Path(trainer.log_dir) if trainer.log_dir else cfg.trainer.default_root_dir
 
-        if not hparams.fast_dev_run:
+        if not cfg.trainer.fast_dev_run:
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
-            cls._configure_logging(log_dir, hparams)
+            cls._configure_logging(log_dir, None)
 
-        datamodule = cls._get_selected_data_module(hparams)(**vars(hparams))
-        system_cls = cls._get_selected_system(hparams)
-        if hparams.ckpt_path and not hparams.weights_only:  # Load pretrained model if checkpoint is provided
-            model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams), strict=hparams.strict_load)
-        else:
-            model = system_cls(**vars(hparams), data_params=datamodule.data_params)
-            if hparams.ckpt_path and hparams.weights_only:
-                checkpoint = torch.load(hparams.weights, map_location=model.device)
-                model.load_state_dict(checkpoint["state_dict"], strict=hparams.strict_load)
+        datamodule = hydra.utils.instantiate(cfg.data)
 
-        if hparams.train:
+        module = hydra.utils.instantiate(cfg.module,
+                                         input_shape=datamodule.data_params.in_shape,
+                                         ouput_shape=datamodule.data_params.out_shape)
+
+        print(cfg.system)
+        model = hydra.utils.instantiate(cfg.system, module, datamodule.data_params)
+
+        if cfg.ckpt_path:  # and not hparams.weights_only:  # Load pretrained model if checkpoint is provided
+            model = model.load_from_checkpoint(str(cfg.ckpt_path), **cfg.system)
+        # else:
+        #     model = system_cls(**vars(hparams), data_params=datamodule.data_params)
+        #     if hparams.ckpt_path and hparams.weights_only:
+        #         checkpoint = torch.load(hparams.weights, map_location=model.device)
+        #         model.load_state_dict(checkpoint["state_dict"], strict=hparams.strict_load)
+
+        if cfg.train:
             trainer.fit(model, datamodule=datamodule)
 
-            if not hparams.fast_dev_run:
+            if not cfg.trainer.fast_dev_run:
                 # Copy best model checkpoint to a predictable path + online tracker (if used)
-                best_model_path = cls._best_model_path(log_dir, hparams)
-                copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
-                if hparams.comet_config:
-                    trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
+                # best_model_path = cls._best_model_path(log_dir, hparams)
+                # copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
+
+                # if hparams.comet_config:
+                #     trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
 
                 # Ensure we use the best weights (and not the latest ones) by loading back the best model
-                model = system_cls.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+                model = model.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
 
-        if hparams.test:
+        if cfg.test:
             trainer.test(model, datamodule=datamodule)
 
     @classmethod
@@ -289,3 +302,11 @@ class VitalRunner(ABC):
 
 if __name__ == "__main__":
     VitalRunner.main()
+
+
+    @hydra.main(config_name="default")
+    def run(cfg: DictConfig):
+        VitalRunner.run_system(cfg)
+
+
+    run()

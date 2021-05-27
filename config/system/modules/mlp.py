@@ -1,13 +1,11 @@
 from collections import Sequence
 from dataclasses import dataclass
-from typing import Optional
 
-from config.modules.network import NetworkConfig
-from torch import nn
+from config.system.modules.module import ModuleConfig
 
 
 @dataclass
-class MLPConfig(NetworkConfig):
+class MLPConfig(ModuleConfig):
     _target_: str = "vital.modules.classification.mlp.MLP"
 
     hidden: Sequence[int] = (128,)

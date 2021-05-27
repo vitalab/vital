@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Callable, Literal, Optional, Union
 
 from torch.utils.data import DataLoader
+from torchvision.transforms import ToTensor
 
 from vital.data.config import DataParameters, Subset
 from vital.data.data_module import VitalDataModule
@@ -27,6 +28,8 @@ class MnistDataModule(VitalDataModule):
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
         super().__init__(data_params=DataParameters(in_shape=(1, 28, 28), out_shape=(10,)), **kwargs)
+
+        transform = transform or ToTensor()
 
         self._dataset_kwargs = {
             "root": Path(dataset_path),

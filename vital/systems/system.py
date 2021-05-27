@@ -71,15 +71,15 @@ class VitalSystem(pl.LightningModule, ABC):
             (self.log_dir / "summary.txt").write_text(str(model_summary), encoding="utf-8")
         return super().summarize(mode)
 
-    def configure_callbacks(self) -> List[Callback]:  # noqa: D102
-        callbacks = [ModelCheckpoint(**self.hparams.model_checkpoint_kwargs)]
-        if self.hparams.early_stopping_kwargs:
-            # Disable EarlyStopping by default and only enable it if some of its parameters are provided
-            callbacks.append(EarlyStopping(**self.hparams.early_stopping_kwargs))
-        return callbacks
+    # def configure_callbacks(self) -> List[Callback]:  # noqa: D102
+    #     callbacks = [ModelCheckpoint(**self.hparams.model_checkpoint_kwargs)]
+    #     if self.hparams.early_stopping_kwargs:
+    #         # Disable EarlyStopping by default and only enable it if some of its parameters are provided
+    #         callbacks.append(EarlyStopping(**self.hparams.early_stopping_kwargs))
+    #     return callbacks
 
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
-        return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        return torch.optim.Adam(self.parameters())#, lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
@@ -120,12 +120,12 @@ class SystemComputationMixin(VitalSystem, ABC):
     #: Choice of logging flags to toggle through the CLI
     _logging_flags = ["on_step", "on_epoch", "logger", "prog_bar"]
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # Update logging flags to map between available flags and their boolean values,
         # instead of listing desired flags
-        self.train_log_kwargs = {flag: (flag in self.hparams.train_logging_flags) for flag in self._logging_flags}
-        self.val_log_kwargs = {flag: (flag in self.hparams.val_logging_flags) for flag in self._logging_flags}
+        self.train_log_kwargs = {}#{flag: (flag in self.hparams.train_logging_flags) for flag in self._logging_flags}
+        self.val_log_kwargs = {}#{flag: (flag in self.hparams.val_logging_flags) for flag in self._logging_flags}
 
     def training_step(self, *args, **kwargs) -> Union[Tensor, Dict[Union[Literal["loss"], Any], Any]]:  # noqa: D102
         raise NotImplementedError

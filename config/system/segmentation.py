@@ -1,7 +1,6 @@
 from collections import Callable
 from dataclasses import dataclass
 
-from config.default import DefaultConfig
 from config.system.supervised import SupervisedConfig
 
 
