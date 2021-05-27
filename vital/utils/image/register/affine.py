@@ -28,8 +28,9 @@ class AffineRegisteringTransformer:
 
     registering_steps = ["shift", "rotation", "zoom", "crop"]
 
-    def __init__(self, num_classes: int, crop_shape: Tuple[int, int] = None):  # noqa: D205,D212,D415
-        """
+    def __init__(self, num_classes: int, crop_shape: Tuple[int, int] = None):
+        """Initializes class instance.
+
         Args:
             num_classes: Number of classes in the dataset from which the image/segmentation pairs come from.
             crop_shape: (height, width) Shape at which to resize the bbox around the ROI after crop.

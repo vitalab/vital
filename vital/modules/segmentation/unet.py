@@ -21,8 +21,9 @@ class UNet(nn.Module):
         use_batchnorm: bool = True,
         bilinear: bool = False,
         dropout_prob: float = 0.0,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             in_channels: Number of channels of the input image to segment.
             out_channels: Number of channels of the segmentation to predict.

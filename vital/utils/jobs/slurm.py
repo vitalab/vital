@@ -23,8 +23,9 @@ class SlurmJob(Job):
         setup_options: SlurmSetupOptions,
         sbatch_commands: SbatchCommands = None,
         **kwargs,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             sbatch_commands: User-defined commands for configuring the job's resources, in a (`opt_name`, `opt_value`)
                 mapping.

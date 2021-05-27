@@ -25,8 +25,9 @@ class Decoder(nn.Module):
         latent_dim: int,
         activation: str = "ELU",
         use_batchnorm: bool = True,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             image_size: Size of the output segmentation groundtruth for each axis.
             out_channels: Number of channels of the image to reconstruct.

@@ -32,8 +32,9 @@ class Camus(VisionDataset):
         transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
         transform: Callable[[Tensor], Tensor] = None,
         target_transform: Callable[[Tensor], Tensor] = None,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             path: Path to the HDF5 dataset.
             fold: ID of the cross-validation fold to use.

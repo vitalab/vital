@@ -21,8 +21,9 @@ class Encoder(nn.Module):
         activation: str = "ELU",
         use_batchnorm: bool = True,
         output_distribution: bool = False,
-    ):  # noqa: D205,D212,D415
-        """
+    ):
+        """Initializes class instance.
+
         Args:
             image_size: Size of the input segmentation groundtruth for each axis.
             in_channels: Number of channels of the image to reconstruct.
