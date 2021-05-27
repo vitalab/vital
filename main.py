@@ -1,7 +1,7 @@
 import os
 
 import hydra
-from config.acdc import ACDCConfig
+from config.defaults import ACDCConfig
 from config.data.acdc import AcdcConfig
 from config.data.camus import CamusConfig
 from config.data.mnist import MnistConfig

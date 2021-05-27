@@ -41,13 +41,19 @@ class TrainValComputationMixin(SystemComputationMixin, ABC):
         self.log_dict(result, **self.val_log_kwargs)
         return result
 
-    def configure_callbacks(self) -> List[Callback]:  # noqa: D102
-        checkpoint_kwargs = {"monitor": "val_loss"}
-        checkpoint_kwargs.update(self.hparams.model_checkpoint_kwargs)
-        callbacks = [ModelCheckpoint(**checkpoint_kwargs)]
-        if self.hparams.early_stopping_kwargs:
-            # Disable EarlyStopping by default and only enable it if some of its parameters are provided
-            early_stopping_kwargs = {"monitor": "val_loss"}
-            early_stopping_kwargs.update(self.hparams.early_stopping_kwargs)
-            callbacks.append(EarlyStopping(**early_stopping_kwargs))
-        return callbacks
+    # TODO Move to default evaluation mixin ??
+    def test_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
+        result = prefix(self.trainval_step(*args, **kwargs), "test_")
+        self.log_dict(result, **self.val_log_kwargs)
+        return result
+
+    # def configure_callbacks(self) -> List[Callback]:  # noqa: D102
+    #     checkpoint_kwargs = {"monitor": "val_loss"}
+    #     checkpoint_kwargs.update(self.hparams.model_checkpoint_kwargs)
+    #     callbacks = [ModelCheckpoint(**checkpoint_kwargs)]
+    #     if self.hparams.early_stopping_kwargs:
+    #         # Disable EarlyStopping by default and only enable it if some of its parameters are provided
+    #         early_stopping_kwargs = {"monitor": "val_loss"}
+    #         early_stopping_kwargs.update(self.hparams.early_stopping_kwargs)
+    #         callbacks.append(EarlyStopping(**early_stopping_kwargs))
+    #     return callbacks

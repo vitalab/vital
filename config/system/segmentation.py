@@ -1,14 +1,11 @@
-from collections import Callable
 from dataclasses import dataclass
 
-from config.system.supervised import SupervisedConfig
+from config.system.modules.mlp import MLPConfig
+from config.system.system import SystemConfig
 
 
 @dataclass
-class LossConfig:
-    _target_: str = "vital.utils.loss.segmentation.DiceCELoss"
+class SegmentationConfig(SystemConfig):
+    _target_: str = "vital.systems.segmentation.SegmentationComputationMixin"
+    # module = MISSING
 
-
-@dataclass
-class SegmentationConfig(SupervisedConfig):
-    loss: LossConfig = LossConfig()

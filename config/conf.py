@@ -14,6 +14,7 @@ class TrainerConfig:
     fast_dev_run: bool = False
     default_root_dir: Optional[str] = None
     gpus: int = int(torch.cuda.is_available())
+    max_epochs: int = 300
 
 
 @dataclass

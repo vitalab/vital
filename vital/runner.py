@@ -5,6 +5,9 @@ from typing import Type
 
 import hydra
 import dotenv
+import torch
+from config.defaults import AcdcUNetConfig, MnistMLPConfig
+from config.system.modules.enet import EnetConfig
 from config.system.modules.unet import UNetConfig
 
 from hydra.core.config_store import ConfigStore
@@ -29,16 +32,20 @@ class VitalRunner(ABC):
     """Abstract runner that runs the main training/val loop, etc. using Lightning Trainer."""
 
     @classmethod
-    def create_configs(cls, cs: ConfigStore):
+    def store_configs(cls, cs: ConfigStore):
         cs.store(name="default", node=DefaultConfig)
+        cs.store(name="acdc-unet", node=AcdcUNetConfig)
+        cs.store(name="mnist-mlp", node=MnistMLPConfig)
 
     @classmethod
     def store_groups(cls, cs: ConfigStore):
         configuration = {
             "data": {"acdc": AcdcConfig, "camus": CamusConfig, "mnist": MnistConfig},
             "system": {'segmentation': SegmentationConfig, 'classification': ClassificationConfig},
+
+            # TODO chose to either add module in system or outside
             # 'system.module': {'mlp': MLPConfig, 'unet': UNetConfig}
-            'module': {'mlp': MLPConfig, 'unet': UNetConfig}
+            'module': {'mlp': MLPConfig, 'unet': UNetConfig, 'enet': EnetConfig}
         }
 
         for group_name, group in configuration.items():
@@ -48,11 +55,12 @@ class VitalRunner(ABC):
     @classmethod
     def main(cls) -> None:
 
+        # TODO find a way to call this before config imports
         # load environment variables from `.env` file if it exists
         dotenv.load_dotenv(override=True)
 
         cs = ConfigStore.instance()
-        cls.create_configs(cs)
+        cls.store_configs(cs)
         cls.store_groups(cs)
         # cls.run_system()
 
@@ -90,30 +98,31 @@ class VitalRunner(ABC):
                                          input_shape=datamodule.data_params.in_shape,
                                          ouput_shape=datamodule.data_params.out_shape)
 
-        print(cfg.system)
         model = hydra.utils.instantiate(cfg.system, module, datamodule.data_params)
 
-        if cfg.ckpt_path:  # and not hparams.weights_only:  # Load pretrained model if checkpoint is provided
-            model = model.load_from_checkpoint(str(cfg.ckpt_path), **cfg.system)
-        # else:
-        #     model = system_cls(**vars(hparams), data_params=datamodule.data_params)
-        #     if hparams.ckpt_path and hparams.weights_only:
-        #         checkpoint = torch.load(hparams.weights, map_location=model.device)
-        #         model.load_state_dict(checkpoint["state_dict"], strict=hparams.strict_load)
+        if cfg.ckpt_path and not cfg.weights_only:  # Load pretrained model if checkpoint is provided
+            if cfg.weights_only:
+                checkpoint = torch.load(cfg.ckpt_path, map_location=model.device)
+                model.load_state_dict(checkpoint["state_dict"])
+            else:
+                model = model.load_from_checkpoint(str(cfg.ckpt_path), **cfg.system)
 
         if cfg.train:
             trainer.fit(model, datamodule=datamodule)
 
             if not cfg.trainer.fast_dev_run:
-                # Copy best model checkpoint to a predictable path + online tracker (if used)
+                # # Copy best model checkpoint to a predictable path + online tracker (if used)
                 # best_model_path = cls._best_model_path(log_dir, hparams)
                 # copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
-
+                #
                 # if hparams.comet_config:
                 #     trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
 
                 # Ensure we use the best weights (and not the latest ones) by loading back the best model
-                model = model.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+                # TODO fix TypeError: __init__() missing 1 required positional argument: 'module'
+                # print(torch.load(trainer.checkpoint_callback.best_model_path, map_location=model.device))
+                # model = model.__class__.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+                model.load_state_dict(torch.load(trainer.checkpoint_callback.best_model_path)["state_dict"])
 
         if cfg.test:
             trainer.test(model, datamodule=datamodule)
@@ -216,97 +225,96 @@ class VitalRunner(ABC):
         """
         raise NotImplementedError
 
-    @classmethod
-    def _add_generic_args(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Adds to the parser object some generic arguments useful for running a system.
+    # @classmethod
+    # def _add_generic_args(cls, parser: ArgumentParser) -> ArgumentParser:
+    #     """Adds to the parser object some generic arguments useful for running a system.
+    #
+    #     Args:
+    #         parser: Parser object to which generic custom arguments will be added.
+    #
+    #     Returns:
+    #         Parser object to which generic custom arguments have been added.
+    #     """
+    #     # logging parameters
+    #     parser.add_argument(
+    #         "--comet_config",
+    #         type=Path,
+    #         help="Path to Comet configuration file, if you want to track the experiment using Comet",
+    #     )
+    #
+    #     # save/load parameters
+    #     parser.add_argument("--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system")
+    #     parser.add_argument("--weights_only", action="store_true", help="Load only weights from ckpt_path")
+    #     parser.add_argument(
+    #         "--no_strict_load",
+    #         dest="strict_load",
+    #         action="store_false",
+    #         help="Disable strict enforcing of keys when loading state dict",
+    #     )
+    #     parser.add_argument(
+    #         "--resume",
+    #         action="store_true",
+    #         help="Disregard any other CLI configuration and restore exact state from the checkpoint",
+    #     )
+    #
+    #     # run parameters
+    #     parser.add_argument(
+    #         "--skip_train", dest="train", action="store_false", help="Skip training and do test/evaluation phase"
+    #     )
+    #     parser.add_argument("--skip_test", dest="test", action="store_false", help="Skip test/evaluation phase")
+    #
+    #     # seed parameter
+    #     parser.add_argument("--seed", type=int, help="Seed for reproducibility. If None, seed will be set randomly")
+    #
+    #     return parser
 
-        Args:
-            parser: Parser object to which generic custom arguments will be added.
-
-        Returns:
-            Parser object to which generic custom arguments have been added.
-        """
-        # logging parameters
-        parser.add_argument(
-            "--comet_config",
-            type=Path,
-            help="Path to Comet configuration file, if you want to track the experiment using Comet",
-        )
-
-        # save/load parameters
-        parser.add_argument("--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system")
-        parser.add_argument("--weights_only", action="store_true", help="Load only weights from ckpt_path")
-        parser.add_argument(
-            "--no_strict_load",
-            dest="strict_load",
-            action="store_false",
-            help="Disable strict enforcing of keys when loading state dict",
-        )
-        parser.add_argument(
-            "--resume",
-            action="store_true",
-            help="Disregard any other CLI configuration and restore exact state from the checkpoint",
-        )
-
-        # run parameters
-        parser.add_argument(
-            "--skip_train", dest="train", action="store_false", help="Skip training and do test/evaluation phase"
-        )
-        parser.add_argument("--skip_test", dest="test", action="store_false", help="Skip test/evaluation phase")
-
-        # seed parameter
-        parser.add_argument("--seed", type=int, help="Seed for reproducibility. If None, seed will be set randomly")
-
-        return parser
-
-    @classmethod
-    def _parse_and_check_args(cls, parser: ArgumentParser) -> Namespace:
-        """Parse args, making custom checks on the values of the parameters in the process.
-
-        Args:
-            parser: Complete parser object for which to make custom checks on the values of the parameters.
-
-        Returns:
-            Parsed and validated arguments for a system run.
-
-        Raises:
-            ValueError: If invalid combinations of arguments are specified by the user.
-                - ``--skip_train`` flag is active without a ``--checkpoint`` being provided.
-                - ``--resume`` flag is active without a ``--checkpoint`` being provided.
-        """
-        args = parser.parse_args()
-
-        if not args.ckpt_path:
-            if not args.train:
-                raise ValueError(
-                    "Trainer set to skip training (`--skip_train` flag) without a checkpoint provided. \n"
-                    "Either allow model to train (remove `--skip_train` flag) or "
-                    "provide a pretrained model (through `--ckpt_path` parameter)."
-                )
-            if args.resume:
-                raise ValueError(
-                    "Cannot use flag `--resume` without a checkpoint from which to resume. \n"
-                    "Either allow the model to start over (remove `--resume` flag) or "
-                    "provide a saved checkpoint (through `--ckpt_path` flag)"
-                )
-
-        if args.default_root_dir is None:
-            # If no output dir is specified, default to the working directory
-            args.default_root_dir = Path.cwd()
-        else:
-            # If output dir is specified, cast it os Path
-            args.default_root_dir = Path(args.default_root_dir)
-
-        return args
+    # @classmethod
+    # def _parse_and_check_args(cls, parser: ArgumentParser) -> Namespace:
+    #     """Parse args, making custom checks on the values of the parameters in the process.
+    #
+    #     Args:
+    #         parser: Complete parser object for which to make custom checks on the values of the parameters.
+    #
+    #     Returns:
+    #         Parsed and validated arguments for a system run.
+    #
+    #     Raises:
+    #         ValueError: If invalid combinations of arguments are specified by the user.
+    #             - ``--skip_train`` flag is active without a ``--checkpoint`` being provided.
+    #             - ``--resume`` flag is active without a ``--checkpoint`` being provided.
+    #     """
+    #     args = parser.parse_args()
+    #
+    #     if not args.ckpt_path:
+    #         if not args.train:
+    #             raise ValueError(
+    #                 "Trainer set to skip training (`--skip_train` flag) without a checkpoint provided. \n"
+    #                 "Either allow model to train (remove `--skip_train` flag) or "
+    #                 "provide a pretrained model (through `--ckpt_path` parameter)."
+    #             )
+    #         if args.resume:
+    #             raise ValueError(
+    #                 "Cannot use flag `--resume` without a checkpoint from which to resume. \n"
+    #                 "Either allow the model to start over (remove `--resume` flag) or "
+    #                 "provide a saved checkpoint (through `--ckpt_path` flag)"
+    #             )
+    #
+    #     if args.default_root_dir is None:
+    #         # If no output dir is specified, default to the working directory
+    #         args.default_root_dir = Path.cwd()
+    #     else:
+    #         # If output dir is specified, cast it os Path
+    #         args.default_root_dir = Path(args.default_root_dir)
+    #
+    #     return args
 
 
 if __name__ == "__main__":
     VitalRunner.main()
 
-
+    # TODO Fix this add @hydra.main to VitalRunner.run_system
     @hydra.main(config_name="default")
     def run(cfg: DictConfig):
         VitalRunner.run_system(cfg)
-
 
     run()

@@ -473,8 +473,8 @@ class Enet(nn.Module):
 
     def __init__(
         self,
-        in_channels: int = None,
-        out_channels: int = None,
+        input_shape: Tuple[int],
+        ouput_shape: Tuple[int],
         init_channels: int = 16,
         dropout: float = 0.1,
         encoder_relu: bool = True,
@@ -495,6 +495,8 @@ class Enet(nn.Module):
                 PReLU is used.
         """
         super().__init__()
+        in_channels = input_shape[0]
+        out_channels = ouput_shape[0]
 
         self.initial_block = _InitialBlock(in_channels, init_channels, padding=1, relu=encoder_relu)
 
