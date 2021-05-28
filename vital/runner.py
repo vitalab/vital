@@ -1,7 +1,9 @@
+import os
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from typing import Type
+from shutil import copy2
+from typing import Type, List
 
 import hydra
 import dotenv
@@ -9,10 +11,11 @@ import torch
 from config.defaults import AcdcUNetConfig, MnistMLPConfig
 from config.system.modules.enet import EnetConfig
 from config.system.modules.unet import UNetConfig
+from hydra import initialize, compose
 
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig
-from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning import Trainer, seed_everything, Callback
 from pytorch_lightning.loggers import CometLogger
 from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
@@ -72,6 +75,11 @@ class VitalRunner(ABC):
             cfg:
         """
 
+        print(os.getcwd())
+
+        print(cfg)
+        print(cfg.data)
+
         seed_everything(cfg.seed)
 
         # # Use Comet for logging if a path to a Comet config file is provided
@@ -79,6 +87,16 @@ class VitalRunner(ABC):
         logger = True
         # if hparams.comet_config and not hparams.fast_dev_run:
         #     logger = cls._configure_comet_logger(hparams)
+
+        # Init Lightning callbacks
+        callbacks: List[Callback] = []
+        if "callbacks" in cfg:
+            for cb_conf in cfg.callbacks:
+                for conf_name, conf in cb_conf.items():
+                    print(f"Instantiating callback <{conf_name}>")
+                    callbacks.append(hydra.utils.instantiate(conf))
+
+        print(callbacks)
 
         if cfg.resume:
             trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=logger)
@@ -90,7 +108,7 @@ class VitalRunner(ABC):
 
         if not cfg.trainer.fast_dev_run:
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
-            cls._configure_logging(log_dir, None)
+            cls._configure_logging(log_dir, cfg)
 
         datamodule = hydra.utils.instantiate(cfg.data)
 
@@ -112,9 +130,10 @@ class VitalRunner(ABC):
 
             if not cfg.trainer.fast_dev_run:
                 # # Copy best model checkpoint to a predictable path + online tracker (if used)
-                # best_model_path = cls._best_model_path(log_dir, hparams)
-                # copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
-                #
+                best_model_path = cls._best_model_path(log_dir, cfg)
+                print(best_model_path)
+                copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
+
                 # if hparams.comet_config:
                 #     trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
 
@@ -128,7 +147,7 @@ class VitalRunner(ABC):
             trainer.test(model, datamodule=datamodule)
 
     @classmethod
-    def _configure_logging(cls, log_dir: Path, hparams: Namespace) -> None:
+    def _configure_logging(cls, log_dir: Path, cfg: DictConfig) -> None:
         """Callback that defines the default logging behavior.
 
         It can be overridden to customize the logging behavior, e.g. to adjust to some CLI arguments defined by the
@@ -136,7 +155,7 @@ class VitalRunner(ABC):
 
         Args:
             log_dir: Lightning's directory for the current run.
-            hparams: Arguments parsed from the CLI.
+            cfg:
         """
         configure_logging(log_to_console=True, log_file=log_dir / "run.log")
 
@@ -162,68 +181,21 @@ class VitalRunner(ABC):
         return CometLogger(**dict(comet_config), **offline_kwargs)
 
     @classmethod
-    def _best_model_path(cls, log_dir: Path, hparams: Namespace) -> Path:
+    def _best_model_path(cls, log_dir: Path, cfg: DictConfig) -> Path:
         """Defines the path where to copy the best model checkpoint after training.
 
         Args:
             log_dir: Lightning's directory for the current run.
-            hparams: Arguments parsed from the CLI.
+            cfg:
 
         Returns:
             Path where to copy the best model checkpoint after training.
         """
-        return log_dir / f"{cls._get_selected_system(hparams).__name__}.ckpt"
+        data = cfg.data._target_.split('.')[-1]
+        system = cfg.system._target_.split('.')[-1]
+        module = cfg.module._target_.split('.')[-1]
+        return log_dir / f"{data}_{system}_{module}.ckpt"
 
-    @classmethod
-    def _add_system_args(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Adds system-specific subparsers/arguments to a parser object.
-
-        The hierarchy of the added arguments can be arbitrarily complex, as long as ``_get_selected_system`` can
-        pinpoint a single ``VitalSystem`` to run.
-
-        Args:
-            parser: Parser object to which system-specific arguments will be added.
-
-        Returns:
-            Parser object to which system-specific arguments have been added.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def _override_trainer_default(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Allows for overriding Lightning trainer default attributes with runner-specific defaults.
-
-        Args:
-            parser: Parser object that already possesses trainer attributes.
-
-        Returns:
-            Parser object with overridden trainer attributes.
-        """
-        return parser
-
-    @classmethod
-    def _get_selected_data_module(cls, hparams: Namespace) -> Type[VitalDataModule]:
-        """Identify, through the parameters specified in the CLI, the type of data module chosen by the user.
-
-        Args:
-            hparams: Arguments parsed from the CLI.
-
-        Returns:
-            Type of the data module selected by the user to be provided to the Lightning module.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def _get_selected_system(cls, hparams: Namespace) -> Type[VitalSystem]:
-        """Identify, through the parameters specified in the CLI, the type of the Lightning module chosen by the user.
-
-        Args:
-            hparams: Arguments parsed from the CLI.
-
-        Returns:
-            Type of the Lightning module selected by the user to be run.
-        """
-        raise NotImplementedError
 
     # @classmethod
     # def _add_generic_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -268,6 +240,7 @@ class VitalRunner(ABC):
     #
     #     return parser
 
+    # TODO add checks for hydra config
     # @classmethod
     # def _parse_and_check_args(cls, parser: ArgumentParser) -> Namespace:
     #     """Parse args, making custom checks on the values of the parameters in the process.
@@ -313,7 +286,7 @@ if __name__ == "__main__":
     VitalRunner.main()
 
     # TODO Fix this add @hydra.main to VitalRunner.run_system
-    @hydra.main(config_name="default")
+    @hydra.main(config_name="default", config_path=None)
     def run(cfg: DictConfig):
         VitalRunner.run_system(cfg)
 
