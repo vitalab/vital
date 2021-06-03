@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union, Any, List
+from typing import Optional, Union, Any, List, Dict
 
 import torch
 from config.callbacks.callbacks import CallbacksConf, default_callbacks
@@ -26,7 +26,7 @@ class DefaultConfig:
     data: DataConfig = MISSING
     trainer: TrainerConfig = TrainerConfig()
 
-    callbacks: List[Any] = field(default_factory=lambda: default_callbacks)
+    callbacks: Dict = field(default_factory=lambda: default_callbacks)
 
     seed: Optional[int] = None
 

@@ -44,7 +44,5 @@ class ModelCheckpointConf(CallbacksConf):
     period: Optional[int] = None
 
 
-default_callbacks = [
-    {"model_checkpoint": ModelCheckpointConf},
-    {"early_stopping": EarlyStoppingConf}
-]
+default_callbacks = {"model_checkpoint": ModelCheckpointConf,
+                     "early_stopping": EarlyStoppingConf}

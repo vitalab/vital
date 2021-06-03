@@ -8,10 +8,9 @@ from typing import Type, List
 import hydra
 import dotenv
 import torch
-from config.defaults import AcdcUNetConfig, MnistMLPConfig
-from config.system.modules.enet import EnetConfig
-from config.system.modules.unet import UNetConfig
+
 from hydra import initialize, compose
+import torch.nn as nn
 
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig
@@ -29,6 +28,9 @@ from config.data.mnist import MnistConfig
 from config.system.modules.mlp import MLPConfig
 from config.system.classification import ClassificationConfig
 from config.system.segmentation import SegmentationConfig
+from config.defaults import AcdcUNetConfig, MnistMLPConfig
+from config.system.modules.enet import EnetConfig
+from config.system.modules.unet import UNetConfig
 
 
 class VitalRunner(ABC):
@@ -91,17 +93,17 @@ class VitalRunner(ABC):
         # Init Lightning callbacks
         callbacks: List[Callback] = []
         if "callbacks" in cfg:
-            for cb_conf in cfg.callbacks:
-                for conf_name, conf in cb_conf.items():
-                    print(f"Instantiating callback <{conf_name}>")
-                    callbacks.append(hydra.utils.instantiate(conf))
+            for conf_name, conf in cfg.callbacks.items():
+                print(f"Instantiating callback <{conf_name}>")
+                callbacks.append(hydra.utils.instantiate(conf))
 
         print(callbacks)
+        exit()
 
         if cfg.resume:
             trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=logger)
         else:
-            trainer = hydra.utils.instantiate(cfg.trainer)
+            trainer: Trainer = hydra.utils.instantiate(cfg.trainer)
 
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
         log_dir = Path(trainer.log_dir) if trainer.log_dir else cfg.trainer.default_root_dir
@@ -110,13 +112,13 @@ class VitalRunner(ABC):
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
             cls._configure_logging(log_dir, cfg)
 
-        datamodule = hydra.utils.instantiate(cfg.data)
+        datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data)
 
-        module = hydra.utils.instantiate(cfg.module,
-                                         input_shape=datamodule.data_params.in_shape,
-                                         ouput_shape=datamodule.data_params.out_shape)
+        module: nn.Module = hydra.utils.instantiate(cfg.module,
+                                                    input_shape=datamodule.data_params.in_shape,
+                                                    ouput_shape=datamodule.data_params.out_shape)
 
-        model = hydra.utils.instantiate(cfg.system, module, datamodule.data_params)
+        model: VitalSystem = hydra.utils.instantiate(cfg.system, module, datamodule.data_params)
 
         if cfg.ckpt_path and not cfg.weights_only:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
@@ -195,7 +197,6 @@ class VitalRunner(ABC):
         system = cfg.system._target_.split('.')[-1]
         module = cfg.module._target_.split('.')[-1]
         return log_dir / f"{data}_{system}_{module}.ckpt"
-
 
     # @classmethod
     # def _add_generic_args(cls, parser: ArgumentParser) -> ArgumentParser:
@@ -285,9 +286,11 @@ class VitalRunner(ABC):
 if __name__ == "__main__":
     VitalRunner.main()
 
+
     # TODO Fix this add @hydra.main to VitalRunner.run_system
     @hydra.main(config_name="default", config_path=None)
     def run(cfg: DictConfig):
         VitalRunner.run_system(cfg)
+
 
     run()
