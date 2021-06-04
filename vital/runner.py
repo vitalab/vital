@@ -1,36 +1,32 @@
-import os
 from abc import ABC
-from argparse import ArgumentParser, Namespace
+from abc import ABC
+from argparse import Namespace
 from pathlib import Path
 from shutil import copy2
-from typing import Type, List
+from typing import List
 
-import hydra
 import dotenv
+import hydra
 import torch
-
-from hydra import initialize, compose
 import torch.nn as nn
-
+from config.conf import DefaultConfig
+from config.data.acdc import AcdcConfig
+from config.data.camus import CamusConfig
+from config.data.mnist import MnistConfig
+from config.defaults import AcdcUNetConfig, MnistMLPConfig
+from config.system.classification import ClassificationConfig
+from config.system.modules.enet import EnetConfig
+from config.system.modules.mlp import MLPConfig
+from config.system.modules.unet import UNetConfig
+from config.system.segmentation import SegmentationConfig
 from hydra.core.config_store import ConfigStore
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer, seed_everything, Callback
 from pytorch_lightning.loggers import CometLogger
 from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
 from vital.utils.config import read_ini_config
 from vital.utils.logging import configure_logging
-
-from config.conf import DefaultConfig
-from config.data.acdc import AcdcConfig
-from config.data.camus import CamusConfig
-from config.data.mnist import MnistConfig
-from config.system.modules.mlp import MLPConfig
-from config.system.classification import ClassificationConfig
-from config.system.segmentation import SegmentationConfig
-from config.defaults import AcdcUNetConfig, MnistMLPConfig
-from config.system.modules.enet import EnetConfig
-from config.system.modules.unet import UNetConfig
 
 
 class VitalRunner(ABC):
@@ -76,11 +72,9 @@ class VitalRunner(ABC):
         Args:
             cfg:
         """
+        cfg = cls._check_cfg(cfg)
 
-        print(os.getcwd())
-
-        print(cfg)
-        print(cfg.data)
+        print(OmegaConf.to_yaml(cfg))
 
         seed_everything(cfg.seed)
 
@@ -97,13 +91,10 @@ class VitalRunner(ABC):
                 print(f"Instantiating callback <{conf_name}>")
                 callbacks.append(hydra.utils.instantiate(conf))
 
-        print(callbacks)
-        exit()
-
         if cfg.resume:
-            trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=logger)
+            trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=logger, callbacks=callbacks)
         else:
-            trainer: Trainer = hydra.utils.instantiate(cfg.trainer)
+            trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=logger, callbacks=callbacks)
 
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
         log_dir = Path(trainer.log_dir) if trainer.log_dir else cfg.trainer.default_root_dir
@@ -198,89 +189,44 @@ class VitalRunner(ABC):
         module = cfg.module._target_.split('.')[-1]
         return log_dir / f"{data}_{system}_{module}.ckpt"
 
-    # @classmethod
-    # def _add_generic_args(cls, parser: ArgumentParser) -> ArgumentParser:
-    #     """Adds to the parser object some generic arguments useful for running a system.
-    #
-    #     Args:
-    #         parser: Parser object to which generic custom arguments will be added.
-    #
-    #     Returns:
-    #         Parser object to which generic custom arguments have been added.
-    #     """
-    #     # logging parameters
-    #     parser.add_argument(
-    #         "--comet_config",
-    #         type=Path,
-    #         help="Path to Comet configuration file, if you want to track the experiment using Comet",
-    #     )
-    #
-    #     # save/load parameters
-    #     parser.add_argument("--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system")
-    #     parser.add_argument("--weights_only", action="store_true", help="Load only weights from ckpt_path")
-    #     parser.add_argument(
-    #         "--no_strict_load",
-    #         dest="strict_load",
-    #         action="store_false",
-    #         help="Disable strict enforcing of keys when loading state dict",
-    #     )
-    #     parser.add_argument(
-    #         "--resume",
-    #         action="store_true",
-    #         help="Disregard any other CLI configuration and restore exact state from the checkpoint",
-    #     )
-    #
-    #     # run parameters
-    #     parser.add_argument(
-    #         "--skip_train", dest="train", action="store_false", help="Skip training and do test/evaluation phase"
-    #     )
-    #     parser.add_argument("--skip_test", dest="test", action="store_false", help="Skip test/evaluation phase")
-    #
-    #     # seed parameter
-    #     parser.add_argument("--seed", type=int, help="Seed for reproducibility. If None, seed will be set randomly")
-    #
-    #     return parser
+    @classmethod
+    def _check_cfg(cls, cfg: DictConfig):
+        """Parse args, making custom checks on the values of the parameters in the process.
 
-    # TODO add checks for hydra config
-    # @classmethod
-    # def _parse_and_check_args(cls, parser: ArgumentParser) -> Namespace:
-    #     """Parse args, making custom checks on the values of the parameters in the process.
-    #
-    #     Args:
-    #         parser: Complete parser object for which to make custom checks on the values of the parameters.
-    #
-    #     Returns:
-    #         Parsed and validated arguments for a system run.
-    #
-    #     Raises:
-    #         ValueError: If invalid combinations of arguments are specified by the user.
-    #             - ``--skip_train`` flag is active without a ``--checkpoint`` being provided.
-    #             - ``--resume`` flag is active without a ``--checkpoint`` being provided.
-    #     """
-    #     args = parser.parse_args()
-    #
-    #     if not args.ckpt_path:
-    #         if not args.train:
-    #             raise ValueError(
-    #                 "Trainer set to skip training (`--skip_train` flag) without a checkpoint provided. \n"
-    #                 "Either allow model to train (remove `--skip_train` flag) or "
-    #                 "provide a pretrained model (through `--ckpt_path` parameter)."
-    #             )
-    #         if args.resume:
-    #             raise ValueError(
-    #                 "Cannot use flag `--resume` without a checkpoint from which to resume. \n"
-    #                 "Either allow the model to start over (remove `--resume` flag) or "
-    #                 "provide a saved checkpoint (through `--ckpt_path` flag)"
-    #             )
-    #
-    #     if args.default_root_dir is None:
-    #         # If no output dir is specified, default to the working directory
-    #         args.default_root_dir = Path.cwd()
-    #     else:
-    #         # If output dir is specified, cast it os Path
-    #         args.default_root_dir = Path(args.default_root_dir)
-    #
-    #     return args
+        Args:
+            cfg:
+
+        Returns:
+             Validated config for a system run.
+
+        Raises:
+            ValueError: If invalid combinations of arguments are specified by the user.
+                - ``train=False`` flag is active without a ``ckpt_path`` being provided.
+                - ``resume=True`` flag is active without a ``ckpt_path`` being provided.
+        """
+
+        if not cfg.ckpt_path:
+            if not cfg.train:
+                raise ValueError(
+                    "Trainer set to skip training (`train=False` flag) without a checkpoint provided. \n"
+                    "Either allow model to train (`train=True` flag) or "
+                    "provide a pretrained model (through `ckpt_path=<something>` parameter)."
+                )
+            if cfg.resume:
+                raise ValueError(
+                    "Cannot use flag `resume=True` without a checkpoint from which to resume. \n"
+                    "Either allow the model to start over (`resume=False` flag) or "
+                    "provide a saved checkpoint (through `ckpt_path=<something>` parameter)"
+                )
+
+        #     if args.default_root_dir is None:
+        #         # If no output dir is specified, default to the working directory
+        #         args.default_root_dir = Path.cwd()
+        #     else:
+        #         # If output dir is specified, cast it os Path
+        #         args.default_root_dir = Path(args.default_root_dir)
+
+        return cfg
 
 
 if __name__ == "__main__":
