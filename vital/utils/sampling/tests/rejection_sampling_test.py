@@ -1,13 +1,19 @@
+import logging
+
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
 from scipy.stats import multivariate_normal
 from sklearn.mixture import GaussianMixture
 
+from vital.utils.logging import configure_logging
 from vital.utils.sampling.rejection_sampling import RejectionSampler
 
 
 def rejection_sampling_test():
+    """Run the test."""
+    configure_logging(log_to_console=True, console_level=logging.DEBUG)
+
     """Tests the implementation of the rejection sampling algorithm."""
     # Initialize target distributions
     normal1 = multivariate_normal(mean=[4, 0], cov=1)
@@ -20,7 +26,7 @@ def rejection_sampling_test():
 
     # Sample using the rejection sampling algorithm
     rejection_sampler = RejectionSampler(x)
-    samples = rejection_sampler.sample(n_samples=5000)
+    samples = rejection_sampler.sample(num_samples=5000)
 
     # Plot the results
     rcParams["lines.markersize"] /= 3

@@ -2,6 +2,8 @@ import logging
 from typing import Literal, Tuple
 
 import numpy as np
+from numpy.random import SeedSequence
+from pathos.multiprocessing import Pool
 from scipy.stats import multivariate_normal
 from sklearn.model_selection import GridSearchCV, ShuffleSplit
 from sklearn.neighbors import KernelDensity
@@ -44,6 +46,7 @@ class RejectionSampler:
             )
             grid.fit(self.data)
             self.kde = grid.best_estimator_
+            logger.info(f"Parameters of KDE optimized for the data: {self.kde}.")
 
         # Init proposal distribution
         if proposal_distribution_params:
@@ -66,45 +69,77 @@ class RejectionSampler:
             # impossibly high scaling factor
             self.scaling_factor = np.percentile(factors_between_data_and_proposal_distribution, 75)
 
-    def sample(self, n_samples: int) -> np.ndarray:
-        """Performs rejection sampling to sample N samples that fit the visible distribution of ``data``.
+    def sample(self, num_samples: int, batch_size: int = None) -> np.ndarray:
+        """Performs rejection sampling to sample M samples that fit the visible distribution of ``data``.
 
         Args:
-            n_samples: Number of samples to sample from the data distribution.
+            num_samples: Number of samples to sample from the data distribution.
+            batch_size: Number of samples to generate in each batch. If ``None``, defaults to ``num_samples / 100``.
 
         Returns:
-            M x D array where M equals `nb_samples` and D is the dimensionality of the sampled data.
+            M x D array where M equals `num_samples` and D is the dimensionality of the sampled data.
         """
-        samples = np.empty([n_samples, self.data.shape[1]])
-        nb_trials = 0
-        accepted_samples = 0
+        # Determine the size and number of batches (possibly including a final irregular batch)
+        if batch_size is None:
+            batch_size = num_samples // 100
+            logger.info(f"No `batch_size` provided. Defaulted to use a `batch_size` of {batch_size}.")
+        batches = [batch_size] * (num_samples // batch_size)
+        if last_batch := num_samples % batch_size:
+            batches.append(last_batch)
 
-        tqdm.write("Press ctrl-c to stop the sampling and continue the pipeline.")
-        pbar = tqdm(
-            total=n_samples, desc="Sampling from observed data distribution with rejection sampling", unit="sample"
-        )
-        try:
-            while accepted_samples < n_samples:
-                sample = self.proposal_distribution.rvs(size=1)
-                rand_likelihood_threshold = np.random.uniform(
-                    0, self.scaling_factor * self.proposal_distribution.pdf(sample)
-                )
+        # Prepare different seeds for each batch
+        ss = SeedSequence()
+        logger.info(f"Entropy of root `SeedSequence` used to spawn generators: {ss.entropy}.")
+        rngs = [np.random.default_rng(seed) for seed in ss.spawn(len(batches))]
 
-                if rand_likelihood_threshold <= (np.e ** self.kde.score_samples(sample[np.newaxis, :])):
-                    samples[accepted_samples] = sample
-                    accepted_samples += 1
-                    pbar.update()
+        # Sample batches in parallel using a pool of processes
+        with Pool() as pool:
+            sampling_result = tqdm(
+                pool.imap(lambda args: self._sample(*args), zip(batches, rngs)),
+                total=len(batches),
+                desc="Sampling from observed data distribution with rejection sampling",
+                unit="batch",
+            )
+            samples, nb_trials = zip(*sampling_result)
 
-                nb_trials += 1
+        samples = np.vstack(samples)  # Merge batches of samples in a single array
+        nb_trials = sum(nb_trials)  # Sum over the number of points sampled to get each batch
 
-        except KeyboardInterrupt:
-            tqdm.write("Sampling cancelled!")
-            samples.resize([accepted_samples, self.data.shape[1]])
-
-        pbar.close()
+        # Log useful information to analyze/debug the performance of the rejection sampling
+        logger.debug(f"Number of unique samples generated: {len(np.unique(samples, axis=0))}")
         logger.info(
             "Percentage of generated samples accepted by rejection sampling: "
             f"{round(samples.shape[0] / nb_trials * 100, 2)} \n"
         )
 
         return samples
+
+    def _sample(self, num_samples: int, rng: np.random.Generator = None) -> Tuple[np.ndarray, int]:
+        """Performs rejection sampling to sample M samples that fit the visible distribution of ``data``.
+
+        `self._sample` performs the sampling in itself, as opposed to `self.sample` which is a public wrapper to
+        coordinate sampling multiple batches in parallel.
+
+        Args:
+            num_samples: Number of samples to sample from the data distribution.
+            rng: Random Number Generator to use to draw from both the proposal and uniform distributions.
+
+        Returns:
+            samples: M x D array where M equals `num_samples` and D is the dimensionality of the sampled data.
+            nb_trials: Number of draws (rejected or accepted) it took to reach M accepted samples. This is mainly useful
+                to evaluate the efficiency of the rejection sampling.
+        """
+        if rng is None:
+            rng = np.random.default_rng()
+        samples = []
+        nb_trials = 0
+        while len(samples) < num_samples:
+            sample = self.proposal_distribution.rvs(size=1, random_state=rng)
+            rand_likelihood_threshold = rng.uniform(0, self.scaling_factor * self.proposal_distribution.pdf(sample))
+
+            if rand_likelihood_threshold <= (np.e ** self.kde.score_samples(sample[np.newaxis, :])):
+                samples.append(sample)
+
+            nb_trials += 1
+
+        return np.array(samples), nb_trials
