@@ -6,8 +6,9 @@ Welcome to the repo of the
 [Videos & Images Theory and Analytics Laboratory (VITAL)](http://vital.dinf.usherbrooke.ca/ "VITAL home page") of
 Sherbrooke University, headed by Professor [Pierre-Marc Jodoin](http://info.usherbrooke.ca/pmjodoin/)
 
+[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Check Code Format](https://github.com/nathanpainchaud/vital/workflows/Check%20Code%20Format/badge.svg)](https://github.com/nathanpainchaud/vital/actions?query=workflow%3A%22Check+Code+Format%22)
+[![CI: Code Format](https://github.com/nathanpainchaud/vital/actions/workflows/code-format.yml/badge.svg?branch=dev)](https://github.com/nathanpainchaud/vital/actions/workflows/code-format.yml?query=branch%3Adev)
 [![license](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/nathanpainchaud/vital/blob/dev/LICENSE)
 
 </div>
