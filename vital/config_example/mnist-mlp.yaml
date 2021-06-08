@@ -17,4 +17,4 @@ data:
 # Set this to get configs in VITAL submodule
 hydra:
   searchpath:
-    - pkg://vital.conf
+    - pkg://vital.config

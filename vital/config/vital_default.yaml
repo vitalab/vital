@@ -8,9 +8,6 @@ data: ???
 system: ???
 module: ???
 
-#callbacks:
-#  - model_checkpoint.yaml
-#  - early_stopping.yaml
 
 seed: None
 

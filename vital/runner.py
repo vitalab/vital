@@ -61,6 +61,9 @@ class VitalRunner(ABC):
         else:
             trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=logger, callbacks=callbacks)
 
+            # Log config to logger.
+            trainer.logger.log_hyperparams(Namespace(**cfg))
+
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
         log_dir = Path(trainer.log_dir) if trainer.log_dir else cfg.trainer.default_root_dir
 
@@ -68,12 +71,15 @@ class VitalRunner(ABC):
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
             VitalRunner._configure_logging(log_dir, cfg)
 
+        # Instantiate datamodule
         datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data)
 
+        # Instantiate module with respect to datamodule's data params.
         module: nn.Module = hydra.utils.instantiate(cfg.module,
                                                     input_shape=datamodule.data_params.in_shape,
                                                     ouput_shape=datamodule.data_params.out_shape)
 
+        # Instantiate module with the created module.
         model: VitalSystem = hydra.utils.instantiate(cfg.system, module, datamodule.data_params)
 
         if cfg.ckpt_path and not cfg.weights_only:  # Load pretrained model if checkpoint is provided
@@ -89,7 +95,6 @@ class VitalRunner(ABC):
             if not cfg.trainer.get('fast_dev_run', False):
                 # # Copy best model checkpoint to a predictable path + online tracker (if used)
                 best_model_path = VitalRunner._best_model_path(log_dir, cfg)
-                print(best_model_path)
                 copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
 
                 # if hparams.comet_config:
@@ -97,7 +102,6 @@ class VitalRunner(ABC):
 
                 # Ensure we use the best weights (and not the latest ones) by loading back the best model
                 # TODO fix TypeError: __init__() missing 1 required positional argument: 'module'
-                # print(torch.load(trainer.checkpoint_callback.best_model_path, map_location=model.device))
                 # model = model.__class__.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
                 model.load_state_dict(torch.load(trainer.checkpoint_callback.best_model_path)["state_dict"])
 

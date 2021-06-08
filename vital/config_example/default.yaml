@@ -1,12 +1,18 @@
 # This is an example config to show how to use vital and hydra configs is your project.
 # This config will result in the exact same config as vital_default.
 
-# Start by "importing" defaults from the vital default config. Some of these are necessary for the runner to function
-# properly.
+# Start by "importing" defaults from the vital default config.
+# Some of these are necessary for the VitalRunner to function properly.
 defaults:
-  - vital_default # This references default config from vital.conf
+  - vital_default # This references default config from vital.config.vital_default.yaml
+  # Add default for data, module, system here
 
-# Set this to get configs in VITAL submodule
+# Overwrite config parameters here. They will be merged with full config by hydra.
+# Ex:
+# trainer:
+#   max_epochs: 100
+
+# Set this to get configs in VITAL submodule.
 hydra:
   searchpath:
-    - pkg://vital.conf
+    - pkg://vital.config
