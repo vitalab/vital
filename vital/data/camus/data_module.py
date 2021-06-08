@@ -42,11 +42,14 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
             image_shape = Camus(dataset_path, fold, Subset.TEST)[0][CamusTags.gt].shape
 
         super().__init__(
-            data_params=DataParameters(in_shape=(in_channels, *image_shape), out_shape=(len(labels), *image_shape)),
+            data_params=DataParameters(
+                in_shape=(in_channels, *image_shape),
+                out_shape=(len(labels), *image_shape),
+                labels=tuple(str(label) for label in labels),
+            ),
             **kwargs,
         )
 
-        self.label_tags = [str(label) for label in labels]
         self._dataset_kwargs = {"path": dataset_path, "fold": fold, "labels": labels, "use_sequence": use_sequence}
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
