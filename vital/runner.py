@@ -219,19 +219,18 @@ class VitalRunner(ABC):
                     "provide a saved checkpoint (through `ckpt_path=<something>` parameter)"
                 )
 
-        #     if args.default_root_dir is None:
-        #         # If no output dir is specified, default to the working directory
-        #         args.default_root_dir = Path.cwd()
-        #     else:
-        #         # If output dir is specified, cast it os Path
-        #         args.default_root_dir = Path(args.default_root_dir)
+        if cfg.trainer.default_root_dir is None:
+            # If no output dir is specified, default to the working directory
+            cfg.trainer.default_root_dir = Path.cwd()
+        else:
+            # If output dir is specified, cast it os Path
+            cfg.trainer.default_root_dir = Path(cfg.trainer.default_root_dir)
 
         return cfg
 
 
 if __name__ == "__main__":
     VitalRunner.main()
-
 
     # TODO Fix this add @hydra.main to VitalRunner.run_system
     @hydra.main(config_name="default", config_path=None)
