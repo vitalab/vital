@@ -1,0 +1,16 @@
+# This is an example config to show how to use vital and hydra configs is your project.
+
+defaults:
+  - vital_default # This references default config from vital.conf
+  - override /system: segmentation.yaml
+  - override /module: unet.yaml
+  - override /data: acdc.yaml
+
+# Overwrite arguments from configs here:
+trainer:
+  max_epochs: 300
+
+# Set this to get configs in VITAL submodule.
+hydra:
+  searchpath:
+    - pkg://vital.conf

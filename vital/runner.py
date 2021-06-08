@@ -1,4 +1,4 @@
-from abc import ABC
+import os
 from abc import ABC
 from argparse import Namespace
 from pathlib import Path
@@ -9,18 +9,7 @@ import dotenv
 import hydra
 import torch
 import torch.nn as nn
-from config.conf import DefaultConfig
-from config.data.acdc import AcdcConfig
-from config.data.camus import CamusConfig
-from config.data.mnist import MnistConfig
-from config.defaults import AcdcUNetConfig, MnistMLPConfig
-from config.system.classification import ClassificationConfig
-from config.system.modules.enet import EnetConfig
-from config.system.modules.mlp import MLPConfig
-from config.system.modules.unet import UNetConfig
-from config.system.segmentation import SegmentationConfig
-from hydra.core.config_store import ConfigStore
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning import Trainer, seed_everything, Callback
 from pytorch_lightning.loggers import CometLogger
 from vital.data.data_module import VitalDataModule
@@ -33,53 +22,29 @@ class VitalRunner(ABC):
     """Abstract runner that runs the main training/val loop, etc. using Lightning Trainer."""
 
     @classmethod
-    def store_configs(cls, cs: ConfigStore):
-        cs.store(name="default", node=DefaultConfig)
-        cs.store(name="acdc-unet", node=AcdcUNetConfig)
-        cs.store(name="mnist-mlp", node=MnistMLPConfig)
-
-    @classmethod
-    def store_groups(cls, cs: ConfigStore):
-        configuration = {
-            "data": {"acdc": AcdcConfig, "camus": CamusConfig, "mnist": MnistConfig},
-            "system": {'segmentation': SegmentationConfig, 'classification': ClassificationConfig},
-
-            # TODO chose to either add module in system or outside
-            # 'system.module': {'mlp': MLPConfig, 'unet': UNetConfig}
-            'module': {'mlp': MLPConfig, 'unet': UNetConfig, 'enet': EnetConfig}
-        }
-
-        for group_name, group in configuration.items():
-            for name, node in group.items():
-                cs.store(group=group_name, name=name, node=node)
-
-    @classmethod
     def main(cls) -> None:
-
-        # TODO find a way to call this before config imports
-        # load environment variables from `.env` file if it exists
+        # Load environment variables from `.env` file if it exists
+        # Load before hydra main to allow for setting environment variables with ${oc.env:ENV_NAME}
         dotenv.load_dotenv(override=True)
 
-        cs = ConfigStore.instance()
-        cls.store_configs(cs)
-        cls.store_groups(cs)
-        # cls.run_system()
+        cls.run_system()
 
-    @classmethod
-    def run_system(cls, cfg: DictConfig) -> None:
+    @staticmethod
+    @hydra.main(config_path='config_example', config_name='default.yaml')
+    def run_system(cfg: DictConfig) -> None:
         """Handles the training and evaluation of a model.
 
-        Args:
-            cfg:
-        """
-        cfg = cls._check_cfg(cfg)
+        Note: Must be static because of the hydra.main decorator and config pass-through.
 
-        print(OmegaConf.to_yaml(cfg))
+        Args:
+            cfg: Configuration to run the experiment.
+        """
+        cfg = VitalRunner._check_cfg(cfg)
 
         seed_everything(cfg.seed)
 
-        # # Use Comet for logging if a path to a Comet config file is provided
-        # # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
+        # Use Comet for logging if a path to a Comet config file is provided
+        # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
         logger = True
         # if hparams.comet_config and not hparams.fast_dev_run:
         #     logger = cls._configure_comet_logger(hparams)
@@ -99,9 +64,9 @@ class VitalRunner(ABC):
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
         log_dir = Path(trainer.log_dir) if trainer.log_dir else cfg.trainer.default_root_dir
 
-        if not cfg.trainer.fast_dev_run:
+        if not cfg.trainer.get('fast_dev_run', False):
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
-            cls._configure_logging(log_dir, cfg)
+            VitalRunner._configure_logging(log_dir, cfg)
 
         datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data)
 
@@ -121,9 +86,9 @@ class VitalRunner(ABC):
         if cfg.train:
             trainer.fit(model, datamodule=datamodule)
 
-            if not cfg.trainer.fast_dev_run:
+            if not cfg.trainer.get('fast_dev_run', False):
                 # # Copy best model checkpoint to a predictable path + online tracker (if used)
-                best_model_path = cls._best_model_path(log_dir, cfg)
+                best_model_path = VitalRunner._best_model_path(log_dir, cfg)
                 print(best_model_path)
                 copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
 
@@ -152,26 +117,26 @@ class VitalRunner(ABC):
         """
         configure_logging(log_to_console=True, log_file=log_dir / "run.log")
 
-    @classmethod
-    def _configure_comet_logger(cls, hparams: Namespace) -> CometLogger:
-        """Builds a ``CometLogger`` instance using the content of the Comet configuration file.
-
-        Notes:
-            - The Comet configuration file should follow the `.comet.config` format. See Comet's documentation for more
-              details: https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables
-
-        Args:
-            hparams: Arguments parsed from the CLI.
-
-        Returns:
-            Instance of ``CometLogger`` built using the content of the Comet configuration file.
-        """
-        comet_config = read_ini_config(hparams.comet_config)["comet"]
-        offline_kwargs = {"offline": comet_config.getboolean("offline", fallback=False)}
-        if "offline" in comet_config:
-            del comet_config["offline"]
-            offline_kwargs["save_dir"] = str(hparams.default_root_dir)
-        return CometLogger(**dict(comet_config), **offline_kwargs)
+    # @classmethod
+    # def _configure_comet_logger(cls, hparams: Namespace) -> CometLogger:
+    #     """Builds a ``CometLogger`` instance using the content of the Comet configuration file.
+    #
+    #     Notes:
+    #         - The Comet configuration file should follow the `.comet.config` format. See Comet's documentation for more
+    #           details: https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables
+    #
+    #     Args:
+    #         hparams: Arguments parsed from the CLI.
+    #
+    #     Returns:
+    #         Instance of ``CometLogger`` built using the content of the Comet configuration file.
+    #     """
+    #     comet_config = read_ini_config(hparams.comet_config)["comet"]
+    #     offline_kwargs = {"offline": comet_config.getboolean("offline", fallback=False)}
+    #     if "offline" in comet_config:
+    #         del comet_config["offline"]
+    #         offline_kwargs["save_dir"] = str(hparams.default_root_dir)
+    #     return CometLogger(**dict(comet_config), **offline_kwargs)
 
     @classmethod
     def _best_model_path(cls, log_dir: Path, cfg: DictConfig) -> Path:
@@ -221,21 +186,18 @@ class VitalRunner(ABC):
 
         if cfg.trainer.default_root_dir is None:
             # If no output dir is specified, default to the working directory
-            cfg.trainer.default_root_dir = Path.cwd()
-        else:
-            # If output dir is specified, cast it os Path
-            cfg.trainer.default_root_dir = Path(cfg.trainer.default_root_dir)
+            cfg.trainer.default_root_dir = os.getcwd()
+            # cfg.trainer.default_root_dir = Path.cwd()
+        # else:
+        #     # If output dir is specified, cast it os Path
+        #     cfg.trainer.default_root_dir = Path(cfg.trainer.default_root_dir)
+
+        if 'gpus' not in cfg.trainer.keys():
+            with open_dict(cfg):
+                cfg.trainer.gpus = int(torch.cuda.is_available())
 
         return cfg
 
 
 if __name__ == "__main__":
     VitalRunner.main()
-
-    # TODO Fix this add @hydra.main to VitalRunner.run_system
-    @hydra.main(config_name="default", config_path=None)
-    def run(cfg: DictConfig):
-        VitalRunner.run_system(cfg)
-
-
-    run()

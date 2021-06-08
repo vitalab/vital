@@ -1,0 +1,12 @@
+# This is an example config to show how to use vital and hydra configs is your project.
+# This config will result in the exact same config as vital_default.
+
+# Start by "importing" defaults from the vital default config. Some of these are necessary for the runner to function
+# properly.
+defaults:
+  - vital_default # This references default config from vital.conf
+
+# Set this to get configs in VITAL submodule
+hydra:
+  searchpath:
+    - pkg://vital.conf

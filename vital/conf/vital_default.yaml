@@ -1,0 +1,24 @@
+defaults:
+  - trainer: default.yaml
+  - system: null
+  - module: null
+  - data: data.yaml # Not a usable file but contains common fields
+
+data: ???
+system: ???
+module: ???
+
+#callbacks:
+#  - model_checkpoint.yaml
+#  - early_stopping.yaml
+
+seed: None
+
+resume: False
+ckpt_path: null
+weights_only: False
+
+logger: True  # True defaults to TensorboardLogger in PL trainer
+
+train: True
+test: True
