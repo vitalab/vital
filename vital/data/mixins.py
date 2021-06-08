@@ -2,11 +2,11 @@ from abc import abstractmethod
 from typing import List
 
 from vital.data.config import Subset
-from vital.systems.system import SystemDataManagerMixin
+from vital.data.data_module import VitalDataModule
 
 
-class StructuredDataMixin(SystemDataManagerMixin):
-    """``SystemDataManagerMixin`` for datasets where data has more structure than only the target labels."""
+class StructuredDataMixin(VitalDataModule):
+    """``VitalDataModule`` mixin for datasets where data has more structure than only the target labels."""
 
     @abstractmethod
     def group_ids(self, subset: Subset, *args, **kwargs) -> List[str]:
