@@ -24,3 +24,21 @@ def load_mhd(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[Number, ...], ...]
     im_array = np.squeeze(SimpleITK.GetArrayFromImage(image))
 
     return im_array, info
+
+
+def save_as_mhd(
+    im_array: np.ndarray, output_filepath: Path, origin=(0, 0, 0), spacing=(1, 1, 1), dtype=np.float32
+) -> None:
+    """Saves an array to mhd format.
+
+    Args:
+        im_array: ([N], H, W), Image array.
+        output_filepath: Output filename. Must end in ".mhd".
+        origin: Center of the image.
+        spacing: Size of the voxels along each dimension.
+        dtype: Type of data to save.
+    """
+    seg = SimpleITK.GetImageFromArray(im_array.astype(dtype))
+    seg.SetOrigin(origin)
+    seg.SetSpacing(spacing)
+    SimpleITK.WriteImage(seg, str(output_filepath))
