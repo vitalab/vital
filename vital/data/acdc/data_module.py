@@ -23,13 +23,15 @@ class AcdcDataModule(VitalDataModule):
         """
         super().__init__(
             data_params=DataParameters(
-                in_shape=(in_channels, image_size, image_size), out_shape=(len(Label), image_size, image_size)
+                in_shape=(in_channels, image_size, image_size),
+                out_shape=(len(Label), image_size, image_size),
+                labels=tuple(str(label) for label in list(Label)),
             ),
             **kwargs,
         )
-        self.predict_on_test = predict_on_test
-        self.label_tags = [str(label) for label in list(Label)]
+
         self._dataset_kwargs = {"path": Path(dataset_path), "use_da": use_da}
+        self.predict_on_test = predict_on_test
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
         if stage == "fit":

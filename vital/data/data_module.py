@@ -47,7 +47,7 @@ class VitalDataModule(pl.LightningDataModule, ABC):
             If ``subset`` is provided, returns the handle to a specific dataset. Otherwise, returns the mapping between
             subsets of the data (e.g. train) and their torch ``Dataset`` handle.
         """
-        if set is not None:
+        if subset is not None:
             return self._dataset[subset]
 
         return self._dataset

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Sequence, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 SemanticStructureId = Union[int, Sequence[int]]
 
@@ -89,7 +89,9 @@ class DataParameters:
     Args:
         in_shape: Shape of the input data (e.g. height, width, channels).
         out_shape: Shape of the target data (e.g. height, width, channels).
+        labels: Identifiers of the labels provided with the data.
     """
 
     in_shape: Tuple[int, ...]
     out_shape: Tuple[int, ...]
+    labels: Optional[Tuple[str, ...]] = None
