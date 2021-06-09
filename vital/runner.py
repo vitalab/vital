@@ -1,10 +1,12 @@
 import os
+import warnings
 from abc import ABC
 from argparse import Namespace
 from pathlib import Path
 from shutil import copy2
 from typing import List
 
+import comet_ml  # noqa
 import dotenv
 import hydra
 import torch
@@ -41,13 +43,23 @@ class VitalRunner(ABC):
         """
         cfg = VitalRunner._check_cfg(cfg)
 
+        print(OmegaConf.to_yaml(cfg))
+
         seed_everything(cfg.seed)
 
         # Use Comet for logging if a path to a Comet config file is provided
         # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
-        logger = True
-        # if hparams.comet_config and not hparams.fast_dev_run:
-        #     logger = cls._configure_comet_logger(hparams)
+        logger = True  # Default to True (Tensorboard)
+        if isinstance(cfg.logger, DictConfig):
+            if 'comet' in cfg.logger._target_ and not cfg.trainer.get('fast_dev_run', False):
+                logger = VitalRunner._configure_comet_logger(cfg, Path(hydra.utils.to_absolute_path('.comet.config')))
+            elif 'tensorboard' in cfg.logger._target_:
+                if 'save_dir' in cfg.logger:
+                    logger = hydra.utils.instantiate(cfg.logger)
+                else:  # If no save_dir is passed, use default logger and let Trainer set save_dir.
+                    logger = True
+
+        print(logger)
 
         # Init Lightning callbacks
         callbacks: List[Callback] = []
@@ -61,11 +73,11 @@ class VitalRunner(ABC):
         else:
             trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=logger, callbacks=callbacks)
 
-            # Log config to logger.
-            trainer.logger.log_hyperparams(Namespace(**cfg))
+            # # Log config to logger.
+            # trainer.logger.log_hyperparams(Namespace(**cfg))
 
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
-        log_dir = Path(trainer.log_dir) if trainer.log_dir else cfg.trainer.default_root_dir
+        log_dir = Path(trainer.log_dir) if trainer.log_dir else Path(cfg.trainer.default_root_dir)
 
         if not cfg.trainer.get('fast_dev_run', False):
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
@@ -80,7 +92,7 @@ class VitalRunner(ABC):
                                                     ouput_shape=datamodule.data_params.out_shape)
 
         # Instantiate module with the created module.
-        model: VitalSystem = hydra.utils.instantiate(cfg.system, module, datamodule.data_params)
+        model: VitalSystem = hydra.utils.instantiate(cfg.system, module, datamodule.data_params, cfg)
 
         if cfg.ckpt_path and not cfg.weights_only:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
@@ -121,26 +133,22 @@ class VitalRunner(ABC):
         """
         configure_logging(log_to_console=True, log_file=log_dir / "run.log")
 
-    # @classmethod
-    # def _configure_comet_logger(cls, hparams: Namespace) -> CometLogger:
-    #     """Builds a ``CometLogger`` instance using the content of the Comet configuration file.
-    #
-    #     Notes:
-    #         - The Comet configuration file should follow the `.comet.config` format. See Comet's documentation for more
-    #           details: https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables
-    #
-    #     Args:
-    #         hparams: Arguments parsed from the CLI.
-    #
-    #     Returns:
-    #         Instance of ``CometLogger`` built using the content of the Comet configuration file.
-    #     """
-    #     comet_config = read_ini_config(hparams.comet_config)["comet"]
-    #     offline_kwargs = {"offline": comet_config.getboolean("offline", fallback=False)}
-    #     if "offline" in comet_config:
-    #         del comet_config["offline"]
-    #         offline_kwargs["save_dir"] = str(hparams.default_root_dir)
-    #     return CometLogger(**dict(comet_config), **offline_kwargs)
+    @classmethod
+    def _configure_comet_logger(cls, cfg: DictConfig, comet_config_path: Path) -> CometLogger:
+        """Builds a ``CometLogger`` instance using the content of the Comet configuration file.
+
+        Notes:
+            - The Comet configuration file should follow the `.comet.config` format. See Comet's documentation for more
+              details: https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables
+
+        Args:
+            cfg:
+
+        Returns:
+            Instance of ``CometLogger`` built using the content of the Comet configuration file.
+        """
+        comet_config = read_ini_config(comet_config_path)["comet"]
+        return hydra.utils.instantiate(cfg.logger, **comet_config)
 
     @classmethod
     def _best_model_path(cls, log_dir: Path, cfg: DictConfig) -> Path:

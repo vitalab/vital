@@ -3,11 +3,13 @@ defaults:
   - system: null
   - module: null
   - data: data.yaml # Not a usable file but contains common fields
+  - callbacks: default.yaml
+  - logger: comet/online.yaml # Can be a config
 
 data: ???
 system: ???
 module: ???
-
+#logger: True  # True defaults to TensorboardLogger in PL trainer
 
 seed: None
 
@@ -15,7 +17,6 @@ resume: False
 ckpt_path: null
 weights_only: False
 
-logger: True  # True defaults to TensorboardLogger in PL trainer
 
 train: True
 test: True

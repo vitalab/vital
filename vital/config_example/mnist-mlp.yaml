@@ -14,6 +14,10 @@ trainer:
 data:
   batch_size: 128
 
+callbacks:
+  early_stopping:
+    patience: 10
+
 # Set this to get configs in VITAL submodule
 hydra:
   searchpath:

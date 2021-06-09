@@ -27,7 +27,7 @@ class VitalSystem(pl.LightningModule, ABC):
         - CLI for generic arguments
     """
 
-    def __init__(self, data_params: DataParameters, **kwargs):
+    def __init__(self, data_params: DataParameters, *args, **kwargs):
         """Saves the parameters from all the model's childs and mixins in `hparams`.
 
         Args:
@@ -36,7 +36,10 @@ class VitalSystem(pl.LightningModule, ABC):
         """
         super().__init__()
         # Collection of hyperparameters configuring the system
-        self.save_hyperparameters()
+        self.save_hyperparameters(*args)
+
+        print(*args)
+        print(self.hparams)
 
         # By default, assumes the provided data shape is in channel-first format
         self.example_input_array = torch.randn((2, *self.hparams.data_params.in_shape))
@@ -47,7 +50,7 @@ class VitalSystem(pl.LightningModule, ABC):
     @property
     def log_dir(self) -> Path:
         """Returns the root directory where test logs get saved."""
-        return Path(self.trainer.log_dir) if self.trainer.log_dir else self.hparams.default_root_dir
+        return Path(self.trainer.log_dir) #  if self.trainer.log_dir else self.hparams.default_root_dir
 
     def summarize(self, mode: str = ModelSummary.MODE_DEFAULT) -> ModelSummary:
         """Adds saving a Keras-style summary of the model to the base PL summary routine.
