@@ -78,7 +78,7 @@ class VitalSystem(pl.LightningModule, ABC):
 class SystemComputationMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the training/validation/testing phases."""
 
-    def __init__(self, train_log_kwargs: dict = {}, val_log_kwargs: dict = {}, **kwargs):
+    def __init__(self, train_log_kwargs: dict, val_log_kwargs: dict, **kwargs):
         super().__init__(**kwargs)
         self.train_log_kwargs = train_log_kwargs
         self.val_log_kwargs = val_log_kwargs

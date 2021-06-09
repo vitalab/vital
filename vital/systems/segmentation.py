@@ -50,7 +50,7 @@ class SegmentationComputationMixin(TrainValComputationMixin):
         # Segmentation accuracy metrics
         ce = F.cross_entropy(y_hat, y)
         dice_values = self._dice(y_hat, y)
-        dices = {f"dice_{label}": dice for label, dice in zip(self.trainer.datamodule.label_tags[1:], dice_values)}
+        dices = {f"dice_{label}": dice for label, dice in zip(self.hparams.data_params.labels[1:], dice_values)}
         mean_dice = dice_values.mean()
 
         loss = (self.cross_entropy_weight * ce) + (self.dice_weight * (1 - mean_dice))

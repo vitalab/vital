@@ -10,4 +10,4 @@ labels:
   - EPI
   - ATRIUM
 fold: 5
-use_sequence: False,
+use_sequence: False
