@@ -7,7 +7,6 @@ from vital.data.acdc.config import Label, image_size, in_channels
 from vital.data.acdc.dataset import Acdc
 from vital.data.config import DataParameters, Subset
 from vital.data.data_module import VitalDataModule
-from vital.utils.path import load_env_var
 
 
 class AcdcDataModule(VitalDataModule):
@@ -19,6 +18,7 @@ class AcdcDataModule(VitalDataModule):
         Args:
             dataset_path: Path to the HDF5 dataset.
             use_da: Enable use of data augmentation.
+            predict_on_test: If True, add predict=True to dataset for test set to get full patients at each batch.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
         super().__init__(
@@ -29,16 +29,16 @@ class AcdcDataModule(VitalDataModule):
         )
         self.predict_on_test = predict_on_test
         self.label_tags = [str(label) for label in list(Label)]
-        self._dataset_kwargs = {"path": Path(load_env_var(dataset_path)), "use_da": use_da}
+        self._dataset_kwargs = {"path": Path(dataset_path), "use_da": use_da}
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
         if stage == "fit":
             self._dataset[Subset.TRAIN] = Acdc(image_set=Subset.TRAIN, **self._dataset_kwargs)
             self._dataset[Subset.VAL] = Acdc(image_set=Subset.VAL, **self._dataset_kwargs)
         if stage == "test":
-            self._dataset[Subset.TEST] = Acdc(image_set=Subset.TEST,
-                                              predict=self.predict_on_test,
-                                              **self._dataset_kwargs)
+            self._dataset[Subset.TEST] = Acdc(
+                image_set=Subset.TEST, predict=self.predict_on_test, **self._dataset_kwargs
+            )
 
     def train_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(

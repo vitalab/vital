@@ -6,15 +6,12 @@ from typing import Any, Dict, List, Literal, Union
 
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning import Callback
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.core.memory import ModelSummary
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
 from torchinfo import summary
 
 from vital.data.config import DataParameters
-from vital.utils.parsing import StoreDictKeyPair
 
 
 class VitalSystem(pl.LightningModule, ABC):

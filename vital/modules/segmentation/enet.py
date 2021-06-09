@@ -474,7 +474,7 @@ class Enet(nn.Module):
     def __init__(
         self,
         input_shape: Tuple[int],
-        ouput_shape: Tuple[int],
+        output_shape: Tuple[int],
         init_channels: int = 16,
         dropout: float = 0.1,
         encoder_relu: bool = True,
@@ -483,8 +483,8 @@ class Enet(nn.Module):
         """Initializes class instance.
 
         Args:
-            in_channels: Number of channels in the input images.
-            out_channels: Number of classes to segment.
+            input_shape: Shape of the input images.
+            output_shape: Shape of the output segmentation map.
             init_channels: Number of output feature maps from the first layer, used to compute the number of feature
                 maps in following layers.
             dropout: Probability of an element to be zeroed (e.g. 0 means no dropout).
@@ -496,7 +496,7 @@ class Enet(nn.Module):
         """
         super().__init__()
         in_channels = input_shape[0]
-        out_channels = ouput_shape[0]
+        out_channels = output_shape[0]
 
         self.initial_block = _InitialBlock(in_channels, init_channels, padding=1, relu=encoder_relu)
 

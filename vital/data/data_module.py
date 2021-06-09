@@ -4,6 +4,7 @@ from typing import Dict, Union
 
 import pytorch_lightning as pl
 from torch.utils.data import Dataset
+
 from vital.data.config import DataParameters, Subset
 
 

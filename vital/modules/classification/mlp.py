@@ -9,9 +9,9 @@ class MLP(nn.Module):
     """Standard Multi-layer Perceptron model.
 
     Args:
-        input_dim: number of input neurons
+        input_shape: Shape of the input images.
+        output_shape: Shape of the output segmentation map.
         hidden: tuple of number of hidden neurons
-        output_dim: number of output neurons
         output_activation: activation function for last layer
         dropout_rate: rate for dropout layers
     """
@@ -19,15 +19,15 @@ class MLP(nn.Module):
     def __init__(
         self,
         input_shape: Tuple[int],
-        ouput_shape: Tuple[int],
+        output_shape: Tuple[int],
         hidden: Sequence[int] = (128,),
         output_activation: Optional[nn.Module] = None,
         dropout_rate: float = 0.25,
     ):
 
         input_dim = int(np.prod(input_shape))
-        assert len(ouput_shape) == 1, "Output shape must be 1 dimension"
-        output_dim = int(ouput_shape[0])
+        assert len(output_shape) == 1, "Output shape must be 1 dimension"
+        output_dim = int(output_shape[0])
 
         super(MLP, self).__init__()
 

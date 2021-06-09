@@ -2,6 +2,7 @@ from typing import Dict
 
 from torch import Tensor, nn
 from torch.nn import functional as F
+
 from vital.data.config import Tags
 from vital.systems.computation import TrainValComputationMixin
 
@@ -17,10 +18,11 @@ class ClassificationComputationMixin(TrainValComputationMixin):
     #: Network called by ``ClassificationComputationMixin`` for test-time inference
     module: nn.Module
 
-    def __init__(self, module, *args, **kwargs):
+    def __init__(self, module: nn.Module, *args, **kwargs):
         """Initializes the metric objects used repeatedly in the train/eval loop.
 
         Args:
+            module: Network to train.
             *args: Positional arguments to pass to the parent's constructor.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
@@ -37,7 +39,7 @@ class ClassificationComputationMixin(TrainValComputationMixin):
         # Forward
         y_hat = self.module(x)
 
-        # Segmentation accuracy metrics
+        # Loss and metrics
         loss = F.cross_entropy(y_hat, y)
         accuracy = y_hat.argmax(dim=1).eq(y).sum().item() / x.shape[0]
 

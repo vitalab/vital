@@ -1,6 +1,6 @@
 defaults:
   - trainer: default.yaml
-  - system: null
+  - system: system.yaml
   - module: null
   - data: data.yaml # Not a usable file but contains common fields
   - callbacks: default.yaml

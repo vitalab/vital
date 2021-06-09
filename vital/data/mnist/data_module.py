@@ -24,7 +24,9 @@ class MnistDataModule(VitalDataModule):
 
         Args:
             dataset_path: Path to the HDF5 dataset.
-            use_da: Enable use of data augmentation.
+            transform: Transform to apply to the input image
+            target_transform: Transform to apply to the target.
+            download: If True, download the dataset if it is not already in the dataset_path.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
         super().__init__(data_params=DataParameters(in_shape=(1, 28, 28), out_shape=(10,)), **kwargs)

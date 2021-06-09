@@ -1,8 +1,8 @@
-from argparse import ArgumentParser
 from typing import Dict
 
 from torch import Tensor, nn
 from torch.nn import functional as F
+
 from vital.data.config import Tags
 from vital.metrics.train.metric import DifferentiableDiceCoefficient
 from vital.systems.computation import TrainValComputationMixin
@@ -21,10 +21,13 @@ class SegmentationComputationMixin(TrainValComputationMixin):
     #: Network called by ``SegmentationComputationMixin`` for test-time inference
     module: nn.Module
 
-    def __init__(self, module, *args, cross_entropy_weight: float = 0.1, dice_weight: float = 1, **kwargs):
+    def __init__(self, module: nn.Module, cross_entropy_weight: float = 0.1, dice_weight: float = 1, *args, **kwargs):
         """Initializes the metric objects used repeatedly in the train/eval loop.
 
         Args:
+            module: Module to train.
+            cross_entropy_weight: Weight to give to the cross-entropy factor of the segmentation loss
+            dice_weight: Weight to give to the cross-entropy factor of the segmentation loss
             *args: Positional arguments to pass to the parent's constructor.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
@@ -54,5 +57,3 @@ class SegmentationComputationMixin(TrainValComputationMixin):
 
         # Format output
         return {"loss": loss, "ce": ce, "dice": mean_dice, **dices}
-
-
