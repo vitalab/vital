@@ -77,11 +77,14 @@ class VitalRunner(ABC):
         # Instantiate model with the created module.
         model: VitalSystem = hydra.utils.instantiate(cfg.system, module=module, data_params=datamodule.data_params)
 
-        if cfg.ckpt_path and not cfg.weights_only:  # Load pretrained model if checkpoint is provided
+        if cfg.ckpt_path:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
+                log.info(f"Loading weights from callback {cfg.ckpt_path}")
                 model.load_state_dict(torch.load(cfg.ckpt_path, map_location=model.device)["state_dict"])
             else:
-                model = model.load_from_checkpoint(str(cfg.ckpt_path), **cfg.system, module=module)
+                log.info(f"Loading model from callback {cfg.ckpt_path}")
+                model = model.load_from_checkpoint(str(cfg.ckpt_path), **cfg.system,
+                                                   module=module, data_params=datamodule.data_params)
 
         if cfg.train:
             trainer.fit(model, datamodule=datamodule)
@@ -128,6 +131,10 @@ class VitalRunner(ABC):
                     "Either allow the model to start over (`resume=False` flag) or "
                     "provide a saved checkpoint (through `ckpt_path=<something>` parameter)"
                 )
+
+        # Set the path to an absolut path since Hydra has changed the current working directory
+        if cfg.ckpt_path:
+            cfg.ckpt_path = hydra.utils.to_absolute_path(cfg.ckpt_path)
 
         # If no output dir is specified, default to the working directory
         if "default_root_dir" not in cfg.trainer.keys():
