@@ -2,9 +2,15 @@
 
 defaults:
   - vital_default # This references default config from vital.conf
+
+  # Set the system, module and data
   - override /system: segmentation.yaml
   - override /module: unet.yaml
   - override /data: acdc.yaml
+
+  # If you do not want early stopping or you want to add new callbacks:
+  - override callbacks:
+    - model_checkpoint
 
 # Overwrite arguments from configs here:
 trainer:
