@@ -3,7 +3,9 @@ defaults:
   - system: system.yaml
   - module: null
   - data: data.yaml # Not a usable file but contains common fields
-  - callbacks: default.yaml
+  - callbacks:
+      - early_stopping
+      - model_checkpoint
   - logger: comet/online.yaml # Can be a config
 
 data: ???
