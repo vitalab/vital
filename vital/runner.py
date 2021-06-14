@@ -90,15 +90,17 @@ class VitalRunner(ABC):
             trainer.fit(model, datamodule=datamodule)
 
             if not cfg.trainer.get("fast_dev_run", False):
-                # # Copy best model checkpoint to a predictable path + online tracker (if used)
+                # Copy best model checkpoint to a predictable path + online tracker (if used)
                 best_model_path = VitalRunner._best_model_path(log_dir, cfg)
-                copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
+                if trainer.checkpoint_callback is not None:
+                    copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
+                    # Ensure we use the best weights (and not the latest ones) by loading back the best model
+                    model = model.load_from_checkpoint(str(best_model_path), module=module, **cfg.system)
+                else:  # If checkpoint callback is not used, save current model.
+                    trainer.save_checkpoint(best_model_path)
 
                 if isinstance(trainer.logger, CometLogger):
                     trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
-
-                # Ensure we use the best weights (and not the latest ones) by loading back the best model
-                model = model.load_from_checkpoint(str(best_model_path), module=module, **cfg.system)
 
         if cfg.test:
             trainer.test(model, datamodule=datamodule)
