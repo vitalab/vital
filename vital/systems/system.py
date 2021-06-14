@@ -1,9 +1,8 @@
-import os
 import sys
 from abc import ABC
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Mapping, Union
+from typing import Any, Dict, List, Literal, Union
 
 import pytorch_lightning as pl
 import torch
@@ -12,10 +11,9 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.core.memory import ModelSummary
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
-from torch.utils.data import DataLoader, Dataset
 from torchinfo import summary
 
-from vital.data.config import DataParameters, Subset
+from vital.data.config import DataParameters
 from vital.utils.parsing import StoreDictKeyPair
 
 
@@ -29,16 +27,11 @@ class VitalSystem(pl.LightningModule, ABC):
         - CLI for generic arguments
     """
 
-    # Fields to initialize in implementation of ``DataManagerMixin``
-    #: Collection of parameters related to the nature of the data
-    data_params: DataParameters
-    #: Mapping between subsets of the data (e.g. train) and their torch ``Dataset`` handle
-    dataset: Mapping[Subset, Dataset]
-
-    def __init__(self, **kwargs):
+    def __init__(self, data_params: DataParameters, **kwargs):
         """Saves the parameters from all the model's childs and mixins in `hparams`.
 
         Args:
+            data_params: Parameters related to the data necessary to initialize the model.
             **kwargs: Dictionary of arguments to save as the model's `hparams`.
         """
         super().__init__()
@@ -46,7 +39,7 @@ class VitalSystem(pl.LightningModule, ABC):
         self.save_hyperparameters()
 
         # By default, assumes the provided data shape is in channel-first format
-        self.example_input_array = torch.randn((self.hparams.batch_size, *self.hparams.data_params.in_shape))
+        self.example_input_array = torch.randn((2, *self.hparams.data_params.in_shape))
 
     def on_pretrain_routine_start(self) -> None:  # noqa: D102
         self.log_dir.mkdir(parents=True, exist_ok=True)  # Ensure output directory exists
@@ -118,56 +111,7 @@ class VitalSystem(pl.LightningModule, ABC):
             metavar="ARG1=VAL1,ARG2=VAL2...",
             help="Parameters for Lightning's built-in early stopping callback",
         )
-        return cls.add_evaluation_args(cls.add_computation_args(cls.add_data_manager_args(parser)))
-
-
-class SystemDataManagerMixin(VitalSystem, ABC):
-    """``VitalSystem`` mixin for handling the interface between the `Datasets` and `DataLoaders`."""
-
-    data_params: DataParameters
-    dataset: Mapping[Subset, Dataset]
-
-    def prepare_data(self) -> None:
-        """Runs data setup might write to disk or that need to be done only from a single GPU in distributed settings.
-
-        This is the ideal place to download the dataset.
-        """
-        pass
-
-    def setup(self, stage: Literal["fit", "test"]) -> None:
-        """Runs data setup you might want to perform on every GPU, e.g. assigning the state.
-
-        This is the ideal place to initialize the ``Dataset`` instances.
-        """
-        pass
-
-    def train_dataloader(self) -> DataLoader:  # noqa: D102
-        raise NotImplementedError
-
-    def val_dataloader(self) -> Union[DataLoader, List[DataLoader]]:  # noqa: D102
-        pass
-
-    def test_dataloader(self) -> Union[DataLoader, List[DataLoader]]:  # noqa: D102
-        pass
-
-    @classmethod
-    def add_data_manager_args(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Adds data related arguments to a parser object.
-
-        Args:
-            parser: Parser object to which to add data loop related arguments.
-
-        Returns:
-            Parser object to which data loop related arguments have been added.
-        """
-        parser.add_argument(
-            "--num_workers",
-            type=int,
-            default=os.cpu_count() - 1,
-            help="How many subprocesses to use for data loading. 0 means that the data will be loaded in the main "
-            "process.",
-        )
-        return parser
+        return cls.add_evaluation_args(cls.add_computation_args(parser))
 
 
 class SystemComputationMixin(VitalSystem, ABC):
