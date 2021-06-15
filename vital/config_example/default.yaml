@@ -22,4 +22,3 @@ defaults:
 hydra:
   searchpath:
     - pkg://vital.config
-

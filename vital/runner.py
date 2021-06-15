@@ -16,7 +16,6 @@ from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
-from vital.utils.config import read_ini_config
 from vital.utils.logging import configure_logging
 
 log = logging.getLogger(__name__)
@@ -83,8 +82,9 @@ class VitalRunner(ABC):
                 model.load_state_dict(torch.load(cfg.ckpt_path, map_location=model.device)["state_dict"])
             else:
                 log.info(f"Loading model from callback {cfg.ckpt_path}")
-                model = model.load_from_checkpoint(str(cfg.ckpt_path), **cfg.system,
-                                                   module=module, data_params=datamodule.data_params)
+                model = model.load_from_checkpoint(
+                    str(cfg.ckpt_path), **cfg.system, module=module, data_params=datamodule.data_params
+                )
 
         if cfg.train:
             trainer.fit(model, datamodule=datamodule)
@@ -181,17 +181,13 @@ class VitalRunner(ABC):
         Returns:
             logger for the Lightning Trainer
         """
-
         logger = True  # Default to True (Tensorboard)
         if isinstance(cfg.logger, DictConfig):
             if "comet" in cfg.logger._target_ and not cfg.trainer.get("fast_dev_run", False):
-                # Since the api key is passed by the COMET_API_KEY env. var., only the workspace and project name are
-                # in the config and it can therefore be hardcoded.
-                comet_config = read_ini_config(Path(hydra.utils.to_absolute_path(".comet.config")))["comet"]
-                logger = hydra.utils.instantiate(cfg.logger, **comet_config)
+                logger = hydra.utils.instantiate(cfg.logger)
             elif "tensorboard" in cfg.logger._target_:
                 # If no save_dir is passed, use default logger and let Trainer set save_dir.
-                if "save_dir" in cfg.logger:
+                if cfg.logger.get("save_dir", None):
                     logger = hydra.utils.instantiate(cfg.logger)
         return logger
 
