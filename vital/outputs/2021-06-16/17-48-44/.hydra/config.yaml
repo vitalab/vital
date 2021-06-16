@@ -1,0 +1,50 @@
+trainer:
+  _target_: pytorch_lightning.Trainer
+system:
+  module:
+    _target_: vital.modules.classification.mlp.MLP
+    hidden:
+    - 128
+    dropout_rate: 0.25
+  weight_decay: 0.001
+  lr: 0.001
+  train_log_kwargs:
+    prog_bar: false
+    logger: true
+    on_step: true
+    on_epoch: null
+  val_log_kwargs:
+    prog_bar: false
+    logger: true
+    on_step: null
+    on_epoch: true
+data:
+  _target_: vital.data.mnist.data_module.MnistDataModule
+  dataset_path: /tmp
+  batch_size: 32
+  use_da: true
+  transform: null
+  target_transform: null
+  download: true
+callbacks:
+  early_stopping:
+    _target_: pytorch_lightning.callbacks.EarlyStopping
+  model_checkpoint:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+logger:
+  _target_: pytorch_lightning.loggers.comet.CometLogger
+  offline: false
+  project_name: null
+  workspace: null
+ckpt:
+  workspace: thierryjudge
+  registry_name: acdc-baseline
+  version: null
+  output_path: ${work_dir}
+  expand: true
+  stage: None
+seed: None
+resume: false
+train: true
+test: true
+work_dir: ${hydra:runtime.cwd}
