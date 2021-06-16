@@ -66,8 +66,6 @@ class MandM(ShortAxisMRI):
 
         accepted_vendor_patients = [x.decode("utf-8") for x in accepted_vendor_patients]
 
-        print(accepted_vendor_patients)
-
         groups = [x for x in groups if x.split('/')[1] in accepted_vendor_patients]
 
         return groups

@@ -31,20 +31,23 @@ class StructurePostProcessing:
         if seg.dtype != np.bool:  # If it is a categorical image containing multiple structures
             labels = np.unique(seg[seg.nonzero()])
             post_img = np.zeros_like(seg)
+            i = 0
             for class_label in labels:
                 label_image = np.isin(seg, class_label)
                 if class_label in self._labels:
-                    label_image = self._process_structure(label_image)
+                    label_image = self._process_structure(label_image, class_label=i)
+                    i += 1
                 post_img[label_image] = class_label
         else:  # If it is a binary image containing only one structure
-            post_img = self._process_structure(seg)
+            post_img = self._process_structure(seg, )
         return post_img
 
     @abstractmethod
-    def _process_structure(self, mask: np.ndarray) -> np.ndarray:
+    def _process_structure(self, mask: np.ndarray, **kwargs) -> np.ndarray:
         """Applies a post-processing algorithm on the binary mask of a single structure from a segmentation map.
 
         Args:
+            **kwargs:
             mask: (H, W), Binary mask of a semantic structure.
 
         Returns:
@@ -55,7 +58,12 @@ class StructurePostProcessing:
 class PostBigBlob(StructurePostProcessing):
     """Post-processing that returns only the biggest blob of non-zero value in a binary mask."""
 
-    def _process_structure(self, mask: np.ndarray) -> np.ndarray:
+    def __init__(self, labels: Sequence[SemanticStructureId], nb_blobs: Sequence[int] = None):
+        super().__init__(labels)
+        self.nb_blobs = nb_blobs or list(np.ones(len(self._labels), dtype=np.int8))
+        assert len(self.nb_blobs) == len(self._labels)
+
+    def _process_structure(self, mask: np.ndarray, class_label=None, **kwargs) -> np.ndarray:
         # Find each blob in the image
         lbl, num = ndimage.measurements.label(mask)
 
@@ -65,19 +73,22 @@ class PostBigBlob(StructurePostProcessing):
         if not np.any(count[1:]):
             return mask
 
-        # Select the largest blob
-        maxi = np.argmax(count[1:]) + 1
+        # Sort the largest blobs
+        ind = np.argsort(count[1:])[::-1]
 
-        # Remove the other blobs
-        lbl[lbl != maxi] = 0
+        img = np.zeros_like(lbl)
 
-        return lbl.astype(bool)
+        # Select only nb_blobs[class_label] largest blobs
+        for i in ind[:min(self.nb_blobs[class_label], len(ind))]:
+            img[lbl == i+1] = 1
+
+        return img.astype(bool)
 
 
 class PostFillIntraHoles(StructurePostProcessing):
     """Post-processing that fills holes inside the non-zero area of a binary mask."""
 
-    def _process_structure(self, mask: np.ndarray) -> np.ndarray:
+    def _process_structure(self, mask: np.ndarray, **kwargs) -> np.ndarray:
         return ndimage.binary_fill_holes(mask)
 
 
