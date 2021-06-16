@@ -42,3 +42,19 @@ class SegmentationToTensor(torch.nn.Module):
             ([N], H, W), Segmentation map converted to a tensor.
         """
         return segmentation_to_tensor(data)
+
+
+class RescaleIntensity(torch.nn.Module):
+    def __init__(self, min=0.0, max=1.0):
+        super().__init__()
+        self.min = min
+        self.max = max
+
+    def __call__(self, tensor):
+        if tensor.max() < 1e-6:
+            return tensor
+        return (
+            (tensor - tensor.min())
+            * (self.max - self.min)
+            / (tensor.max() - tensor.min())
+        ) + self.min
