@@ -1,17 +1,11 @@
 defaults:
   - trainer: default.yaml
-  - system: system.yaml
-  - module: null
+  - system: system.yaml # Not a usable file but contains common fields
   - data: data.yaml # Not a usable file but contains common fields
   - callbacks:
       - early_stopping
       - model_checkpoint
-  - logger: comet/online.yaml # Can be a config
-
-data: ???
-system: ???
-module: ???
-#logger: True  # True defaults to TensorboardLogger in PL trainer
+  - logger: comet/online.yaml
 
 seed: None
 

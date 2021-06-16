@@ -9,7 +9,7 @@ defaults:
   # Add defaults for data, module, system here
   # Ex:
   #  - override /system: <system>.yaml
-  #  - override /module: <module>.yaml
+  #  - override /system/module: <module>.yaml
   #  - override /data: <data>.yaml
 
 

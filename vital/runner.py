@@ -26,13 +26,20 @@ class VitalRunner(ABC):
 
     @classmethod
     def main(cls) -> None:
-        """Sets-up the environment runs the requested system."""
-        # Load environment variables from `.env` file if it exists
-        # Load before hydra main to allow for setting environment variables with ${oc.env:ENV_NAME}
-        dotenv.load_dotenv(override=True)
+        """Runs the requested experiment"""
+
+        # Set up the environment
+        cls.pre_run_routine()
 
         # Run the system with config loaded by @hydra.main
         cls.run_system()
+
+    @classmethod
+    def pre_run_routine(cls) -> None:
+        """Sets-up the environment before running the training/testing."""
+        # Load environment variables from `.env` file if it exists
+        # Load before hydra main to allow for setting environment variables with ${oc.env:ENV_NAME}
+        dotenv.load_dotenv(override=True)
 
     @staticmethod
     @hydra.main(config_path="config_example", config_name="default.yaml")
@@ -46,7 +53,7 @@ class VitalRunner(ABC):
         """
         cfg = VitalRunner._check_cfg(cfg)
 
-        seed_everything(cfg.seed)
+        cfg.seed = seed_everything(cfg.seed)
 
         callbacks = VitalRunner.configure_callbacks(cfg)
         logger = VitalRunner.configure_logger(cfg)
@@ -70,7 +77,9 @@ class VitalRunner(ABC):
 
         # Instantiate module with respect to datamodule's data params.
         module: nn.Module = hydra.utils.instantiate(
-            cfg.module, input_shape=datamodule.data_params.in_shape, output_shape=datamodule.data_params.out_shape
+            cfg.system.module,
+            input_shape=datamodule.data_params.in_shape,
+            output_shape=datamodule.data_params.out_shape
         )
 
         # Instantiate model with the created module.
@@ -82,9 +91,7 @@ class VitalRunner(ABC):
                 model.load_state_dict(torch.load(cfg.ckpt_path, map_location=model.device)["state_dict"])
             else:
                 log.info(f"Loading model from callback {cfg.ckpt_path}")
-                model = model.load_from_checkpoint(
-                    str(cfg.ckpt_path), **cfg.system, module=module, data_params=datamodule.data_params
-                )
+                model = model.load_from_checkpoint(cfg.ckpt_path, module=module, data_params=datamodule.data_params)
 
         if cfg.train:
             trainer.fit(model, datamodule=datamodule)
@@ -95,7 +102,7 @@ class VitalRunner(ABC):
                 if trainer.checkpoint_callback is not None:
                     copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
                     # Ensure we use the best weights (and not the latest ones) by loading back the best model
-                    model = model.load_from_checkpoint(str(best_model_path), module=module, **cfg.system)
+                    model = model.load_from_checkpoint(str(best_model_path), module=module)
                 else:  # If checkpoint callback is not used, save current model.
                     trainer.save_checkpoint(best_model_path)
 
@@ -139,13 +146,11 @@ class VitalRunner(ABC):
             cfg.ckpt_path = hydra.utils.to_absolute_path(cfg.ckpt_path)
 
         # If no output dir is specified, default to the working directory
-        if "default_root_dir" not in cfg.trainer.keys():
+        if not cfg.trainer.get("fast_dev_run", None):
             with open_dict(cfg):
                 cfg.trainer.default_root_dir = os.getcwd()
-        elif cfg.trainer.default_root_dir is None:
-            cfg.trainer.default_root_dir = os.getcwd()
 
-        if "gpus" not in cfg.trainer.keys():
+        if not cfg.trainer.get("gpus", None):
             with open_dict(cfg):
                 cfg.trainer.gpus = int(torch.cuda.is_available())
 
@@ -217,7 +222,7 @@ class VitalRunner(ABC):
         """
         data = cfg.data._target_.split(".")[-1]
         system = cfg.system._target_.split(".")[-1]
-        module = cfg.module._target_.split(".")[-1]
+        module = cfg.system.module._target_.split(".")[-1]
         return log_dir / f"{data}_{system}_{module}.ckpt"
 
 

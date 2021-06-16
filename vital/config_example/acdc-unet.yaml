@@ -5,7 +5,7 @@ defaults:
 
   # Set the system, module and data
   - override /system: segmentation.yaml
-  - override /module: unet.yaml
+  - override /system/module: unet.yaml
   - override /data: acdc.yaml
 
   # If you do not want early stopping or you want to add new callbacks:

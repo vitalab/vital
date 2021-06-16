@@ -79,7 +79,7 @@ class SystemComputationMixin(VitalSystem, ABC):
     """``VitalSystem`` mixin for handling the training/validation/testing phases."""
 
     def __init__(self, train_log_kwargs: dict, val_log_kwargs: dict, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(train_log_kwargs=train_log_kwargs, val_log_kwargs=val_log_kwargs, **kwargs)
         self.train_log_kwargs = train_log_kwargs
         self.val_log_kwargs = val_log_kwargs
 
