@@ -20,7 +20,7 @@ class UNet(nn.Module):
         init_channels: int = 32,
         use_batchnorm: bool = True,
         bilinear: bool = False,
-        dropout_prob: float = 0.0,
+        dropout: float = 0.0,
     ):
         """Initializes class instance.
 
@@ -33,23 +33,23 @@ class UNet(nn.Module):
                 convolutional blocks.
             bilinear: Whether to use bilinear interpolation or transposed
                 convolutions for upsampling.
-            dropout_prob: probability from dropout layers.
+            dropout: probability from dropout layers.
         """
         super().__init__()
         in_channels = input_shape[0]
         out_channels = output_shape[0]
 
-        self.layer1 = _DoubleConv(in_channels, init_channels // 2, dropout_prob / 2, use_batchnorm)
-        self.layer2 = _Down(init_channels // 2, init_channels, dropout_prob, use_batchnorm)
-        self.layer3 = _Down(init_channels, init_channels * 2, dropout_prob, use_batchnorm)
-        self.layer4 = _Down(init_channels * 2, init_channels * 4, dropout_prob, use_batchnorm)
-        self.layer5 = _Down(init_channels * 4, init_channels * 8, dropout_prob, use_batchnorm)
-        self.layer6 = _Down(init_channels * 8, init_channels * 16, dropout_prob, use_batchnorm)
+        self.layer1 = _DoubleConv(in_channels, init_channels // 2, dropout / 2, use_batchnorm)
+        self.layer2 = _Down(init_channels // 2, init_channels, dropout, use_batchnorm)
+        self.layer3 = _Down(init_channels, init_channels * 2, dropout, use_batchnorm)
+        self.layer4 = _Down(init_channels * 2, init_channels * 4, dropout, use_batchnorm)
+        self.layer5 = _Down(init_channels * 4, init_channels * 8, dropout, use_batchnorm)
+        self.layer6 = _Down(init_channels * 8, init_channels * 16, dropout, use_batchnorm)
 
-        self.layer7 = _Up(init_channels * 16, init_channels * 8, dropout_prob, use_batchnorm, bilinear=bilinear)
-        self.layer8 = _Up(init_channels * 8, init_channels * 4, dropout_prob, use_batchnorm, bilinear=bilinear)
-        self.layer9 = _Up(init_channels * 4, init_channels * 2, dropout_prob, use_batchnorm, bilinear=bilinear)
-        self.layer10 = _Up(init_channels * 2, init_channels, dropout_prob, use_batchnorm, bilinear=bilinear)
+        self.layer7 = _Up(init_channels * 16, init_channels * 8, dropout, use_batchnorm, bilinear=bilinear)
+        self.layer8 = _Up(init_channels * 8, init_channels * 4, dropout, use_batchnorm, bilinear=bilinear)
+        self.layer9 = _Up(init_channels * 4, init_channels * 2, dropout, use_batchnorm, bilinear=bilinear)
+        self.layer10 = _Up(init_channels * 2, init_channels, dropout, use_batchnorm, bilinear=bilinear)
         self.layer11 = _Up(init_channels, init_channels // 2, 0, use_batchnorm, bilinear=bilinear)
 
         self.layer12 = nn.Conv2d(init_channels // 2, out_channels, kernel_size=1)
