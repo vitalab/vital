@@ -11,7 +11,7 @@ import dotenv
 import hydra
 import torch
 import torch.nn as nn
-from omegaconf import DictConfig, open_dict
+from omegaconf import DictConfig, open_dict, OmegaConf
 from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 from vital.data.data_module import VitalDataModule
@@ -40,6 +40,9 @@ class VitalRunner(ABC):
         # Load environment variables from `.env` file if it exists
         # Load before hydra main to allow for setting environment variables with ${oc.env:ENV_NAME}
         dotenv.load_dotenv(override=True)
+
+        OmegaConf.register_new_resolver("sys.gpus", lambda x=None: int(torch.cuda.is_available()))
+        OmegaConf.register_new_resolver("sys.num_workers", lambda x=None: os.cpu_count() - 1)
 
     @staticmethod
     @hydra.main(config_path="config_example", config_name="default.yaml")
@@ -146,13 +149,9 @@ class VitalRunner(ABC):
             cfg.ckpt_path = hydra.utils.to_absolute_path(cfg.ckpt_path)
 
         # If no output dir is specified, default to the working directory
-        if not cfg.trainer.get("fast_dev_run", None):
+        if not cfg.trainer.get("default_root_dir", None):
             with open_dict(cfg):
                 cfg.trainer.default_root_dir = os.getcwd()
-
-        if not cfg.trainer.get("gpus", None):
-            with open_dict(cfg):
-                cfg.trainer.gpus = int(torch.cuda.is_available())
 
         return cfg
 

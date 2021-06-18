@@ -1,4 +1,4 @@
 _target_: ???
 dataset_path: ???
 batch_size: 32
-# Do not set num workers if you want default to be "os.cpu_count() - 1".
+num_workers: ${sys.num_workers:}
