@@ -44,9 +44,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
 
         super().__init__(
             data_params=DataParameters(
-                in_shape=(in_channels, *image_shape),
-                out_shape=(len(labels), *image_shape),
-                labels=tuple(str(label) for label in labels),
+                in_shape=(in_channels, *image_shape), out_shape=(len(labels), *image_shape), labels=labels
             ),
             **kwargs,
         )
