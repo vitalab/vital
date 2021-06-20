@@ -3,7 +3,7 @@ from vital.metrics.evaluate.anatomical_structure import Anatomical2DStructureMet
 from vital.metrics.evaluate.segmentation import Segmentation2DMetrics
 
 
-class LeftVentricleEpicardiumMetrics(Anatomical2DStructureMetrics):
+class EpicardiumMetrics(Anatomical2DStructureMetrics):
     """Class to compute metrics on the segmentation of the left ventricle epicardium (LV + MYO)."""
 
     def __init__(self, segmentation_metrics: Segmentation2DMetrics):
