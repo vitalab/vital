@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Sequence, Tuple, Union
+from typing import List, Sequence, Tuple, TypedDict, Union
+
+import numpy as np
 
 SemanticStructureId = Union[int, Sequence[int]]
 
@@ -48,6 +50,18 @@ class Subset(DataTag):
     TRAIN = "train"
     VAL = "val"
     TEST = "test"
+
+
+class TransformedSegmentationData(TypedDict):
+    """Collection that describes the data format returned by albumentations when transforming image/mask pairs.
+
+    Attributes:
+        image: Transformed input image.
+        mask: Transformed segmentation mask.
+    """
+
+    image: np.ndarray
+    mask: np.ndarray
 
 
 @dataclass(frozen=True)

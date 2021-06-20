@@ -1,24 +1,25 @@
 from pathlib import Path
 from typing import Callable, Dict, List, Literal, Sequence, Tuple, Union
 
+import albumentations as A
+import cv2
 import h5py
 import numpy as np
 import torch
+import torchvision
 from torch import Tensor
-from torchvision.datasets import VisionDataset
-from torchvision.transforms.functional import to_tensor
 
 from vital.data.camus.config import CamusTags, Label
 from vital.data.camus.data_struct import PatientData, ViewData
 from vital.data.camus.utils.register import CamusRegisteringTransformer
-from vital.data.config import Subset
+from vital.data.config import Subset, TransformedSegmentationData
 from vital.utils.decorators import squeeze
 from vital.utils.image.transform import remove_labels, segmentation_to_tensor
 
 ItemId = Tuple[str, int]
 
 
-class Camus(VisionDataset):
+class Camus(torchvision.datasets.VisionDataset):
     """Implementation of torchvision's ``VisionDataset`` for the CAMUS dataset."""
 
     def __init__(
@@ -29,9 +30,8 @@ class Camus(VisionDataset):
         labels: Sequence[Label] = Label,
         use_sequence: bool = False,
         predict: bool = False,
-        transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
-        transform: Callable[[Tensor], Tensor] = None,
-        target_transform: Callable[[Tensor], Tensor] = None,
+        data_augmentation: Literal["pixel", "spatial"] = None,
+        transforms: Sequence[Callable[[np.ndarray, np.ndarray], TransformedSegmentationData]] = None,
     ):
         """Initializes class instance.
 
@@ -42,23 +42,50 @@ class Camus(VisionDataset):
             labels: Labels of the segmentation classes to take into account.
             use_sequence: Whether to use the complete sequence between ED and ES for each view.
             predict: Whether to receive the data in a format fit for inference (``True``) or training (``False``).
-            transforms: Function that takes in an input/target pair and transforms them in a corresponding way.
-                (only applied when `predict` is `False`, i.e. in train/validation mode)
-            transform: Function that takes in an input and transforms it.
-                (only applied when `predict` is `False`, i.e. in train/validation mode)
-            target_transform: Function that takes in a target and transforms it.
-                (only applied when `predict` is `False`, i.e. in train/validation mode)
+            data_augmentation: Flag for the type of data augmentation to use (if any).
+                - 'pixel': Pixel-level transforms of the input image (e.g. noise, normalization, blur, etc.) that leave
+                   the target mask unchanged. Recommended for the standard segmentation task.
+                - 'spatial': Spatial-level transforms that affect the input image and target mask simultaneously
+                  (e.g. shift, scale, rotate). Not recommended for segmentation, but for representation learning task.
+            transforms: Collection of function that take an image/mask pair and transform it in a corresponding way.
+                (only applied when `use_da` is `True` and `predict` is `False`, i.e. in train/validation mode)
 
         Raises:
             RuntimeError: If flags/arguments are requested that cannot be provided by the HDF5 dataset.
                 - ``use_sequence`` flag is active, while the HDF5 dataset doesn't include full sequences.
         """
-        super().__init__(path, transforms=transforms, transform=transform, target_transform=target_transform)
+        super().__init__(path)
         self.fold = fold
         self.image_set = image_set
         self.labels = labels
         self.use_sequence = use_sequence
         self.predict = predict
+
+        if transforms is not None:
+            self.transforms = A.Compose(transforms)
+        elif data_augmentation:
+            if data_augmentation == "pixel":
+                # TODO: Fix normalization of intensity values in input image
+                self.transforms = A.Compose(
+                    [
+                        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2),
+                        A.RandomGamma(gamma_limit=(80, 120)),
+                    ]
+                )
+            elif data_augmentation == "spatial":
+                self.transforms = A.ShiftScaleRotate(
+                    shift_limit=0.0625, scale_limit=0.1, rotate_limit=10, border_mode=cv2.BORDER_CONSTANT, value=0
+                )
+            else:
+                raise ValueError(
+                    f"Unexpected value for parameter `data_augmentation`: {data_augmentation}. "
+                    f"Please change it to one of the supported values: ['pixel', 'spatial']."
+                )
+        else:
+            self.transforms = None
+
+        self._base_transform = torchvision.transforms.ToTensor()
+        self._base_target_transform = segmentation_to_tensor
 
         with h5py.File(path, "r") as f:
             self.registered_dataset = f.attrs[CamusTags.registered]
@@ -171,9 +198,13 @@ class Camus(VisionDataset):
             # that output ``FloatTensor`` by default (and not ``DoubleTensor``)
             frame_pos = np.float32(instant / view_imgs.shape[0])
 
-        img, gt = to_tensor(img), segmentation_to_tensor(gt)
+        # Data augmentation transforms applied before converting numpy array to torch tensor
         if self.transforms:
-            img, gt = self.transforms(img, gt)
+            transformed = self.transforms(image=img, mask=gt)
+            img = transformed["image"]
+            gt = transformed["mask"]
+
+        img, gt = self._base_transform(img), self._base_target_transform(gt)
         frame_pos = torch.tensor([frame_pos])
 
         return {
@@ -227,8 +258,8 @@ class Camus(VisionDataset):
                     instants = {instant: idx for idx, instant in enumerate(instants)}
 
                 # Transform arrays to tensor
-                proc_imgs_tensor = torch.stack([to_tensor(proc_img) for proc_img in proc_imgs])
-                proc_gts_tensor = torch.stack([segmentation_to_tensor(proc_gt) for proc_gt in proc_gts])
+                proc_imgs_tensor = torch.stack([self._base_transform(proc_img) for proc_img in proc_imgs])
+                proc_gts_tensor = torch.stack([self._base_target_transform(proc_gt) for proc_gt in proc_gts])
 
                 # Extract metadata concerning the registering applied
                 registering_parameters = None

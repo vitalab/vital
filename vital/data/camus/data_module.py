@@ -21,6 +21,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         labels: Sequence[Label] = tuple(Label),
         fold: int = 5,
         use_sequence: bool = False,
+        data_augmentation: str = None,
         **kwargs,
     ):
         """Initializes class instance.
@@ -31,6 +32,11 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
                 labels included in the data.
             fold: ID of the cross-validation fold to use.
             use_sequence: Enable use of full temporal sequences.
+            data_augmentation: Flag for the type of data augmentation to use (if any).
+                - 'pixel' Pixel-level transforms of the input image (e.g. noise, normalization, blur, etc.) that leave
+                   the target mask unchanged. Recommended for the standard segmentation task.
+                - 'spatial': Spatial-level transforms that affect the input image and target mask simultaneously
+                  (e.g. shift, scale, rotate). Not recommended for segmentation, but for representation learning task.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
         dataset_path = Path(dataset_path)
@@ -50,10 +56,13 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         )
 
         self._dataset_kwargs = {"path": dataset_path, "fold": fold, "labels": labels, "use_sequence": use_sequence}
+        self._da = data_augmentation
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
         if stage == "fit":
-            self._dataset[Subset.TRAIN] = Camus(image_set=Subset.TRAIN, **self._dataset_kwargs)
+            self._dataset[Subset.TRAIN] = Camus(
+                image_set=Subset.TRAIN, data_augmentation=self._da, **self._dataset_kwargs
+            )
             self._dataset[Subset.VAL] = Camus(image_set=Subset.VAL, **self._dataset_kwargs)
         if stage == "test":
             self._dataset[Subset.TEST] = Camus(image_set=Subset.TEST, predict=True, **self._dataset_kwargs)
