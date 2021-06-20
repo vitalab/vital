@@ -11,14 +11,14 @@ class Label(DataTag):
 
     Attributes:
         BG: Label of the background.
-        ENDO: Label of the endocardium, delimiting the left ventricle (LV).
-        EPI: Label of the epicardium, delimiting the myocardium (MYO).
+        LV: Label of the left ventricle, bounded by the endocardium.
+        MYO: Label of the myocardium, bounded by the encocardium and epicardium.
         ATRIUM: Label of the left atrium.
     """
 
     BG = 0
-    ENDO = 1
-    EPI = 2
+    LV = 1
+    MYO = 2
     ATRIUM = 3
 
 

@@ -54,29 +54,28 @@ def compute_anatomical_metrics_by_segmentation(
     # Therefore we concatenate label 1 (lumen) and 2 (myocardium)
     segmentation_metrics = Segmentation2DMetrics(
         segmentation,
-        [Label.BG.value, Label.ENDO.value, Label.EPI.value, (Label.ENDO.value, Label.EPI.value), Label.ATRIUM.value],
+        [Label.BG.value, Label.LV.value, Label.MYO.value, (Label.LV.value, Label.MYO.value), Label.ATRIUM.value],
         voxelspacing=voxelspacing,
     )
-    endo_metrics = LeftVentricleEndocardiumMetrics(segmentation_metrics)
-    epi_metrics = LeftVentricleEpicardiumMetrics(segmentation_metrics)
-    atrium_metrics = LeftAtriumMetrics(segmentation_metrics)
+    lv_metrics = LeftVentricleEndocardiumMetrics(segmentation_metrics)
     myo_metrics = MyocardiumMetrics(segmentation_metrics)
+    atrium_metrics = LeftAtriumMetrics(segmentation_metrics)
+    epi_metrics = LeftVentricleEpicardiumMetrics(segmentation_metrics)
     frontier_metrics = FrontierMetrics(segmentation_metrics)
     size_metrics = SizeMetrics(segmentation_metrics)
     metrics = {}
-    if Label.ENDO in labels:
+    if Label.LV in labels:
         metrics.update(
             {
-                "holes_in_endo": endo_metrics.count_holes(),
-                "disconnectivity_in_endo": endo_metrics.count_disconnectivity(),
+                "holes_in_lv": lv_metrics.count_holes(),
+                "disconnectivity_in_lv": lv_metrics.count_disconnectivity(),
             }
         )
-    if Label.EPI in labels:
+    if Label.MYO in labels:
         metrics.update(
             {
-                "holes_in_epi": epi_metrics.count_holes(),
-                "disconnectivity_in_epi": myo_metrics.count_disconnectivity(),
-                "erosion_ratio_before_epi_split": myo_metrics.measure_erosion_ratio_before_split(),
+                "disconnectivity_in_myo": myo_metrics.count_disconnectivity(),
+                "erosion_ratio_before_myo_split": myo_metrics.measure_erosion_ratio_before_split(),
             }
         )
     if Label.ATRIUM in labels:
@@ -86,23 +85,24 @@ def compute_anatomical_metrics_by_segmentation(
                 "disconnectivity_in_atrium": atrium_metrics.count_disconnectivity(),
             }
         )
-    if (Label.ENDO in labels) and (Label.EPI in labels):
+    if (Label.LV in labels) and (Label.MYO in labels):
         metrics.update(
             {
-                "holes_between_endo_and_epi": frontier_metrics.count_holes_between_endo_and_epi(),
-                "width_ratio_between_endo_and_epi": size_metrics.measure_width_ratio_between_endo_and_epi(),
+                "holes_in_epi": epi_metrics.count_holes(),
+                "holes_between_lv_and_myo": frontier_metrics.count_holes_between_lv_and_myo(),
+                "width_ratio_between_lv_and_myo": size_metrics.measure_width_ratio_between_lv_and_myo(),
             }
         )
-    if (Label.ATRIUM in labels) and (Label.ENDO in labels):
+    if (Label.ATRIUM in labels) and (Label.LV in labels):
         metrics.update(
             {
-                "holes_between_endo_and_atrium": frontier_metrics.count_holes_between_endo_and_atrium(),
-                "frontier_ratio_between_endo_and_background": frontier_metrics.measure_frontier_ratio_between_endo_and_background(),
+                "holes_between_lv_and_atrium": frontier_metrics.count_holes_between_lv_and_atrium(),
+                "frontier_ratio_between_lv_and_bg": frontier_metrics.measure_frontier_ratio_between_lv_and_bg(),
             }
         )
-    if (Label.ATRIUM in labels) and (Label.EPI in labels):
+    if (Label.ATRIUM in labels) and (Label.MYO in labels):
         metrics.update(
-            {"frontier_ratio_between_epi_and_atrium": frontier_metrics.measure_frontier_ratio_between_epi_and_atrium()}
+            {"frontier_ratio_between_myo_and_atrium": frontier_metrics.measure_frontier_ratio_between_myo_and_atrium()}
         )
     metrics["anatomical_errors"] = any(
         not check_metric_validity(value, thresholds.get(name), optional_structure=False)

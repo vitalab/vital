@@ -133,7 +133,7 @@ def load_instant_data(img_path: Path, gt_path: Optional[Path] = None) -> Tuple[n
         gt = ni_img.get_fdata()
         gt = gt.transpose(2, 0, 1)[..., np.newaxis]
 
-        gt = to_onehot(gt, Label.count())
+        gt = to_onehot(gt, len(Label))
 
         gt = centered_resize(gt, (image_size, image_size))
 

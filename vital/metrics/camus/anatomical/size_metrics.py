@@ -15,7 +15,7 @@ class SizeMetrics:
         self.segmentation_metrics = segmentation_metrics
         self.no_structure_flag = float("nan")
 
-    def measure_width_ratio_between_endo_and_epi(self) -> float:
+    def measure_width_ratio_between_lv_and_myo(self) -> float:
         """Measures the relative width of the left ventricle and the myocardium at their joined center of mass.
 
         The width comparison is measured using the ratio between the width the width of the left ventricle and the total
@@ -26,5 +26,5 @@ class SizeMetrics:
             an horizontal line anchored at their joined center of mass.
         """
         return self.segmentation_metrics.measure_width_ratio_between_regions(
-            Label.ENDO.value, Label.EPI.value, no_structure_flag=self.no_structure_flag
+            Label.LV.value, Label.MYO.value, no_structure_flag=self.no_structure_flag
         )

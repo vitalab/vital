@@ -81,7 +81,7 @@ class CrossValidationDatasetGenerator:
         self.labels_to_remove = [] if labels is None else [label for label in Label if label not in labels]
         self.target_image_size = target_image_size
         self.registering_transformer = CamusRegisteringTransformer(
-            num_classes=Label.count(), crop_shape=self.target_image_size
+            num_classes=len(Label), crop_shape=self.target_image_size
         )
         self.sequence_type = sequence_type
         self.sequence_type_instants = asdict(Instant.from_sequence_type(sequence_type)).values()

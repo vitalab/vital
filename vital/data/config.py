@@ -24,15 +24,6 @@ class DataTag(Enum):
         return [e.value for e in cls]
 
     @classmethod
-    def count(cls) -> int:
-        """Counts the number of elements in the enumeration.
-
-        Returns:
-            Count of the number of elements in the enumeration.
-        """
-        return sum(1 for _ in cls)
-
-    @classmethod
     def from_name(cls, name: str) -> "DataTag":
         """Fetches an element of the enumeration based on its name.
 
@@ -89,9 +80,9 @@ class DataParameters:
     Args:
         in_shape: Shape of the input data (e.g. height, width, channels).
         out_shape: Shape of the target data (e.g. height, width, channels).
-        labels: Identifiers of the labels provided with the data.
+        labels: Labels provided with the data.
     """
 
     in_shape: Tuple[int, ...]
     out_shape: Tuple[int, ...]
-    labels: Tuple[str, ...]
+    labels: Tuple[DataTag, ...]
