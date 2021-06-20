@@ -6,9 +6,9 @@ import numpy as np
 from vital.data.camus.config import Label
 from vital.metrics.camus.anatomical.atrium_metrics import LeftAtriumMetrics
 from vital.metrics.camus.anatomical.config import thresholds
-from vital.metrics.camus.anatomical.endo_metrics import LeftVentricleEndocardiumMetrics
-from vital.metrics.camus.anatomical.epi_metrics import LeftVentricleEpicardiumMetrics
+from vital.metrics.camus.anatomical.epi_metrics import EpicardiumMetrics
 from vital.metrics.camus.anatomical.frontier_metrics import FrontierMetrics
+from vital.metrics.camus.anatomical.lv_metrics import LeftVentricleMetrics
 from vital.metrics.camus.anatomical.myo_metrics import MyocardiumMetrics
 from vital.metrics.camus.anatomical.size_metrics import SizeMetrics
 from vital.metrics.evaluate.segmentation import Segmentation2DMetrics, check_metric_validity
@@ -57,10 +57,10 @@ def compute_anatomical_metrics_by_segmentation(
         [Label.BG.value, Label.LV.value, Label.MYO.value, (Label.LV.value, Label.MYO.value), Label.ATRIUM.value],
         voxelspacing=voxelspacing,
     )
-    lv_metrics = LeftVentricleEndocardiumMetrics(segmentation_metrics)
+    lv_metrics = LeftVentricleMetrics(segmentation_metrics)
     myo_metrics = MyocardiumMetrics(segmentation_metrics)
     atrium_metrics = LeftAtriumMetrics(segmentation_metrics)
-    epi_metrics = LeftVentricleEpicardiumMetrics(segmentation_metrics)
+    epi_metrics = EpicardiumMetrics(segmentation_metrics)
     frontier_metrics = FrontierMetrics(segmentation_metrics)
     size_metrics = SizeMetrics(segmentation_metrics)
     metrics = {}

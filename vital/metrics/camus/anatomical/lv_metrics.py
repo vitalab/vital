@@ -3,7 +3,7 @@ from vital.metrics.evaluate.anatomical_structure import Anatomical2DStructureMet
 from vital.metrics.evaluate.segmentation import Segmentation2DMetrics
 
 
-class LeftVentricleEndocardiumMetrics(Anatomical2DStructureMetrics):
+class LeftVentricleMetrics(Anatomical2DStructureMetrics):
     """Class to compute metrics on the segmentation of the left ventricle."""
 
     def __init__(self, segmentation_metrics: Segmentation2DMetrics):
