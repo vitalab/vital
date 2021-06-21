@@ -95,24 +95,3 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         return DataLoader(
             self.dataset(subset=Subset.TEST), batch_size=None, num_workers=self.num_workers, pin_memory=True
         )
-
-    @classmethod
-    def add_argparse_args(cls, parent_parser: ArgumentParser, **kwargs) -> ArgumentParser:
-        """Override of generic ``add_argparse_args`` to manually add parser for arguments of custom types."""
-        parser = super().add_argparse_args(parent_parser)
-
-        # Fetch the argument group created specifically for the data module's arguments
-        dm_arg_group = get_classpath_group(parser, cls)
-
-        # Add arguments w/ custom types not supported by Lightning's argparse creation tool
-        dm_arg_group.add_argument(
-            "--labels",
-            type=Label.from_name,
-            default=tuple(Label),
-            nargs="+",
-            choices=tuple(Label),
-            help="Labels of the segmentation classes to take into account (including background). "
-            "If None, target all labels included in the data",
-        )
-
-        return parent_parser

@@ -1,6 +1,5 @@
 import sys
 from abc import ABC
-from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Union
 
@@ -103,15 +102,3 @@ class SystemEvaluationMixin(VitalSystem, ABC):
         progress bar (as Lightning usually expects).
         """
         pass
-
-    @classmethod
-    def add_evaluation_args(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Adds evaluation related arguments to a parser object.
-
-        Args:
-            parser: Parser object to which to add evaluation related arguments.
-
-        Returns:
-            Parser object to which evaluation related arguments have been added.
-        """
-        return parser
