@@ -56,7 +56,7 @@ class VitalRunner(ABC):
         """
         cfg = VitalRunner._check_cfg(cfg)
 
-        cfg.seed = seed_everything(cfg.seed)
+        cfg.seed = seed_everything(cfg.seed, workers=True)
 
         callbacks = VitalRunner.configure_callbacks(cfg)
         logger = VitalRunner.configure_logger(cfg)
