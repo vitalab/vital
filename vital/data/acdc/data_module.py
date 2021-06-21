@@ -25,7 +25,7 @@ class AcdcDataModule(VitalDataModule):
             data_params=DataParameters(
                 in_shape=(in_channels, image_size, image_size),
                 out_shape=(len(Label), image_size, image_size),
-                labels=tuple(str(label) for label in list(Label)),
+                labels=tuple(Label),
             ),
             **kwargs,
         )

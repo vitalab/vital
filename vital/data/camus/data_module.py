@@ -9,6 +9,7 @@ from vital.data.camus.dataset import Camus
 from vital.data.config import DataParameters, Subset
 from vital.data.data_module import VitalDataModule
 from vital.data.mixins import StructuredDataMixin
+from vital.utils.parsing import get_classpath_group
 
 
 class CamusDataModule(StructuredDataMixin, VitalDataModule):
@@ -45,9 +46,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
 
         super().__init__(
             data_params=DataParameters(
-                in_shape=(in_channels, *image_shape),
-                out_shape=(len(labels), *image_shape),
-                labels=tuple(str(label) for label in labels),
+                in_shape=(in_channels, *image_shape), out_shape=(len(labels), *image_shape), labels=labels
             ),
             **kwargs,
         )
@@ -102,12 +101,8 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         """Override of generic ``add_argparse_args`` to manually add parser for arguments of custom types."""
         parser = super().add_argparse_args(parent_parser)
 
-        # Hack to fetch the argument group created specifically for the data module's arguments
-        dm_arg_group = [
-            arg_group
-            for arg_group in parser._action_groups
-            if arg_group.title == f"{cls.__module__}.{cls.__qualname__}"
-        ][0]
+        # Fetch the argument group created specifically for the data module's arguments
+        dm_arg_group = get_classpath_group(parser, cls)
 
         # Add arguments w/ custom types not supported by Lightning's argparse creation tool
         dm_arg_group.add_argument(
