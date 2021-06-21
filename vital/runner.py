@@ -36,7 +36,7 @@ class VitalRunner(ABC):
         Args:
             hparams: Arguments parsed from the CLI.
         """
-        seed_everything(hparams.seed)
+        seed_everything(hparams.seed, workers=True)
 
         # Use Comet for logging if a path to a Comet config file is provided
         # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
