@@ -19,18 +19,14 @@ class Logger:
     desc: str  #: Description of the logger. Used in e.g. progress bar, logs file name, etc.
 
     def __init__(
-        self,
-        output_name: str = None,
-        disable_progress_bar: bool = False,
-        disable_multiprocessing: bool = False,
-        **iterable_result_params,
+        self, output_name: str = None, progress_bar: bool = True, multiprocessing: bool = True, **iterable_result_params
     ):
         """Initializes class instance.
 
         Args:
             output_name: Name for the aggregated log, if the logger produces an aggregated log.
-            disable_progress_bar: If ``True``, disables the progress bars detailing the progress of the computations.
-            disable_multiprocessing: If ``True``, disables multiprocessing when collecting logs for each result.
+            progress_bar: If ``True``, enables progress bars detailing the progress of the computations.
+            multiprocessing: If ``True``, enables multiprocessing when collecting logs for each result.
             iterable_result_params: Parameters to pass along to result iterator's ``__init__``.
 
         Raises:
@@ -43,8 +39,8 @@ class Logger:
                 "so that we can generate the path of the aggregated results."
             )
         self.output_name = output_name
-        self.disable_progress_bar = disable_progress_bar
-        self.disable_multiprocessing = disable_multiprocessing
+        self.progress_bar = progress_bar
+        self.multiprocessing = multiprocessing
         self.iterable_result_params = iterable_result_params
 
     def __call__(self, results_path: Path, output_folder: Path, output_prefix: str = None) -> None:
@@ -59,23 +55,21 @@ class Logger:
         self.output_folder.mkdir(parents=True, exist_ok=True)
 
         results = self.IterableResultT(results_path=results_path, **self.iterable_result_params)
-        pbar_kwargs = {"total": len(results), "unit": results.desc}
         if self.Log is not None:  # If the logger returns data for each result to be aggregated in a single log
             log_desc = f"Collecting {output_prefix} data for {self.desc}"
         else:  # If the logger writes the log as side-effects as it iterates over the results
             log_desc = f"Logging {output_prefix} {self.desc} to {output_folder}"
-        pbar_kwargs["desc"] = log_desc
 
-        if self.disable_multiprocessing:
-            log_results_iter = (self._log_result(result) for result in results)
-        else:
+        if self.multiprocessing:
             pool = Pool()
             log_results_iter = pool.imap(self._log_result, results)
-
-        if self.disable_progress_bar:
-            logger.info(log_desc)
         else:
-            log_results_iter = tqdm(log_results_iter, **pbar_kwargs)
+            log_results_iter = (self._log_result(result) for result in results)
+
+        if self.progress_bar:
+            log_results_iter = tqdm(log_results_iter, total=len(results), unit=results.desc, desc=log_desc)
+        else:
+            logger.info(log_desc)
 
         if self.Log is not None:  # If the logger returns data for each result to be aggregated in a single log
             logs = dict(log_results_iter)
@@ -87,7 +81,7 @@ class Logger:
             for _ in log_results_iter:
                 pass
 
-        if not self.disable_multiprocessing:  # Ensure pool resources are freed at the end
+        if self.multiprocessing:  # Ensure pool resources are freed at the end
             pool.close()
             pool.join()
 
@@ -136,12 +130,14 @@ class Logger:
         )
         parser.add_argument(
             "--disable_progress_bar",
-            action="store_true",
+            dest="progress_bar",
+            action="store_false",
             help="Disables the progress bars detailing the progress of the computations",
         )
         parser.add_argument(
             "--disable_multiprocessing",
-            action="store_true",
+            dest="multiprocessing",
+            action="store_false",
             help="Disables multiprocessing when collecting logs for each result",
         )
         parser = cls.IterableResultT.add_args(parser)
