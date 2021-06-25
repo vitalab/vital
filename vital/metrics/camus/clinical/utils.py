@@ -16,9 +16,9 @@ def compute_clinical_metrics_by_patient(
     """Computes the clinical metrics for a single patient.
 
     Args:
-        results: (2x 2,H,W) Predicted segmentation maps for both the 2- and 4-chamber views.The segmentation map for
+        results: 2x (2,H,W), Predicted segmentation maps for both the 2- and 4-chamber views.The segmentation map for
             each view is a 3D stack of 2D segmentation maps for the ED and ES instants of the cardiac cycle.
-        references: (2x 2,H,W) Reference segmentation maps for both the 2- and 4-chamber views. The segmentation map
+        references: 2x (2,H,W), Reference segmentation maps for both the 2- and 4-chamber views. The segmentation map
             for each view is a 3D stack of 2D segmentation maps for the ED and ES instants of the cardiac cycle.
         a2c_voxelspacing: Size (in mm) of the 2-chamber view's voxels along each (height, width) dimension.
         a4c_voxelspacing: Size (in mm) of the 4-chamber view's voxels along each (height, width) dimension.

@@ -21,11 +21,15 @@ def compute_left_ventricle_volumes(
     """Computes the ED and ES volumes of the left ventricle from 2 orthogonal 2D views (A2C and A4C).
 
     Args:
-        a2c_ed: Segmentation map of the end-diastole (ED) instant of the 2-chamber apical view (A2C).
-        a2c_es: Segmentation map of the end-systole (ES) instant of the 2-chamber apical view (A2C).
+        a2c_ed: (H,W), Binary segmentation map of the left ventricle from the end-diastole (ED) instant of the 2-chamber
+            apical view (A2C).
+        a2c_es: (H,W), Binary segmentation map of the left ventricle from the end-systole (ES) instant of the 2-chamber
+            apical view (A2C).
         a2c_voxelspacing: Size (in mm) of the 2-chamber apical view's voxels along each (height, width) dimension.
-        a4c_ed: Segmentation map of the end-diastole (ED) instant of the 4-chamber apical view (A4C).
-        a4c_es: Segmentation map of the end-systole (ES) instant of the 4-chamber apical view (A4C).
+        a4c_ed: (H,W), Binary segmentation map of the left ventricle from the end-diastole (ED) instant of the 4-chamber
+            apical view (A4C).
+        a4c_es: (H,W), Binary segmentation map of the left ventricle from the end-systole (ES) instant of the 4-chamber
+            apical view (A4C).
         a4c_voxelspacing: Size (in mm) of the 4-chamber apical view's voxels along each (height, width) dimension.
 
     Returns:
