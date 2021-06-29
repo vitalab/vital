@@ -165,3 +165,37 @@ class SliverDataset(VisionDataset):
         img = file["{}/{}".format(key, SLiverTags.img)]
         gt = file["{}/{}".format(key, SLiverTags.gt)]
         return img, gt
+
+
+"""
+This script can be run to test and visualize the data from the dataset.
+"""
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+    from matplotlib import pyplot as plt
+    import random
+
+    args = ArgumentParser(add_help=False)
+    args.add_argument("path", type=str)
+    args.add_argument("--use_da", action="store_true")
+    params = args.parse_args()
+
+    ds = SliverDataset(Path(params.path), image_set=Subset.TRAIN, use_da=params.use_da)
+
+    sample = ds[random.randint(0, len(ds) - 1)]
+    img = sample[SLiverTags.img].squeeze()
+    gt = sample[SLiverTags.gt].squeeze()
+    print("Image shape: {}".format(img.shape))
+    print("GT shape: {}".format(gt.shape))
+    print("Voxel_spacing: {}".format(sample[SLiverTags.voxel_spacing]))
+
+    f, (ax1, ax2) = plt.subplots(1, 2)
+    ax1.imshow(img)
+    ax2.imshow(gt)
+    plt.show(block=False)
+
+    # plt.figure(2)
+    # plt.imshow(img, cmap="gray")
+    # plt.imshow(gt, alpha=0.2)
+
+    plt.show()

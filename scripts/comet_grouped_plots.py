@@ -143,9 +143,10 @@ def plot_mean_std_curve(
 
     # Filter the experiments' data to only include data for the metric of interest
     data = experiments_data.loc[experiments_data.metricName == metric]
+    print(data)
 
     with sns.axes_style("darkgrid"):
-        ax = sns.lineplot(data=data, x="epoch", y="metricValue", hue=group_by)
+        ax = sns.lineplot(data=data, x="step", y="metricValue", hue=group_by)
         ax.set_title(plot_title)
         ax.set_ylabel(metric)
         if scale is not None:
@@ -230,6 +231,7 @@ def main():
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     experiments_data = get_experiments_data(experiment_keys, args.metric)
+    print(experiments_data.head(20))
     for metric in args.metric:
         plot_mean_std_curve(experiments_data, metric, args.group_by, args.out_dir, scale=args.scale.get(metric))
 

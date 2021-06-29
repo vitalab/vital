@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, Dict, Mapping, Sequence, TypeVar, Union, List
 
 
@@ -45,3 +46,19 @@ def flatten(nested_list) -> List:
         Flattened list.
     """
     return sum(map(flatten, nested_list), []) if isinstance(nested_list, list) else [nested_list]
+
+
+def filter_excluded(seq: Sequence[str], to_exclude: Sequence[Union[str, Path]]) -> List[str]:
+    """Filters a sequence of strings to exclude specific strings.
+    Args:
+        seq: Sequence of strings to filter.
+        to_exclude: Individual strings, or files listing multiple strings, to exclude.
+    Returns:
+        List of strings based off of `seq`, without any of the values specified in `to_exclude`.
+    """
+    items_to_exclude = [item for item in to_exclude if isinstance(item, str)]
+    for list_items_to_exclude in [item for item in to_exclude if isinstance(item, Path)]:
+        with open(str(list_items_to_exclude)) as f:
+            items_to_exclude.extend(f.read().splitlines())
+
+    return [item for item in seq if item not in items_to_exclude]
