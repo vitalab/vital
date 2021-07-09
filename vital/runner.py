@@ -116,7 +116,7 @@ class VitalRunner(ABC):
             trainer.test(model, datamodule=datamodule)
 
     @classmethod
-    def _check_cfg(cls, cfg: DictConfig):
+    def _check_cfg(cls, cfg: DictConfig) -> DictConfig:
         """Parse args, making custom checks on the values of the parameters in the process.
 
         Args:
@@ -124,25 +124,7 @@ class VitalRunner(ABC):
 
         Returns:
              Validated config for a system run.
-
-        Raises:
-            ValueError: If invalid combinations of arguments are specified by the user.
-                - ``train=False`` flag is active without a ``ckpt_path`` being provided.
-                - ``resume=True`` flag is active without a ``ckpt_path`` being provided.
         """
-        if not cfg.ckpt_path:
-            if not cfg.train:
-                raise ValueError(
-                    "Trainer set to skip training (`train=False` flag) without a checkpoint provided. \n"
-                    "Either allow model to train (`train=True` flag) or "
-                    "provide a pretrained model (through `ckpt_path=<something>` parameter)."
-                )
-            if cfg.resume:
-                raise ValueError(
-                    "Cannot use flag `resume=True` without a checkpoint from which to resume. \n"
-                    "Either allow the model to start over (`resume=False` flag) or "
-                    "provide a saved checkpoint (through `ckpt_path=<something>` parameter)"
-                )
 
         # Set the path to an absolut path since Hydra has changed the current working directory
         if cfg.ckpt_path:
@@ -221,8 +203,11 @@ class VitalRunner(ABC):
         """
         data = cfg.data._target_.split(".")[-1]
         system = cfg.system._target_.split(".")[-1]
-        module = cfg.system.module._target_.split(".")[-1]
-        return log_dir / f"{data}_{system}_{module}.ckpt"
+        name = f"{data}_{system}"
+        if cfg.system.module is not None:  # Some systems do not have a module (ex. Auto-encoders)
+            module = cfg.system.module._target_.split(".")[-1]
+            name = f"{name}_{module}"
+        return log_dir / f"{name}.ckpt"
 
 
 if __name__ == "__main__":
