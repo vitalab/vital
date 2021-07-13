@@ -11,9 +11,10 @@ import dotenv
 import hydra
 import torch
 import torch.nn as nn
-from omegaconf import DictConfig, open_dict, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
+
 from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
 from vital.utils.logging import configure_logging
@@ -26,8 +27,7 @@ class VitalRunner(ABC):
 
     @classmethod
     def main(cls) -> None:
-        """Runs the requested experiment"""
-
+        """Runs the requested experiment."""
         # Set up the environment
         cls.pre_run_routine()
 
@@ -82,7 +82,7 @@ class VitalRunner(ABC):
         module: nn.Module = hydra.utils.instantiate(
             cfg.system.module,
             input_shape=datamodule.data_params.in_shape,
-            output_shape=datamodule.data_params.out_shape
+            output_shape=datamodule.data_params.out_shape,
         )
 
         # Instantiate model with the created module.
@@ -90,10 +90,10 @@ class VitalRunner(ABC):
 
         if cfg.ckpt_path:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
-                log.info(f"Loading weights from callback {cfg.ckpt_path}")
+                log.info(f"Loading weights from {cfg.ckpt_path}")
                 model.load_state_dict(torch.load(cfg.ckpt_path, map_location=model.device)["state_dict"])
             else:
-                log.info(f"Loading model from callback {cfg.ckpt_path}")
+                log.info(f"Loading model from {cfg.ckpt_path}")
                 model = model.load_from_checkpoint(cfg.ckpt_path, module=module, data_params=datamodule.data_params)
 
         if cfg.train:
@@ -116,7 +116,7 @@ class VitalRunner(ABC):
             trainer.test(model, datamodule=datamodule)
 
     @classmethod
-    def _check_cfg(cls, cfg: DictConfig):
+    def _check_cfg(cls, cfg: DictConfig) -> DictConfig:
         """Parse args, making custom checks on the values of the parameters in the process.
 
         Args:
@@ -124,25 +124,7 @@ class VitalRunner(ABC):
 
         Returns:
              Validated config for a system run.
-
-        Raises:
-            ValueError: If invalid combinations of arguments are specified by the user.
-                - ``train=False`` flag is active without a ``ckpt_path`` being provided.
-                - ``resume=True`` flag is active without a ``ckpt_path`` being provided.
         """
-        if not cfg.ckpt_path:
-            if not cfg.train:
-                raise ValueError(
-                    "Trainer set to skip training (`train=False` flag) without a checkpoint provided. \n"
-                    "Either allow model to train (`train=True` flag) or "
-                    "provide a pretrained model (through `ckpt_path=<something>` parameter)."
-                )
-            if cfg.resume:
-                raise ValueError(
-                    "Cannot use flag `resume=True` without a checkpoint from which to resume. \n"
-                    "Either allow the model to start over (`resume=False` flag) or "
-                    "provide a saved checkpoint (through `ckpt_path=<something>` parameter)"
-                )
 
         # Set the path to an absolut path since Hydra has changed the current working directory
         if cfg.ckpt_path:
@@ -221,8 +203,11 @@ class VitalRunner(ABC):
         """
         data = cfg.data._target_.split(".")[-1]
         system = cfg.system._target_.split(".")[-1]
-        module = cfg.system.module._target_.split(".")[-1]
-        return log_dir / f"{data}_{system}_{module}.ckpt"
+        name = f"{data}_{system}"
+        if cfg.system.module is not None:  # Some systems do not have a module (ex. Auto-encoders)
+            module = cfg.system.module._target_.split(".")[-1]
+            name = f"{name}_{module}"
+        return log_dir / f"{name}.ckpt"
 
 
 if __name__ == "__main__":

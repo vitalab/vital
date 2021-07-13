@@ -1,4 +1,3 @@
-from argparse import ArgumentParser
 from pathlib import Path
 from typing import List, Literal, Sequence, Union
 
@@ -9,7 +8,6 @@ from vital.data.camus.dataset import Camus
 from vital.data.config import DataParameters, Subset
 from vital.data.data_module import VitalDataModule
 from vital.data.mixins import StructuredDataMixin
-from vital.utils.parsing import get_classpath_group
 
 
 class CamusDataModule(StructuredDataMixin, VitalDataModule):

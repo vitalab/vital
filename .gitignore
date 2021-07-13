@@ -119,3 +119,6 @@ venv.bak/
 
 # IDEs
 .idea
+
+# Hydra
+.hydra

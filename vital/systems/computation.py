@@ -38,9 +38,3 @@ class TrainValComputationMixin(SystemComputationMixin, ABC):
         result.update({"early_stop_on": result["val_loss"]})
         self.log_dict(result, **self.val_log_kwargs)
         return result
-
-    # TODO Move to default evaluation mixin ??
-    def test_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
-        result = prefix(self.trainval_step(*args, **kwargs), "test_")
-        self.log_dict(result, **self.val_log_kwargs)
-        return result

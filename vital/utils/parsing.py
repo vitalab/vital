@@ -1,5 +1,4 @@
 import argparse
-from typing import Type
 
 import yaml
 

@@ -85,4 +85,4 @@ class DataParameters:
 
     in_shape: Tuple[int, ...]
     out_shape: Tuple[int, ...]
-    labels: Optional[Tuple[str, ...]] = None
+    labels: Optional[Tuple[DataTag, ...]] = None
