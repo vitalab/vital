@@ -15,6 +15,7 @@ class SegmentationComputationMixin(TrainValComputationMixin):
     Implements generic segmentation train/val step and inference, assuming the following conditions:
         - the ``nn.Module`` used returns as single output the raw, unnormalized scores for each class in the predicted
           segmentation.
+    The loss used is a weighted combination of Dice and cross-entropy.
     """
 
     # Fields to initialize in implementation of ``VitalSystem``

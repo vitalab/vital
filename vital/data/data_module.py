@@ -26,8 +26,6 @@ class VitalDataModule(pl.LightningDataModule, ABC):
             batch_size: Size of batches.
             num_workers: Number of subprocesses to use for data loading.
                 ``workers=0`` means that the data will be loaded in the main process.
-            **kwargs: Hack to capture parser arguments that are not destined for the data module,
-                since ``from_argparse_args`` can't handle inheritance (parent arguments are not provided).
         """
         super().__init__()
         self.data_params = data_params

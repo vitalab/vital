@@ -15,8 +15,8 @@ class UNet(nn.Module):
 
     def __init__(
         self,
-        input_shape: Tuple[int],
-        output_shape: Tuple[int],
+        input_shape: Tuple[int, ...],
+        output_shape: Tuple[int, ...],
         init_channels: int = 32,
         use_batchnorm: bool = True,
         bilinear: bool = False,
@@ -168,6 +168,6 @@ This script can be run to visualize the network layers.
 if __name__ == "__main__":
     from torchsummary import summary
 
-    model = UNet(in_channels=1, out_channels=4)
+    model = UNet(input_shape=(1,256,256), output_shape=(4,256,256))
 
     summary(model, (1, 256, 256), device="cpu")
