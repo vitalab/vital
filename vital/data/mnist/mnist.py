@@ -1,6 +1,8 @@
 from typing import Any, Dict
-from vital.data.config import Tags
+
 import torchvision
+
+from vital.data.config import Tags
 
 
 class MNIST(torchvision.datasets.MNIST):

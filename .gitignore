@@ -122,3 +122,5 @@ venv.bak/
 
 # Hydra
 .hydra
+/outputs
+/multirun

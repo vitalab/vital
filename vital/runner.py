@@ -125,7 +125,6 @@ class VitalRunner(ABC):
         Returns:
              Validated config for a system run.
         """
-
         # Set the path to an absolut path since Hydra has changed the current working directory
         if cfg.ckpt_path:
             cfg.ckpt_path = hydra.utils.to_absolute_path(cfg.ckpt_path)

@@ -168,6 +168,6 @@ This script can be run to visualize the network layers.
 if __name__ == "__main__":
     from torchsummary import summary
 
-    model = UNet(input_shape=(1,256,256), output_shape=(4,256,256))
+    model = UNet(input_shape=(1, 256, 256), output_shape=(4, 256, 256))
 
     summary(model, (1, 256, 256), device="cpu")
