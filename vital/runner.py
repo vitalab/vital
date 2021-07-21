@@ -12,6 +12,7 @@ from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
 from vital.utils.config import read_ini_config
 from vital.utils.logging import configure_logging
+from vital.utils.serialization import resolve_model_ckpt_path
 
 
 class VitalRunner(ABC):
@@ -38,6 +39,12 @@ class VitalRunner(ABC):
         """
         seed_everything(hparams.seed, workers=True)
 
+        # Ensure the checkpoint is accessible on the local machine
+        if hparams.ckpt_path:
+            ckpt_path = resolve_model_ckpt_path(
+                hparams.ckpt_path, comet_config=hparams.comet_config, log_dir=hparams.default_root_dir
+            )
+
         # Use Comet for logging if a path to a Comet config file is provided
         # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
         logger = True
@@ -45,7 +52,7 @@ class VitalRunner(ABC):
             logger = cls._configure_comet_logger(hparams)
 
         if hparams.resume:
-            trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path, logger=logger)
+            trainer = Trainer(resume_from_checkpoint=ckpt_path, logger=logger)
         else:
             trainer = Trainer.from_argparse_args(hparams, logger=logger)
 
@@ -59,11 +66,11 @@ class VitalRunner(ABC):
         datamodule = cls._get_selected_data_module(hparams)(**vars(hparams))
         system_cls = cls._get_selected_system(hparams)
         if hparams.ckpt_path and not hparams.weights_only:  # Load pretrained model if checkpoint is provided
-            model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams), strict=hparams.strict_load)
+            model = system_cls.load_from_checkpoint(str(ckpt_path), **vars(hparams), strict=hparams.strict_load)
         else:
             model = system_cls(**vars(hparams), data_params=datamodule.data_params)
             if hparams.ckpt_path and hparams.weights_only:
-                checkpoint = torch.load(hparams.weights, map_location=model.device)
+                checkpoint = torch.load(ckpt_path, map_location=model.device)
                 model.load_state_dict(checkpoint["state_dict"], strict=hparams.strict_load)
 
         if hparams.train:
