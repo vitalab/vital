@@ -41,9 +41,7 @@ class VitalRunner(ABC):
 
         # Ensure the checkpoint is accessible on the local machine
         if hparams.checkpoint:
-            ckpt_path = resolve_model_ckpt_path(
-                hparams.checkpoint, comet_config=hparams.comet_config, log_dir=hparams.default_root_dir
-            )
+            ckpt_path = resolve_model_ckpt_path(hparams.checkpoint, comet_config=hparams.comet_config)
 
         # Use Comet for logging if a path to a Comet config file is provided
         # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
