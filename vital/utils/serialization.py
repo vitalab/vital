@@ -39,8 +39,10 @@ def resolve_model_ckpt_path(ckpt: Union[str, Path], comet_config: Path = None, l
         api = API(api_key=config["api_key"])
 
         # Parse the provided checkpoint path as a query for a Comet model registry
-        version, stage = None, None
-        if len(ckpt.parts) == 2:
+        version_or_stage, version, stage = None, None, None
+        if len(ckpt.parts) == 1:
+            (registry_name,) = ckpt.parts
+        elif len(ckpt.parts) == 2:
             registry_name, version_or_stage = ckpt.parts
             try:
                 Version(version_or_stage)  # Will fail if `version_or_stage` cannot be parsed as a version
