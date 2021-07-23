@@ -1,19 +1,22 @@
 import logging
-import os
 import shutil
 from pathlib import Path
 from typing import Union
 
-from comet_ml import API
+import comet_ml
 from packaging.version import InvalidVersion, Version
 
-from vital import ENV_COMET_API_KEY, get_vital_home
+from vital import get_vital_home
 
 logger = logging.getLogger(__name__)
 
 
 def resolve_model_ckpt_path(ckpt: Union[str, Path]) -> Path:
     """Resolves a local path or a Comet model registry query to a local path on the machine.
+
+    Notes:
+        - If the `ckpt` is to be downloaded off of a Comet model registry, your Comet API key needs to be set in one of
+          Comet's expected locations: https://www.comet.ml/docs/python-sdk/advanced/#non-interactive-setup
 
     Args:
         ckpt: Location of the checkpoint. This can be either a local path, or the fields of a query to a Comet model
@@ -29,13 +32,14 @@ def resolve_model_ckpt_path(ckpt: Union[str, Path]) -> Path:
     if ckpt.suffix == ".ckpt":
         local_ckpt_path = ckpt
     else:
-        if ENV_COMET_API_KEY not in os.environ:
+        try:
+            comet_api = comet_ml.api.API()
+        except ValueError:
             raise RuntimeError(
-                f"The format of the checkpoint '{ckpt}' indicates you want to download the checkpoint off a Comet "
-                f"model registry, but you have not set the 'COMET_API_KEY' environment variable. Either switch to "
-                f"providing a local checkpoint path, or set 'COMET_API_KEY' to use the Comet model registry."
+                f"The format of the checkpoint '{ckpt}' indicates you want to download a model from a Comet model "
+                f"registry, but Comet couldn't find an API key. Either switch to providing a local checkpoint path, "
+                f"or set your Comet API key in one of Comet's expected locations."
             )
-        api = API(api_key=os.environ[ENV_COMET_API_KEY])
 
         # Parse the provided checkpoint path as a query for a Comet model registry
         version_or_stage, version, stage = None, None, None
@@ -53,7 +57,7 @@ def resolve_model_ckpt_path(ckpt: Union[str, Path]) -> Path:
 
         # If neither version nor stage were provided, use latest version available
         if not version_or_stage:
-            version_or_stage = version = api.get_registry_model_versions(workspace, registry_name)[-1]
+            version_or_stage = version = comet_api.get_registry_model_versions(workspace, registry_name)[-1]
 
         # Determine where to download the checkpoint locally
         cache_dir = get_vital_home()
@@ -66,7 +70,7 @@ def resolve_model_ckpt_path(ckpt: Union[str, Path]) -> Path:
 
         # Download model if not already cached
         if not model_cached_path.exists():
-            api.download_registry_model(
+            comet_api.download_registry_model(
                 workspace, registry_name, version=version, stage=stage, output_path=str(model_cached_path)
             )
         else:

@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-ENV_COMET_API_KEY = "COMET_API_KEY"
 ENV_VITAL_HOME = "VITAL_HOME"
 DEFAULT_CACHE_DIR = "~/.cache"
 
