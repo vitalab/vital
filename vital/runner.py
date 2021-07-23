@@ -18,6 +18,7 @@ from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
 from vital.utils.logging import configure_logging
+from vital.utils.serialization import resolve_model_ckpt_path
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +57,9 @@ class VitalRunner(ABC):
         """
         cfg = VitalRunner._check_cfg(cfg)
 
+        if cfg.checkpoint:
+            ckpt_path = resolve_model_ckpt_path(cfg.checkpoint)
+
         cfg.seed = seed_everything(cfg.seed, workers=True)
 
         callbacks = VitalRunner.configure_callbacks(cfg)
@@ -88,13 +92,14 @@ class VitalRunner(ABC):
         # Instantiate model with the created module.
         model: VitalSystem = hydra.utils.instantiate(cfg.system, module=module, data_params=datamodule.data_params)
 
-        if cfg.ckpt_path:  # Load pretrained model if checkpoint is provided
+        if cfg.checkpoint:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
-                log.info(f"Loading weights from {cfg.ckpt_path}")
-                model.load_state_dict(torch.load(cfg.ckpt_path, map_location=model.device)["state_dict"])
+                log.info(f"Loading weights from {ckpt_path}")
+                model.load_state_dict(torch.load(ckpt_path, map_location=model.device)["state_dict"], strict=cfg.strict)
             else:
-                log.info(f"Loading model from {cfg.ckpt_path}")
-                model = model.load_from_checkpoint(cfg.ckpt_path, module=module, data_params=datamodule.data_params)
+                log.info(f"Loading model from {ckpt_path}")
+                model = model.load_from_checkpoint(ckpt_path, module=module, data_params=datamodule.data_params,
+                                                   strict=cfg.strict)
 
         if cfg.train:
             trainer.fit(model, datamodule=datamodule)
@@ -125,9 +130,6 @@ class VitalRunner(ABC):
         Returns:
              Validated config for a system run.
         """
-        # Set the path to an absolut path since Hydra has changed the current working directory
-        if cfg.ckpt_path:
-            cfg.ckpt_path = hydra.utils.to_absolute_path(cfg.ckpt_path)
 
         # If no output dir is specified, default to the working directory
         if not cfg.trainer.get("default_root_dir", None):

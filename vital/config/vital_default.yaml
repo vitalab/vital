@@ -10,9 +10,13 @@ defaults:
 seed: None
 
 resume: False
-ckpt_path: null
+checkpoint: null
 weights_only: False
-
+strict: True
 
 train: True
 test: True
+
+# Copy of original working directory before hydra changes it.
+# Useful for paths
+work_dir: ${hydra:runtime.cwd}
