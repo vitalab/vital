@@ -10,6 +10,11 @@ defaults:
 seed: None
 
 resume: False
+
+# IMPORTANT NOTE: When using a local checkpoint with a relative path add the working_dir to the checkpoint path because
+# hydra will change the current working directory. For example:
+# If defined in the config:  `checkpoint: ${work_dir}/path/to/checkpoint.ckpt`
+# If defined in the command line: `checkpoint=\${work_dir}/path/to/checkpoint.ckpt`
 checkpoint: null
 weights_only: False
 strict: True
@@ -17,6 +22,7 @@ strict: True
 train: True
 test: True
 
-# Copy of original working directory before hydra changes it.
-# Useful for paths
+comet_tags: null # Tags to for comet experiment if CometLogger is used.
+
+# Copy of original working directory before hydra changes it. Useful for paths.
 work_dir: ${hydra:runtime.cwd}

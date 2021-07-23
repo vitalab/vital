@@ -72,6 +72,11 @@ class VitalRunner(ABC):
 
             trainer.logger.log_hyperparams(Namespace(**cfg))  # Save config to logger.
 
+        if isinstance(trainer.logger, CometLogger):
+            logger.experiment.log_asset_folder('.hydra', log_file_name=True)
+            if cfg.get('comet_tags', None):
+                logger.experiment.add_tags(list(cfg.comet_tags))
+
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
         log_dir = Path(trainer.log_dir) if trainer.log_dir else Path(cfg.trainer.default_root_dir)
 
