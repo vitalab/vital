@@ -61,9 +61,9 @@ class CamusUnet(nn.Module):
                 OrderedDict(
                     [
                         ("conv_block1", conv_block(in_channels, out_channels)),
-                        (nn.Dropout(p=dropout))
-                        ("conv_block2", conv_block(out_channels, out_channels))
-                        (nn.Dropout(p=dropout)),
+                        ("drop1", nn.Dropout(p=dropout)),
+                        ("conv_block2", conv_block(out_channels, out_channels)),
+                        ("drop2", nn.Dropout(p=dropout)),
                     ]
                 )
             )
