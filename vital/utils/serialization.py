@@ -80,8 +80,8 @@ def resolve_model_ckpt_path(ckpt: Union[str, Path]) -> Path:
             )
 
         # Extract the path of the checkpoint file on the local machine
-        ckpt_files = list(model_cached_path.glob('*.ckpt'))
-        assert len(ckpt_files) == 1, 'There must be a single *.ckpt file'
+        ckpt_files = list(model_cached_path.glob("*.ckpt"))
+        assert len(ckpt_files) == 1, "There must be a single *.ckpt file"
         local_ckpt_path = ckpt_files[0]
 
     return local_ckpt_path
