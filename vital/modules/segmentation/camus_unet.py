@@ -23,7 +23,7 @@ class CamusUnet(nn.Module):
     """
 
     def __init__(
-        self, in_channels: int, out_channels: int, init_channels: int, use_batchnorm: bool = True
+        self, in_channels: int, out_channels: int, init_channels: int, use_batchnorm: bool = True, dropout: float = 0
     ):  # noqa: D205,D212,D415
         """
         Args:
@@ -35,12 +35,12 @@ class CamusUnet(nn.Module):
                 convolutional blocks.
         """
         super().__init__()
-        self.encoder = _UnetEncoder(in_channels, init_channels, use_batchnorm=use_batchnorm)
-        self.bottleneck = self._block(init_channels * 4, init_channels * 4, use_batchnorm=use_batchnorm)
-        self.decoder = _UnetDecoder(out_channels, init_channels, use_batchnorm=use_batchnorm)
+        self.encoder = _UnetEncoder(in_channels, init_channels, dropout, use_batchnorm=use_batchnorm)
+        self.bottleneck = self._block(init_channels * 4, init_channels * 4, dropout, use_batchnorm=use_batchnorm, )
+        self.decoder = _UnetDecoder(out_channels, init_channels, dropout, use_batchnorm=use_batchnorm)
 
     @staticmethod
-    def _block(in_channels: int, out_channels: int, use_batchnorm: bool = True) -> nn.Module:
+    def _block(in_channels: int, out_channels: int, dropout: float, use_batchnorm: bool = True) -> nn.Module:
         """Defines a convolutional block that maintains the spatial resolution of the feature maps.
 
         Args:
@@ -56,15 +56,26 @@ class CamusUnet(nn.Module):
             conv_block = conv2d_activation_bn
         else:
             conv_block = conv2d_activation
-        return nn.Sequential(
-            OrderedDict(
-                [
-                    ("conv_block1", conv_block(in_channels, out_channels)),
-                    ("conv_block2", conv_block(out_channels, out_channels)),
-                ]
+        if dropout > 0:
+            return nn.Sequential(
+                OrderedDict(
+                    [
+                        ("conv_block1", conv_block(in_channels, out_channels)),
+                        (nn.Dropout(p=dropout))
+                        ("conv_block2", conv_block(out_channels, out_channels))
+                        (nn.Dropout(p=dropout)),
+                    ]
+                )
             )
-        )
-
+        else:
+            return nn.Sequential(
+                OrderedDict(
+                    [
+                        ("conv_block1", conv_block(in_channels, out_channels)),
+                        ("conv_block2", conv_block(out_channels, out_channels)),
+                    ]
+                )
+            )
     def forward(self, x: Tensor) -> Tensor:
         """Defines the computation performed at every call.
 
@@ -82,7 +93,7 @@ class CamusUnet(nn.Module):
 class _UnetEncoder(nn.Module):
     """Module making up the encoder half of the U-Net model fine-tuned for the CAMUS dataset."""
 
-    def __init__(self, in_channels: int, init_channels: int, use_batchnorm: bool = True):  # noqa: D205,D212,D415
+    def __init__(self, in_channels: int, init_channels: int, dropout: float, use_batchnorm: bool = True):  # noqa: D205,D212,D415
         """
         Args:
             in_channels: Number of channels of the input image to segment.
@@ -94,13 +105,13 @@ class _UnetEncoder(nn.Module):
         super().__init__()
         self.use_batchnorm = use_batchnorm
 
-        self.encoder1, self.pool1 = self._block(in_channels, init_channels)
-        self.encoder2, self.pool2 = self._block(init_channels, init_channels)
-        self.encoder3, self.pool3 = self._block(init_channels, init_channels * 2)
-        self.encoder4, self.pool4 = self._block(init_channels * 2, init_channels * 4)
-        self.encoder5, self.pool5 = self._block(init_channels * 4, init_channels * 4)
+        self.encoder1, self.pool1 = self._block(in_channels, init_channels, dropout)
+        self.encoder2, self.pool2 = self._block(init_channels, init_channels, dropout)
+        self.encoder3, self.pool3 = self._block(init_channels, init_channels * 2, dropout)
+        self.encoder4, self.pool4 = self._block(init_channels * 2, init_channels * 4, dropout)
+        self.encoder5, self.pool5 = self._block(init_channels * 4, init_channels * 4, dropout)
 
-    def _block(self, in_channels: int, out_channels: int) -> Tuple[nn.Module, nn.Module]:
+    def _block(self, in_channels: int, out_channels: int, dropout) -> Tuple[nn.Module, nn.Module]:
         """Defines a convolutional block that downsamples by a factor of 2 the spatial resolution of the feature maps.
 
         Args:
@@ -113,7 +124,7 @@ class _UnetEncoder(nn.Module):
             Convolutional block that downsamples by a factor of 2 the spatial resolution of the feature maps.
         """
         return (
-            CamusUnet._block(in_channels, out_channels, use_batchnorm=self.use_batchnorm),
+            CamusUnet._block(in_channels, out_channels, use_batchnorm=self.use_batchnorm, dropout=dropout),
             nn.MaxPool2d(kernel_size=2),
         )
 
@@ -140,7 +151,7 @@ class _UnetEncoder(nn.Module):
 class _UnetDecoder(nn.Module):
     """Module making up the decoder half of the U-Net model fine-tuned for the CAMUS dataset."""
 
-    def __init__(self, out_channels: int, init_channels: int, use_batchnorm: bool = True):  # noqa: D205,D212,D415
+    def __init__(self, out_channels: int, init_channels: int, dropout: float, use_batchnorm: bool = True):  # noqa: D205,D212,D415
         """
         Args:
             out_channels: Number of channels of the segmentation to predict.
@@ -151,15 +162,15 @@ class _UnetDecoder(nn.Module):
         """
         super().__init__()
         self.use_batchnorm = use_batchnorm
-        self.upsample5, self.decoder5 = self._block((init_channels * 4) * 2, init_channels * 4)
-        self.upsample4, self.decoder4 = self._block((init_channels * 4) * 2, init_channels * 4)
-        self.upsample3, self.decoder3 = self._block((init_channels * 4) + (init_channels * 2), init_channels * 2)
-        self.upsample2, self.decoder2 = self._block((init_channels * 2) + init_channels, init_channels)
-        self.upsample1, self.decoder1 = self._block(init_channels * 2, init_channels // 2)
+        self.upsample5, self.decoder5 = self._block((init_channels * 4) * 2, init_channels * 4, dropout)
+        self.upsample4, self.decoder4 = self._block((init_channels * 4) * 2, init_channels * 4, dropout)
+        self.upsample3, self.decoder3 = self._block((init_channels * 4) + (init_channels * 2), init_channels * 2, dropout)
+        self.upsample2, self.decoder2 = self._block((init_channels * 2) + init_channels, init_channels, dropout)
+        self.upsample1, self.decoder1 = self._block(init_channels * 2, init_channels // 2, dropout=0)
 
         self.classifier = nn.Conv2d(init_channels // 2, out_channels, kernel_size=1)
 
-    def _block(self, in_channels: int, out_channels: int) -> Tuple[nn.Module, nn.Module]:
+    def _block(self, in_channels: int, out_channels: int, dropout: float) -> Tuple[nn.Module, nn.Module]:
         """Defines a convolutional block that upsamples by a factor of 2 the spatial resolution of the feature maps.
 
         Args:
@@ -173,7 +184,7 @@ class _UnetDecoder(nn.Module):
         """
         return (
             nn.Upsample(scale_factor=2, mode="nearest"),
-            CamusUnet._block(in_channels, out_channels, use_batchnorm=self.use_batchnorm),
+            CamusUnet._block(in_channels, out_channels, use_batchnorm=self.use_batchnorm, dropout=dropout),
         )
 
     def forward(self, x: Tensor, *connected_features: Tensor) -> Tensor:
