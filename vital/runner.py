@@ -12,6 +12,7 @@ from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
 from vital.utils.config import read_ini_config
 from vital.utils.logging import configure_logging
+from vital.utils.serialization import resolve_model_ckpt_path
 
 
 class VitalRunner(ABC):
@@ -38,6 +39,10 @@ class VitalRunner(ABC):
         """
         seed_everything(hparams.seed, workers=True)
 
+        # Ensure the checkpoint is accessible on the local machine
+        if hparams.checkpoint:
+            ckpt_path = resolve_model_ckpt_path(hparams.checkpoint)
+
         # Use Comet for logging if a path to a Comet config file is provided
         # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
         logger = True
@@ -45,7 +50,7 @@ class VitalRunner(ABC):
             logger = cls._configure_comet_logger(hparams)
 
         if hparams.resume:
-            trainer = Trainer(resume_from_checkpoint=hparams.ckpt_path, logger=logger)
+            trainer = Trainer(resume_from_checkpoint=ckpt_path, logger=logger)
         else:
             trainer = Trainer.from_argparse_args(hparams, logger=logger)
 
@@ -58,12 +63,12 @@ class VitalRunner(ABC):
 
         datamodule = cls._get_selected_data_module(hparams)(**vars(hparams))
         system_cls = cls._get_selected_system(hparams)
-        if hparams.ckpt_path and not hparams.weights_only:  # Load pretrained model if checkpoint is provided
-            model = system_cls.load_from_checkpoint(str(hparams.ckpt_path), **vars(hparams), strict=hparams.strict_load)
+        if hparams.checkpoint and not hparams.weights_only:  # Load pretrained model if checkpoint is provided
+            model = system_cls.load_from_checkpoint(str(ckpt_path), **vars(hparams), strict=hparams.strict_load)
         else:
             model = system_cls(**vars(hparams), data_params=datamodule.data_params)
-            if hparams.ckpt_path and hparams.weights_only:
-                checkpoint = torch.load(hparams.weights, map_location=model.device)
+            if hparams.checkpoint and hparams.weights_only:
+                checkpoint = torch.load(ckpt_path, map_location=model.device)
                 model.load_state_dict(checkpoint["state_dict"], strict=hparams.strict_load)
 
         if hparams.train:
@@ -198,8 +203,12 @@ class VitalRunner(ABC):
         )
 
         # save/load parameters
-        parser.add_argument("--ckpt_path", type=Path, help="Path to Lightning module checkpoints to restore system")
-        parser.add_argument("--weights_only", action="store_true", help="Load only weights from ckpt_path")
+        parser.add_argument(
+            "--checkpoint",
+            type=Path,
+            help="Local path or Comet model registry identifiers of checkpoint to use to restore Lightning module",
+        )
+        parser.add_argument("--weights_only", action="store_true", help="Load only weights from checkpoint")
         parser.add_argument(
             "--no_strict_load",
             dest="strict_load",
@@ -240,18 +249,18 @@ class VitalRunner(ABC):
         """
         args = parser.parse_args()
 
-        if not args.ckpt_path:
+        if not args.checkpoint:
             if not args.train:
                 raise ValueError(
                     "Trainer set to skip training (`--skip_train` flag) without a checkpoint provided. \n"
                     "Either allow model to train (remove `--skip_train` flag) or "
-                    "provide a pretrained model (through `--ckpt_path` parameter)."
+                    "provide a pretrained model (through `--checkpoint` parameter)."
                 )
             if args.resume:
                 raise ValueError(
                     "Cannot use flag `--resume` without a checkpoint from which to resume. \n"
                     "Either allow the model to start over (remove `--resume` flag) or "
-                    "provide a saved checkpoint (through `--ckpt_path` flag)"
+                    "provide a saved checkpoint (through `--checkpoint` flag)"
                 )
 
         if args.default_root_dir is None:
