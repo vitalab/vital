@@ -63,7 +63,7 @@ class CamusUnet(nn.Module):
                         ("conv_block1", conv_block(in_channels, out_channels)),
                         ("drop1", nn.Dropout(p=dropout)),
                         ("conv_block2", conv_block(out_channels, out_channels)),
-                        ("drop2", nn.Dropout(p=dropout)),
+                        # ("drop2", nn.Dropout(p=dropout)),
                     ]
                 )
             )
@@ -76,6 +76,7 @@ class CamusUnet(nn.Module):
                     ]
                 )
             )
+
     def forward(self, x: Tensor) -> Tensor:
         """Defines the computation performed at every call.
 
