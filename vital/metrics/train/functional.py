@@ -12,6 +12,7 @@ def tversky_score(
     nan_score: float = 0.0,
     no_fg_score: float = 0.0,
     reduction: str = "elementwise_mean",
+    apply_softmax: bool = True
 ) -> Tensor:
     """Computes the loss definition of the Tversky index.
 
@@ -35,13 +36,17 @@ def tversky_score(
             Available reduction methods:
             - ``'elementwise_mean'``: takes the mean (default)
             - ``'none'``: no reduction will be applied
+        apply_softmax: when True, softmax is applied to input.
 
     Returns:
         (1,) or (C,), the calculated Tversky index, averaged or by labels.
     """
     n_classes = input.shape[1]
     bg = 1 - int(bool(bg))
-    pred = F.softmax(input, dim=1)  # Use the softmax probability of the correct label instead of a hard label
+    if apply_softmax:
+        pred = F.softmax(input, dim=1)  # Use the softmax probability of the correct label instead of a hard label
+    else:
+        pred = input
     scores = torch.zeros(n_classes - bg, device=input.device, dtype=torch.float32)
     for i in range(bg, n_classes):
         if not (target == i).any():
@@ -70,6 +75,7 @@ def differentiable_dice_score(
     nan_score: float = 0.0,
     no_fg_score: float = 0.0,
     reduction: str = "elementwise_mean",
+    apply_softmax: bool = True
 ) -> Tensor:
     """Computes the loss definition of the dice coefficient.
 
@@ -83,12 +89,14 @@ def differentiable_dice_score(
             Available reduction methods:
             - ``'elementwise_mean'``: takes the mean (default)
             - ``'none'``: no reduction will be applied
+        apply_softmax: when True, softmax is applied to input.
 
     Returns:
         (1,) or (C,), Calculated dice coefficient, averaged or by labels.
     """
     return tversky_score(
-        input, target, beta=0.5, bg=bg, nan_score=nan_score, no_fg_score=no_fg_score, reduction=reduction
+        input, target, beta=0.5, bg=bg, nan_score=nan_score, no_fg_score=no_fg_score, reduction=reduction,
+        apply_softmax=apply_softmax
     )
 
 
