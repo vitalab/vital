@@ -37,7 +37,7 @@ class UNet(nn.Module):
         """
         super().__init__()
         in_channels = input_shape[0]
-        out_channels = output_shape[0]
+        out_channels = 1 if output_shape[0] == 2 else output_shape[0]
 
         self.layer1 = _DoubleConv(in_channels, init_channels // 2, dropout / 2, use_batchnorm)
         self.layer2 = _Down(init_channels // 2, init_channels, dropout, use_batchnorm)

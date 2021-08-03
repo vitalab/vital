@@ -12,7 +12,7 @@ class DifferentiableDiceCoefficient(nn.Module):
         nan_score: float = 0.0,
         no_fg_score: float = 0.0,
         reduction: str = "elementwise_mean",
-        apply_softmax: bool = True
+        apply_activation: bool = True
 
     ):
         """Initializes class instance.
@@ -25,7 +25,7 @@ class DifferentiableDiceCoefficient(nn.Module):
                 Available reduction methods:
                 - ``'elementwise_mean'``: takes the mean (default)
                 - ``'none'``: no reduction will be applied
-            apply_softmax: when True, softmax is applied to input.
+            apply_activation: when True, softmax is applied to input.
         """
         super().__init__()
         self.include_background = include_background
@@ -33,7 +33,7 @@ class DifferentiableDiceCoefficient(nn.Module):
         self.no_fg_score = no_fg_score
         assert reduction in ("elementwise_mean", "none")
         self.reduction = reduction
-        self.apply_softmax = apply_softmax
+        self.apply_activation = apply_activation
 
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
         """Actual metric calculation.
@@ -53,5 +53,5 @@ class DifferentiableDiceCoefficient(nn.Module):
             nan_score=self.nan_score,
             no_fg_score=self.no_fg_score,
             reduction=self.reduction,
-            apply_softmax=self.apply_softmax
+            apply_activation=self.apply_activation
         )
