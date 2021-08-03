@@ -1,15 +1,17 @@
 import sys
 from abc import ABC
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List, Literal, Union, Optional
 
 import pytorch_lightning as pl
 import torch
 from pytorch_lightning.core.memory import ModelSummary
+from pytorch_lightning.loggers import TensorBoardLogger, CometLogger
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
 from torchinfo import summary
-
+import numpy as np
+from matplotlib import pyplot as plt
 from vital.data.config import DataParameters
 
 
@@ -72,6 +74,39 @@ class VitalSystem(pl.LightningModule, ABC):
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
         # Todo move lr and weight decay to optim config.
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+
+    def log_images(self, title: str,
+                   num_images: int,
+                   axes_content: Dict[str, np.ndarray],
+                   info: Optional[List[str]] = None):
+        """Log images to Logger if it is a TensorBoardLogger or CometLogger.
+        Args:
+            title: Name of the figure.
+            num_images: Number of images to log.
+            axes_content: Mapping of axis name and image.
+            info: Additional info to be appended to title for each image.
+        """
+        for i in range(num_images):
+            fig, axes = plt.subplots(1, len(axes_content.keys()), squeeze=False)
+            if info is not None:
+                name = f"{title}_{info[i]}_{i}"
+            else:
+                name = f"{title}_{i}"
+            plt.suptitle(name)
+            axes = axes.ravel()
+            for j, (ax_title, img) in enumerate(axes_content.items()):
+                axes[j].imshow(img[i].squeeze())
+                axes[j].set_title(ax_title)
+
+
+            if isinstance(self.trainer.logger, TensorBoardLogger):
+                self.trainer.logger.experiment.add_figure("sample_{}".format(i), fig, self.current_epoch)
+            if isinstance(self.trainer.logger, CometLogger):
+                self.trainer.logger.experiment.log_figure("sample_{}".format(i), fig, step=self.current_epoch)
+
+            plt.show()
+
+            plt.close()
 
 
 class SystemComputationMixin(VitalSystem, ABC):

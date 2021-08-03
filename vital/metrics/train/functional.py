@@ -77,9 +77,9 @@ def tversky_score(
             # no foreground class
             score += no_fg_score
         else:
-            tp = (pred * target).sum()
-            fp = (pred * target).sum()
-            fn = ((1 - pred) * target).sum()
+            tp = (pred * (target == 1)).sum()
+            fp = (pred * (target != 1)).sum()
+            fn = ((1 - pred) * (target == 1)).sum()
 
             denom = tp + (beta * fp) + ((1 - beta) * fn)
             # nan result

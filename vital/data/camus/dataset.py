@@ -22,16 +22,16 @@ class Camus(VisionDataset):
     """Implementation of torchvision's ``VisionDataset`` for the CAMUS dataset."""
 
     def __init__(
-        self,
-        path: Path,
-        fold: int,
-        image_set: Subset,
-        labels: Sequence[Label] = Label,
-        use_sequence: bool = False,
-        predict: bool = False,
-        transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
-        transform: Callable[[Tensor], Tensor] = None,
-        target_transform: Callable[[Tensor], Tensor] = None,
+            self,
+            path: Path,
+            fold: int,
+            image_set: Subset,
+            labels: Sequence[Label] = Label,
+            use_sequence: bool = False,
+            predict: bool = False,
+            transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
+            transform: Callable[[Tensor], Tensor] = None,
+            target_transform: Callable[[Tensor], Tensor] = None,
     ):
         """Initializes class instance.
 
@@ -134,9 +134,9 @@ class Camus(VisionDataset):
                 view_group.attrs[instant_key] for instant_key in view_group.attrs[CamusTags.instants]
             )
             return (
-                not self.dataset_with_sequence
-                or self.use_sequence
-                or (self.dataset_with_sequence and is_clinically_important_instant)
+                    not self.dataset_with_sequence
+                    or self.use_sequence
+                    or (self.dataset_with_sequence and is_clinically_important_instant)
             )
 
         image_paths = []
@@ -175,6 +175,9 @@ class Camus(VisionDataset):
         if self.transforms:
             img, gt = self.transforms(img, gt)
         frame_pos = torch.tensor([frame_pos])
+
+        if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
+            gt[gt != 0] = 1
 
         return {
             CamusTags.id: f"{patient_view_key}/{instant}",
@@ -216,7 +219,6 @@ class Camus(VisionDataset):
 
                 # If we do not use the whole sequence
                 if self.dataset_with_sequence and not self.use_sequence:
-
                     # Only keep clinically important instants
                     instant_indices = list(instants.values())
                     proc_imgs = proc_imgs[instant_indices]

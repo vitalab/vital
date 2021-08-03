@@ -496,7 +496,7 @@ class Enet(nn.Module):
         """
         super().__init__()
         in_channels = input_shape[0]
-        out_channels = 1 if output_shape[0] == 2 else output_shape[0]
+        out_channels = output_shape[0]
 
         self.initial_block = _InitialBlock(in_channels, init_channels, padding=1, relu=encoder_relu)
 
