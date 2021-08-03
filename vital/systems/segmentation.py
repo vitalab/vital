@@ -56,5 +56,11 @@ class SegmentationComputationMixin(TrainValComputationMixin):
 
         loss = (self.cross_entropy_weight * ce) + (self.dice_weight * (1 - mean_dice))
 
+        if self.is_val_step and batch_idx == 0:
+            self.log_images(title='Sample', num_images=5,
+                            axes_content={'Image': x.cpu().squeeze().numpy(),
+                                          'Pred': y_hat.argmax(1).cpu().squeeze().numpy(),
+                                          'Gt': y.squeeze().detach().cpu().numpy()})
+
         # Format output
         return {"loss": loss, "ce": ce, "dice": mean_dice, **dices}

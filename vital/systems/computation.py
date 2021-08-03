@@ -14,6 +14,10 @@ class TrainValComputationMixin(SystemComputationMixin, ABC):
         - Handling of identical train/val step results (metrics logging and printing)
     """
 
+    def __init__(self, train_log_kwargs: dict, val_log_kwargs: dict, **kwargs):
+        super().__init__(train_log_kwargs, val_log_kwargs, **kwargs)
+        self.is_val_step = False
+
     def trainval_step(self, *args, **kwargs) -> Dict[str, Tensor]:
         """Handles steps for both training and validation loops, assuming the behavior should be the same.
 
@@ -34,7 +38,9 @@ class TrainValComputationMixin(SystemComputationMixin, ABC):
         return result
 
     def validation_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
+        self.is_val_step = True
         result = prefix(self.trainval_step(*args, **kwargs), "val_")
+        self.is_val_step = False
         result.update({"early_stop_on": result["val_loss"]})
         self.log_dict(result, **self.val_log_kwargs)
         return result
