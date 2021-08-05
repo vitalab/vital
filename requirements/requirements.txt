@@ -15,7 +15,7 @@ torchvision>=0.8
 pytorch-lightning>=1.2
 torchmetrics
 torchinfo
-comet-ml
+comet-ml>=3.3
 Keras-Preprocessing
 medpy
 natsort
