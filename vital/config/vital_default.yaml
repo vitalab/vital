@@ -7,6 +7,8 @@ defaults:
       - model_checkpoint
   - logger: comet/online.yaml
 
+  - experiment: null # Experiments defined in the experiment folder can override defaults defined in this file.
+
 seed: None
 
 resume: False
