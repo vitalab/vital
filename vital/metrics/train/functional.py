@@ -47,7 +47,7 @@ def tversky_score(
         if n_classes > 1:
             pred = F.softmax(input, dim=1)  # Use the softmax probability of the correct label instead of a hard label
         else:
-            pred = torch.sigmoid(input)  # Use the sigmoid probability of the correct label instead of a hard label
+            pred = torch.sigmoid(input)  # Use the sigmoid probability instead of a hard label
     else:
         pred = input
 

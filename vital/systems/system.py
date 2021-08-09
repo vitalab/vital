@@ -104,8 +104,6 @@ class VitalSystem(pl.LightningModule, ABC):
             if isinstance(self.trainer.logger, CometLogger):
                 self.trainer.logger.experiment.log_figure("sample_{}".format(i), fig, step=self.current_epoch)
 
-            plt.show()
-
             plt.close()
 
 

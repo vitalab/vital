@@ -243,6 +243,12 @@ class Camus(VisionDataset):
                 # Compute attributes for the sequence
                 attrs = {CamusTags.frame_pos: torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1)}
 
+                if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
+                    proc_gts_tensor[proc_gts_tensor != 0] = 1
+
+                if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
+                    gts[gts != 0] = 1
+
                 patient_data.views[view] = ViewData(
                     img_proc=proc_imgs_tensor,
                     gt_proc=proc_gts_tensor,
