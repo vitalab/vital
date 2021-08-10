@@ -16,7 +16,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
     def __init__(
         self,
         dataset_path: Union[str, Path],
-        labels: Sequence[str] = tuple(str(label) for label in Label),
+        labels: Sequence[Union[str, Label]] = Label,
         fold: int = 5,
         use_sequence: bool = False,
         **kwargs,
@@ -32,7 +32,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
         dataset_path = Path(dataset_path)
-        labels = tuple(Label.from_name(label) for label in labels)
+        labels = tuple(Label.from_name(str(label)) for label in labels)
 
         # Infer the shape of the data from the content of the dataset.
         try:

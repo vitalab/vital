@@ -15,6 +15,15 @@ class DataTag(Enum):
         return str(self)
 
     @classmethod
+    def names(cls) -> List[str]:
+        """Lists the names for all the elements of the enumeration.
+
+        Returns:
+            Names of all the elements in the enumeration.
+        """
+        return [str(e) for e in cls]
+
+    @classmethod
     def values(cls) -> List:
         """Lists the values for all the elements of the enumeration.
 
