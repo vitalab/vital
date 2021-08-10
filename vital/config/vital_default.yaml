@@ -13,9 +13,9 @@ resume: False
 
 # IMPORTANT NOTE: When using a local checkpoint with a relative path add the working_dir to the checkpoint path because
 # hydra will change the current working directory. For example:
-# If defined in the config:  `checkpoint: ${work_dir}/path/to/checkpoint.ckpt`
-# If defined in the command line: `checkpoint=\${work_dir}/path/to/checkpoint.ckpt`
-checkpoint: null
+# If defined in the config:  `ckpt: ${work_dir}/path/to/checkpoint.ckpt`
+# If defined in the command line: `ckpt=\${work_dir}/path/to/checkpoint.ckpt`
+ckpt: null
 weights_only: False
 strict: True
 

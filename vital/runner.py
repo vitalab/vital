@@ -17,8 +17,10 @@ from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
+from vital.utils.config import read_ini_config
 from vital.utils.logging import configure_logging
-from vital.utils.serialization import resolve_model_ckpt_path
+
+from vital.utils.serialization import resolve_model_checkpoint_path
 
 log = logging.getLogger(__name__)
 
@@ -57,8 +59,8 @@ class VitalRunner(ABC):
         """
         cfg = VitalRunner._check_cfg(cfg)
 
-        if cfg.checkpoint:
-            ckpt_path = resolve_model_ckpt_path(cfg.checkpoint)
+        if cfg.ckpt:
+            ckpt_path = resolve_model_checkpoint_path(cfg.checkpoint)
 
         cfg.seed = seed_everything(cfg.seed, workers=True)
 
