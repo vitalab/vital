@@ -17,9 +17,7 @@ from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
-from vital.utils.config import read_ini_config
 from vital.utils.logging import configure_logging
-
 from vital.utils.serialization import resolve_model_checkpoint_path
 
 log = logging.getLogger(__name__)
@@ -75,8 +73,8 @@ class VitalRunner(ABC):
             trainer.logger.log_hyperparams(Namespace(**cfg))  # Save config to logger.
 
         if isinstance(trainer.logger, CometLogger):
-            logger.experiment.log_asset_folder('.hydra', log_file_name=True)
-            if cfg.get('comet_tags', None):
+            logger.experiment.log_asset_folder(".hydra", log_file_name=True)
+            if cfg.get("comet_tags", None):
                 logger.experiment.add_tags(list(cfg.comet_tags))
 
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
@@ -99,14 +97,15 @@ class VitalRunner(ABC):
         # Instantiate model with the created module.
         model: VitalSystem = hydra.utils.instantiate(cfg.system, module=module, data_params=datamodule.data_params)
 
-        if cfg.checkpoint:  # Load pretrained model if checkpoint is provided
+        if cfg.ckpt:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
                 log.info(f"Loading weights from {ckpt_path}")
                 model.load_state_dict(torch.load(ckpt_path, map_location=model.device)["state_dict"], strict=cfg.strict)
             else:
                 log.info(f"Loading model from {ckpt_path}")
-                model = model.load_from_checkpoint(ckpt_path, module=module, data_params=datamodule.data_params,
-                                                   strict=cfg.strict)
+                model = model.load_from_checkpoint(
+                    ckpt_path, module=module, data_params=datamodule.data_params, strict=cfg.strict
+                )
 
         if cfg.train:
             trainer.fit(model, datamodule=datamodule)
@@ -137,7 +136,6 @@ class VitalRunner(ABC):
         Returns:
              Validated config for a system run.
         """
-
         # If no output dir is specified, default to the working directory
         if not cfg.trainer.get("default_root_dir", None):
             with open_dict(cfg):

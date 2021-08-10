@@ -25,14 +25,13 @@ class UNet(nn.Module):
         """Initializes class instance.
 
         Args:
-            input_shape: Shape of the input images.
-            output_shape: Shape of the output segmentation map.
+            input_shape: (in_channels, H, W), Shape of the input images.
+            output_shape: (num_classes, H, W), Shape of the output segmentation map.
             init_channels: Number of output feature maps from the first layer, used to compute the number of feature
                 maps in following layers.
             use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
                 convolutional blocks.
-            bilinear: Whether to use bilinear interpolation or transposed
-                convolutions for upsampling.
+            bilinear: Whether to use bilinear interpolation or transposed convolutions for upsampling.
             dropout: probability from dropout layers.
         """
         super().__init__()

@@ -80,7 +80,7 @@ class DataParameters:
     Args:
         in_shape: Shape of the input data (e.g. height, width, channels).
         out_shape: Shape of the target data (e.g. height, width, channels).
-        labels: Labels provided with the data. Can be None for non segmentation tasks.
+        labels: Labels provided with the data, required when using segmentation task APIs.
     """
 
     in_shape: Tuple[int, ...]

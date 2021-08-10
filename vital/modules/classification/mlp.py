@@ -13,16 +13,16 @@ class MLP(nn.Module):
         output_shape: Shape of the output segmentation map.
         hidden: tuple of number of hidden neurons
         output_activation: activation function for last layer
-        dropout_rate: rate for dropout layers
+        dropout: rate for dropout layers
     """
 
     def __init__(
         self,
-        input_shape: Tuple[int],
+        input_shape: Tuple[int, ...],
         output_shape: Tuple[int],
         hidden: Sequence[int] = (128,),
         output_activation: Optional[nn.Module] = None,
-        dropout_rate: float = 0.25,
+        dropout: float = 0.25,
     ):
 
         input_dim = int(np.prod(input_shape))
@@ -36,13 +36,13 @@ class MLP(nn.Module):
         # Input layer
         self.net.add_module("input_layer", nn.Linear(input_dim, hidden[0]))
         self.net.add_module("relu_{}".format(0), nn.ReLU())
-        self.net.add_module("drop_{}".format(0), nn.Dropout(p=dropout_rate))
+        self.net.add_module("drop_{}".format(0), nn.Dropout(p=dropout))
 
         # Hidden layers
         for i in range(0, len(hidden) - 1):
             self.net.add_module("layer_{}".format(i + 1), nn.Linear(hidden[i], hidden[i + 1]))
             self.net.add_module("relu_{}".format(i + 1), nn.ReLU())
-            self.net.add_module("drop_{}".format(i + 1), nn.Dropout(p=dropout_rate))
+            self.net.add_module("drop_{}".format(i + 1), nn.Dropout(p=dropout))
 
         # Output layers
         self.net.add_module("output_layer", nn.Linear(hidden[-1], output_dim))
