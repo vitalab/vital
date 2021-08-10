@@ -6,10 +6,12 @@ on:
     branches:
       - master
       - dev
+      - hydra-dev
   pull_request:
     branches:
       - master
       - dev
+      - hydra-dev
 
 jobs:
   pre-commit:
