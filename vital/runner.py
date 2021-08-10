@@ -58,7 +58,7 @@ class VitalRunner(ABC):
         cfg = VitalRunner._check_cfg(cfg)
 
         if cfg.ckpt:
-            ckpt_path = resolve_model_checkpoint_path(cfg.checkpoint)
+            ckpt_path = resolve_model_checkpoint_path(cfg.ckpt)
 
         cfg.seed = seed_everything(cfg.seed, workers=True)
 
