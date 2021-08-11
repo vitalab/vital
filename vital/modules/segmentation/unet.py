@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,38 +15,40 @@ class UNet(nn.Module):
 
     def __init__(
         self,
-        in_channels: int,
-        out_channels: int,
+        input_shape: Tuple[int, ...],
+        output_shape: Tuple[int, ...],
         init_channels: int = 32,
         use_batchnorm: bool = True,
         bilinear: bool = False,
-        dropout_prob: float = 0.0,
+        dropout: float = 0.0,
     ):
         """Initializes class instance.
 
         Args:
-            in_channels: Number of channels of the input image to segment.
-            out_channels: Number of channels of the segmentation to predict.
+            input_shape: (in_channels, H, W), Shape of the input images.
+            output_shape: (num_classes, H, W), Shape of the output segmentation map.
             init_channels: Number of output feature maps from the first layer, used to compute the number of feature
                 maps in following layers.
             use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
                 convolutional blocks.
-            bilinear: Whether to use bilinear interpolation or transposed
-                convolutions for upsampling.
-            dropout_prob: probability from dropout layers.
+            bilinear: Whether to use bilinear interpolation or transposed convolutions for upsampling.
+            dropout: probability from dropout layers.
         """
         super().__init__()
-        self.layer1 = _DoubleConv(in_channels, init_channels // 2, dropout_prob / 2, use_batchnorm)
-        self.layer2 = _Down(init_channels // 2, init_channels, dropout_prob, use_batchnorm)
-        self.layer3 = _Down(init_channels, init_channels * 2, dropout_prob, use_batchnorm)
-        self.layer4 = _Down(init_channels * 2, init_channels * 4, dropout_prob, use_batchnorm)
-        self.layer5 = _Down(init_channels * 4, init_channels * 8, dropout_prob, use_batchnorm)
-        self.layer6 = _Down(init_channels * 8, init_channels * 16, dropout_prob, use_batchnorm)
+        in_channels = input_shape[0]
+        out_channels = output_shape[0]
 
-        self.layer7 = _Up(init_channels * 16, init_channels * 8, dropout_prob, use_batchnorm, bilinear=bilinear)
-        self.layer8 = _Up(init_channels * 8, init_channels * 4, dropout_prob, use_batchnorm, bilinear=bilinear)
-        self.layer9 = _Up(init_channels * 4, init_channels * 2, dropout_prob, use_batchnorm, bilinear=bilinear)
-        self.layer10 = _Up(init_channels * 2, init_channels, dropout_prob, use_batchnorm, bilinear=bilinear)
+        self.layer1 = _DoubleConv(in_channels, init_channels // 2, dropout / 2, use_batchnorm)
+        self.layer2 = _Down(init_channels // 2, init_channels, dropout, use_batchnorm)
+        self.layer3 = _Down(init_channels, init_channels * 2, dropout, use_batchnorm)
+        self.layer4 = _Down(init_channels * 2, init_channels * 4, dropout, use_batchnorm)
+        self.layer5 = _Down(init_channels * 4, init_channels * 8, dropout, use_batchnorm)
+        self.layer6 = _Down(init_channels * 8, init_channels * 16, dropout, use_batchnorm)
+
+        self.layer7 = _Up(init_channels * 16, init_channels * 8, dropout, use_batchnorm, bilinear=bilinear)
+        self.layer8 = _Up(init_channels * 8, init_channels * 4, dropout, use_batchnorm, bilinear=bilinear)
+        self.layer9 = _Up(init_channels * 4, init_channels * 2, dropout, use_batchnorm, bilinear=bilinear)
+        self.layer10 = _Up(init_channels * 2, init_channels, dropout, use_batchnorm, bilinear=bilinear)
         self.layer11 = _Up(init_channels, init_channels // 2, 0, use_batchnorm, bilinear=bilinear)
 
         self.layer12 = nn.Conv2d(init_channels // 2, out_channels, kernel_size=1)
@@ -163,6 +167,6 @@ This script can be run to visualize the network layers.
 if __name__ == "__main__":
     from torchsummary import summary
 
-    model = UNet(in_channels=1, out_channels=4)
+    model = UNet(input_shape=(1, 256, 256), output_shape=(4, 256, 256))
 
     summary(model, (1, 256, 256), device="cpu")

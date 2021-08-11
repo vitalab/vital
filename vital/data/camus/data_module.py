@@ -1,4 +1,3 @@
-from argparse import ArgumentParser
 from pathlib import Path
 from typing import List, Literal, Sequence, Union
 
@@ -9,7 +8,6 @@ from vital.data.camus.dataset import Camus
 from vital.data.config import DataParameters, Subset
 from vital.data.data_module import VitalDataModule
 from vital.data.mixins import StructuredDataMixin
-from vital.utils.parsing import get_classpath_group
 
 
 class CamusDataModule(StructuredDataMixin, VitalDataModule):
@@ -18,7 +16,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
     def __init__(
         self,
         dataset_path: Union[str, Path],
-        labels: Sequence[Label] = tuple(Label),
+        labels: Sequence[Union[str, Label]] = Label,
         fold: int = 5,
         use_sequence: bool = False,
         num_neighbors: int = 0,
@@ -40,6 +38,8 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
         dataset_path = Path(dataset_path)
+        labels = tuple(Label.from_name(str(label)) for label in labels)
+
         # Infer the shape of the data from the content of the dataset.
         try:
             # First try to get the first item from the training set
@@ -106,31 +106,3 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         return DataLoader(
             self.dataset(subset=Subset.TEST), batch_size=None, num_workers=self.num_workers, pin_memory=True
         )
-
-    @classmethod
-    def add_argparse_args(cls, parent_parser: ArgumentParser, **kwargs) -> ArgumentParser:
-        """Override of generic ``add_argparse_args`` to manually add parser for arguments of custom types."""
-        parser = super().add_argparse_args(parent_parser)
-
-        # Fetch the argument group created specifically for the data module's arguments
-        dm_arg_group = get_classpath_group(parser, cls)
-
-        # Add arguments w/ custom types not supported by Lightning's argparse creation tool
-        dm_arg_group.add_argument(
-            "--labels",
-            type=Label.from_name,
-            default=tuple(Label),
-            nargs="+",
-            choices=tuple(Label),
-            help="Labels of the segmentation classes to take into account (including background). "
-            "If None, target all labels included in the data",
-        )
-        dm_arg_group.add_argument(
-            "--neighbor_padding",
-            type=str,
-            choices=["edge", "wrap"],
-            default="edge",
-            help="Mode used to determine how to pad neighboring instants at the beginning/end of a sequence",
-        )
-
-        return parent_parser
