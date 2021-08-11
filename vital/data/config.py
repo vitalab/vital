@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Sequence, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 SemanticStructureId = Union[int, Sequence[int]]
 
@@ -13,6 +13,15 @@ class DataTag(Enum):
 
     def __repr__(self):  # noqa: D105
         return str(self)
+
+    @classmethod
+    def names(cls) -> List[str]:
+        """Lists the names for all the elements of the enumeration.
+
+        Returns:
+            Names of all the elements in the enumeration.
+        """
+        return [str(e) for e in cls]
 
     @classmethod
     def values(cls) -> List:
@@ -80,9 +89,9 @@ class DataParameters:
     Args:
         in_shape: Shape of the input data (e.g. height, width, channels).
         out_shape: Shape of the target data (e.g. height, width, channels).
-        labels: Labels provided with the data.
+        labels: Labels provided with the data, required when using segmentation task APIs.
     """
 
     in_shape: Tuple[int, ...]
     out_shape: Tuple[int, ...]
-    labels: Tuple[DataTag, ...]
+    labels: Optional[Tuple[DataTag, ...]] = None

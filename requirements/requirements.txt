@@ -21,3 +21,5 @@ medpy
 natsort
 nibabel
 albumentations
+hydra-core
+python-dotenv
