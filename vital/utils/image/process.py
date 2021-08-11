@@ -5,6 +5,7 @@ import numpy as np
 from scipy import ndimage
 
 from vital.data.config import SemanticStructureId
+from vital.utils.decorators import batch_function
 from vital.utils.format.native import flatten
 
 
@@ -23,7 +24,7 @@ class StructurePostProcessing:
         """Applies a specific post-processing algorithm on each individual structure in a segmentation map.
 
         Args:
-            seg: (H, W), Segmentation to process.
+            seg: Segmentation to process.
             **kwargs: Capture non-used parameters to get a callable API compatible with similar callables.
 
         Returns:
@@ -43,17 +44,27 @@ class StructurePostProcessing:
         """Applies a post-processing algorithm on the binary mask of a single structure from a segmentation map.
 
         Args:
-            mask: (H, W), Binary mask of a semantic structure.
+            mask: Binary mask of a semantic structure.
 
         Returns:
-            (H, W), Processed binary mask of the semantic structure.
+            Processed binary mask of the semantic structure.
         """
 
 
-class PostBigBlob(StructurePostProcessing):
+class Post2DBigBlob(StructurePostProcessing):
     """Post-processing that returns only the biggest blob of non-zero value in a binary mask."""
 
-    def _process_structure(self, mask: np.ndarray) -> np.ndarray:
+    @staticmethod
+    @batch_function(item_ndim=2)
+    def _process_structure(mask: np.ndarray) -> np.ndarray:
+        """Keeps only the biggest blob of non-zero value in a binary mask.
+
+        Args:
+            mask: ([N], H, W), Binary mask of a semantic structure.
+
+        Returns:
+            ([N], H, W), Processed binary mask.
+        """
         # Find each blob in the image
         lbl, num = ndimage.measurements.label(mask)
 
@@ -72,14 +83,24 @@ class PostBigBlob(StructurePostProcessing):
         return lbl.astype(bool)
 
 
-class PostFillIntraHoles(StructurePostProcessing):
+class Post2DFillIntraHoles(StructurePostProcessing):
     """Post-processing that fills holes inside the non-zero area of a binary mask."""
 
-    def _process_structure(self, mask: np.ndarray) -> np.ndarray:
+    @staticmethod
+    @batch_function(item_ndim=2)
+    def _process_structure(mask: np.ndarray) -> np.ndarray:
+        """Fills holes inside the non-zero area of a binary mask..
+
+        Args:
+            mask: ([N], H, W), Binary mask of a semantic structure.
+
+        Returns:
+            ([N], H, W), Processed binary mask.
+        """
         return ndimage.binary_fill_holes(mask)
 
 
-class PostFillInterHoles:
+class Post2DFillInterHoles:
     """Post-processing that fills holes between two classes of a multi-class segmentation map with a new label."""
 
     def __init__(self, struct1_label: SemanticStructureId, struct2_label: SemanticStructureId, fill_label: int):
@@ -93,15 +114,16 @@ class PostFillInterHoles:
         self._flattened_structs_labels = flatten([struct1_label, struct2_label])
         self._fill_label = fill_label
 
+    @batch_function(item_ndim=2)
     def __call__(self, seg: np.ndarray, **kwargs) -> np.ndarray:
         """Fills holes between two classes of a multi-class segmentation map with a new label.
 
         Args:
-            seg: (H, W), Segmentation to process.
+            seg: ([N], H, W), Segmentation to process.
             **kwargs: Capture non-used parameters to get a callable API compatible with similar callables.
 
         Returns:
-            (H, W), Processed segmentation.
+            ([N], H, W), Processed segmentation.
         """
         post_img = seg.copy()
 
