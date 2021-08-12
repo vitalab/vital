@@ -10,6 +10,7 @@ from torchvision.transforms.functional import to_tensor
 
 from vital.data.camus.config import CamusTags, Label
 from vital.data.camus.data_struct import PatientData, ViewData
+from vital.data.camus.utils.measure import EchoMeasure
 from vital.data.camus.utils.register import CamusRegisteringTransformer
 from vital.data.config import Subset
 from vital.utils.decorators import squeeze
@@ -160,21 +161,22 @@ class Camus(VisionDataset):
         """
         patient_view_key, instant = self.item_list[index]
 
+        # Collect data
         with h5py.File(self.root, "r") as dataset:
-            # Collect and process data
             view_imgs, view_gts = self._get_data(dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
-            img = view_imgs[instant]
-            gt = self._process_target_data(view_gts[instant])
 
-            # Collect metadata
-            # Explicit cast to float32 to avoid "Expected object" type error in PyTorch models
-            # that output ``FloatTensor`` by default (and not ``DoubleTensor``)
-            frame_pos = np.float32(instant / view_imgs.shape[0])
-
+        # Format data
+        img = view_imgs[instant]
+        gt = self._process_target_data(view_gts[instant])
         img, gt = to_tensor(img), segmentation_to_tensor(gt)
+
+        # Apply transforms on the data
         if self.transforms:
             img, gt = self.transforms(img, gt)
-        frame_pos = torch.tensor([frame_pos])
+
+        # Compute attributes on the data
+        frame_pos = torch.tensor([instant / len(view_imgs)])
+        gt_attrs = get_segmentation_attributes(gt, self.labels)
 
         return {
             CamusTags.id: f"{patient_view_key}/{instant}",
@@ -182,6 +184,7 @@ class Camus(VisionDataset):
             CamusTags.img: img,
             CamusTags.gt: gt,
             CamusTags.frame_pos: frame_pos,
+            **gt_attrs,
         }
 
     def _get_test_item(self, index: int) -> PatientData:
@@ -239,7 +242,10 @@ class Camus(VisionDataset):
                     }
 
                 # Compute attributes for the sequence
-                attrs = {CamusTags.frame_pos: torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1)}
+                attrs = {
+                    CamusTags.frame_pos: torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1),
+                    **get_segmentation_attributes(proc_gts_tensor, self.labels),
+                }
 
                 patient_data.views[view] = ViewData(
                     img_proc=proc_imgs_tensor,
@@ -301,3 +307,45 @@ class Camus(VisionDataset):
         """
         patient_view = file[patient_view_key]
         return [patient_view.attrs[attr_tag] for attr_tag in metadata_tags]
+
+
+def get_segmentation_attributes(
+    segmentation: Union[np.ndarray, Tensor], labels: Sequence[Label]
+) -> Dict[str, Union[np.ndarray, Tensor]]:
+    """Measures a variety of attributes on a (batch of) segmentation(s).
+
+    Args:
+        segmentation: ([N], H, W), Segmentation(s) on which to compute a variety of attributes.
+        labels: Labels of the classes included in the segmentation(s).
+
+    Returns:
+        Mapping between the attributes and ([N], 1) arrays of their values for each segmentation in the batch.
+    """
+    attrs = {}
+    if Label.LV in labels:
+        attrs.update(
+            {
+                CamusTags.lv_area: EchoMeasure.structure_area(segmentation, Label.LV.value),
+                CamusTags.lv_orientation: EchoMeasure.structure_orientation(
+                    segmentation, Label.LV.value, reference_orientation=90
+                ),
+            }
+        )
+    if Label.MYO in labels:
+        attrs.update({CamusTags.myo_area: EchoMeasure.structure_area(segmentation, Label.MYO.value)})
+    if Label.LV in labels and Label.MYO in labels:
+        attrs.update(
+            {
+                CamusTags.lv_base_width: EchoMeasure.lv_base_width(segmentation),
+                CamusTags.lv_length: EchoMeasure.lv_length(segmentation),
+                CamusTags.epi_center_x: EchoMeasure.structure_center(
+                    segmentation, [Label.LV.value, Label.MYO.value], axis=1
+                ),
+                CamusTags.epi_center_y: EchoMeasure.structure_center(
+                    segmentation, [Label.LV.value, Label.MYO.value], axis=0
+                ),
+            }
+        )
+    if Label.ATRIUM in labels:
+        attrs.update({CamusTags.atrium_area: EchoMeasure.structure_area(segmentation, Label.ATRIUM.value)})
+    return attrs
