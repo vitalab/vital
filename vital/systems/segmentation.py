@@ -47,13 +47,14 @@ class SegmentationComputationMixin(TrainValComputationMixin):
         x, y = batch[Tags.img], batch[Tags.gt]
 
         # Forward
-        y_hat = self.module(x)
+        y_hat = self(x)
 
         # Segmentation accuracy metrics
         if y_hat.shape[1] == 1:
             ce = F.binary_cross_entropy_with_logits(y_hat.squeeze(), y.type_as(y_hat))
         else:
             ce = F.cross_entropy(y_hat, y)
+
         dice_values = self._dice(y_hat, y)
         dices = {f"dice_{label}": dice for label, dice in zip(self.hparams.data_params.labels[1:], dice_values)}
         mean_dice = dice_values.mean()

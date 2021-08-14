@@ -100,9 +100,9 @@ class VitalSystem(pl.LightningModule, ABC):
 
 
             if isinstance(self.trainer.logger, TensorBoardLogger):
-                self.trainer.logger.experiment.add_figure("sample_{}".format(i), fig, self.current_epoch)
+                self.trainer.logger.experiment.add_figure("{}_{}".format(title, i), fig, self.current_epoch)
             if isinstance(self.trainer.logger, CometLogger):
-                self.trainer.logger.experiment.log_figure("sample_{}".format(i), fig, step=self.current_epoch)
+                self.trainer.logger.experiment.log_figure("{}_{}".format(title, i), fig, step=self.current_epoch)
 
             plt.close()
 
