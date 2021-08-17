@@ -1,3 +1,4 @@
+import collections
 import logging
 import os
 from abc import ABC
@@ -75,7 +76,10 @@ class VitalRunner(ABC):
         if isinstance(trainer.logger, CometLogger):
             logger.experiment.log_asset_folder('.hydra', log_file_name=True)
             if cfg.get('comet_tags', None):
-                logger.experiment.add_tags(list(cfg.comet_tags))
+                if isinstance(cfg.comet_tags, collections.Sequence):
+                    logger.experiment.add_tags(list(cfg.comet_tags))
+                else:
+                    logger.experiment.add_tag(cfg.comet_tags)
 
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
         log_dir = Path(trainer.log_dir) if trainer.log_dir else Path(cfg.trainer.default_root_dir)

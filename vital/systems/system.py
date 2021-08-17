@@ -1,17 +1,18 @@
 import sys
 from abc import ABC
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Union, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 
+import numpy as np
 import pytorch_lightning as pl
 import torch
+from matplotlib import pyplot as plt
 from pytorch_lightning.core.memory import ModelSummary
-from pytorch_lightning.loggers import TensorBoardLogger, CometLogger
+from pytorch_lightning.loggers import CometLogger, TensorBoardLogger
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
 from torchinfo import summary
-import numpy as np
-from matplotlib import pyplot as plt
+
 from vital.data.config import DataParameters
 
 
@@ -75,10 +76,9 @@ class VitalSystem(pl.LightningModule, ABC):
         # Todo move lr and weight decay to optim config.
         return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
 
-    def log_images(self, title: str,
-                   num_images: int,
-                   axes_content: Dict[str, np.ndarray],
-                   info: Optional[List[str]] = None):
+    def log_images(
+        self, title: str, num_images: int, axes_content: Dict[str, np.ndarray], info: Optional[List[str]] = None
+    ):
         """Log images to Logger if it is a TensorBoardLogger or CometLogger.
         Args:
             title: Name of the figure.
@@ -97,7 +97,6 @@ class VitalSystem(pl.LightningModule, ABC):
             for j, (ax_title, img) in enumerate(axes_content.items()):
                 axes[j].imshow(img[i].squeeze())
                 axes[j].set_title(ax_title)
-
 
             if isinstance(self.trainer.logger, TensorBoardLogger):
                 self.trainer.logger.experiment.add_figure("{}_{}".format(title, i), fig, self.current_epoch)

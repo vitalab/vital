@@ -1,4 +1,5 @@
-from typing import Dict
+import types
+from typing import Dict, Optional, Sequence, Union
 
 import torch
 from torch import Tensor, nn
@@ -39,6 +40,18 @@ class SegmentationComputationMixin(TrainValComputationMixin):
         self.dice_weight = dice_weight
         self.cross_entropy_weight = cross_entropy_weight
 
+    # def save_hyperparameters(
+    #     self,
+    #     *args,
+    #     ignore: Optional[Union[Sequence[str], str]] = None,
+    #     frame: Optional[types.FrameType] = None
+    # ) -> None:
+    #     if ignore is None:
+    #         ignore = 'module'
+    #     else:
+    #         ignore.append('module')
+    #     super().save_hyperparameters(*args, ignore, frame)
+
     @auto_move_data
     def forward(self, *args, **kwargs):  # noqa: D102
         return self.module(*args, **kwargs)
@@ -63,10 +76,15 @@ class SegmentationComputationMixin(TrainValComputationMixin):
 
         if self.is_val_step and batch_idx == 0:
             y_hat = y_hat.argmax(1) if y_hat.shape[1] > 1 else torch.sigmoid(y_hat).round()
-            self.log_images(title='Sample', num_images=5,
-                            axes_content={'Image': x.cpu().squeeze().numpy(),
-                                          'Gt': y.squeeze().cpu().numpy(),
-                                          'Pred': y_hat.detach().cpu().squeeze().numpy()})
+            self.log_images(
+                title="Sample",
+                num_images=5,
+                axes_content={
+                    "Image": x.cpu().squeeze().numpy(),
+                    "Gt": y.squeeze().cpu().numpy(),
+                    "Pred": y_hat.detach().cpu().squeeze().numpy(),
+                },
+            )
 
         # Format output
         return {"loss": loss, "ce": ce, "dice": mean_dice, **dices}
