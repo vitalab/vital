@@ -2,6 +2,7 @@ from typing import Dict
 
 from torch import Tensor, nn
 from torch.nn import functional as F
+from torchmetrics.functional import accuracy
 
 from vital.data.config import Tags
 from vital.systems.computation import TrainValComputationMixin
@@ -41,7 +42,7 @@ class ClassificationComputationMixin(TrainValComputationMixin):
 
         # Loss and metrics
         loss = F.cross_entropy(y_hat, y)
-        accuracy = y_hat.argmax(dim=1).eq(y).sum().item() / x.shape[0]
+        acc = accuracy(y_hat, y)
 
         if self.is_val_step and batch_idx == 0:
             self.log_images(title='Sample', num_images=5,
@@ -49,4 +50,4 @@ class ClassificationComputationMixin(TrainValComputationMixin):
                             info=[f"(Gt: {y[i].item()} - Pred: {y_hat.argmax(dim=1)[i].item()})" for i in range(5)])
 
         # Format output
-        return {"loss": loss, "accuracy": accuracy}
+        return {"loss": loss, "accuracy": acc}

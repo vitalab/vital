@@ -11,7 +11,7 @@ from vital import get_vital_home
 logger = logging.getLogger(__name__)
 
 
-def resolve_model_ckpt_path(ckpt: Union[str, Path]) -> Path:
+def resolve_model_checkpoint_path(checkpoint: Union[str, Path]) -> Path:
     """Resolves a local path or a Comet model registry query to a local path on the machine.
 
     Notes:
@@ -19,8 +19,8 @@ def resolve_model_ckpt_path(ckpt: Union[str, Path]) -> Path:
           Comet's expected locations: https://www.comet.ml/docs/python-sdk/advanced/#non-interactive-setup
 
     Args:
-        ckpt: Location of the checkpoint. This can be either a local path, or the fields of a query to a Comet model
-            registry. Examples of different queries:
+        checkpoint: Location of the checkpoint. This can be either a local path, or the fields of a query to a Comet
+            model registry. Examples of different queries:
                 - For the latest version of the model: 'my_workspace/my_model'
                 - Using a specific version/stage: 'my_workspace/my_model/0.1.0' or 'my_workspace/my_model/prod'
 
@@ -28,32 +28,32 @@ def resolve_model_ckpt_path(ckpt: Union[str, Path]) -> Path:
         Path to the model's checkpoint file on the local computer. This can either be the `ckpt` already provided, if it
         was already local, or the location where the checkpoint was downloaded, if it pointed to a Comet registry model.
     """
-    ckpt = Path(ckpt)
-    if ckpt.suffix == ".ckpt":
-        local_ckpt_path = ckpt
+    checkpoint = Path(checkpoint)
+    if checkpoint.suffix == ".ckpt":
+        local_ckpt_path = checkpoint
     else:
         try:
             comet_api = comet_ml.api.API()
         except ValueError:
             raise RuntimeError(
-                f"The format of the checkpoint '{ckpt}' indicates you want to download a model from a Comet model "
-                f"registry, but Comet couldn't find an API key. Either switch to providing a local checkpoint path, "
-                f"or set your Comet API key in one of Comet's expected locations."
+                f"The format of the checkpoint '{checkpoint}' indicates you want to download a model from a Comet "
+                f"model registry, but Comet couldn't find an API key. Either switch to providing a local checkpoint "
+                f"path, or set your Comet API key in one of Comet's expected locations."
             )
 
         # Parse the provided checkpoint path as a query for a Comet model registry
         version_or_stage, version, stage = None, None, None
-        if len(ckpt.parts) == 2:
-            workspace, registry_name = ckpt.parts
-        elif len(ckpt.parts) == 3:
-            workspace, registry_name, version_or_stage = ckpt.parts
+        if len(checkpoint.parts) == 2:
+            workspace, registry_name = checkpoint.parts
+        elif len(checkpoint.parts) == 3:
+            workspace, registry_name, version_or_stage = checkpoint.parts
             try:
                 Version(version_or_stage)  # Will fail if `version_or_stage` cannot be parsed as a version
                 version = version_or_stage
             except InvalidVersion:
                 stage = version_or_stage
         else:
-            raise ValueError(f"Failed to interpret checkpoint '{ckpt}' as a query for a Comet model registry.")
+            raise ValueError(f"Failed to interpret checkpoint '{checkpoint}' as a query for a Comet model registry.")
 
         # If neither version nor stage were provided, use latest version available
         if not version_or_stage:
@@ -80,6 +80,12 @@ def resolve_model_ckpt_path(ckpt: Union[str, Path]) -> Path:
             )
 
         # Extract the path of the checkpoint file on the local machine
-        local_ckpt_path = list(model_cached_path.iterdir())[0]
+        ckpt_files = list(model_cached_path.glob("*.ckpt"))
+        if len(ckpt_files) != 1:
+            raise RuntimeError(
+                f"Expected the Comet model to contain a single '*.ckpt' file, but there were {len(ckpt_files)} "
+                f"'*.ckpt' file(s): {ckpt_files}. Either edit the content of the Comet model, or use a different model."
+            )
+        local_ckpt_path = ckpt_files[0]
 
     return local_ckpt_path
