@@ -40,18 +40,6 @@ class SegmentationComputationMixin(TrainValComputationMixin):
         self.dice_weight = dice_weight
         self.cross_entropy_weight = cross_entropy_weight
 
-    # def save_hyperparameters(
-    #     self,
-    #     *args,
-    #     ignore: Optional[Union[Sequence[str], str]] = None,
-    #     frame: Optional[types.FrameType] = None
-    # ) -> None:
-    #     if ignore is None:
-    #         ignore = 'module'
-    #     else:
-    #         ignore.append('module')
-    #     super().save_hyperparameters(*args, ignore, frame)
-
     @auto_move_data
     def forward(self, *args, **kwargs):  # noqa: D102
         return self.module(*args, **kwargs)
