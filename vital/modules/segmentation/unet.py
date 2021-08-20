@@ -100,7 +100,7 @@ class _DoubleConv(nn.Module):
                 nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1),
                 nn.BatchNorm2d(out_ch),
                 nn.ReLU(inplace=True),
-                nn.Dropout(p=dropout_prob),
+                # nn.Dropout(p=dropout_prob),
             )
         else:
             self.net = nn.Sequential(
@@ -109,7 +109,7 @@ class _DoubleConv(nn.Module):
                 nn.Dropout(p=dropout_prob),
                 nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1),
                 nn.ReLU(inplace=True),
-                nn.Dropout(p=dropout_prob),
+                # nn.Dropout(p=dropout_prob),
             )
 
     def forward(self, x: Tensor) -> Tensor:
