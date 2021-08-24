@@ -1,5 +1,6 @@
 import logging
 import shutil
+import re
 from pathlib import Path
 from typing import Union
 
@@ -9,6 +10,27 @@ from packaging.version import InvalidVersion, Version
 from vital import get_vital_home
 
 logger = logging.getLogger(__name__)
+
+
+def fix_registry_name(registry_name: str) -> str:
+    """Changes registry name to replace characters that COMET ML does not accept in the registry name.
+
+    Note: Comet ML rules (Might need to be updated)
+        - All special characters are replaced with dash (ex. camus_unet -> camus-unet, camus!unet -> camus-unet)
+        - All non-letter and non-number characters at the end of the name are deleted.
+        - All letters are lower-case.
+
+    Args:
+        registry_name: Name of the registered model to update.
+
+    Returns:
+        Updated registry name
+    """
+
+    registry_name = re.sub("[^a-zA-Z0-9]+", "-", registry_name)  # Replace all special characters with `-`
+    registry_name = re.sub(r"^\W+|\W+$", "", registry_name)  # Remove all special characters at end of name
+
+    return registry_name.lower()
 
 
 def resolve_model_checkpoint_path(checkpoint: Union[str, Path]) -> Path:
@@ -54,6 +76,8 @@ def resolve_model_checkpoint_path(checkpoint: Union[str, Path]) -> Path:
                 stage = version_or_stage
         else:
             raise ValueError(f"Failed to interpret checkpoint '{checkpoint}' as a query for a Comet model registry.")
+
+        registry_name = fix_registry_name(registry_name)
 
         # If neither version nor stage were provided, use latest version available
         if not version_or_stage:
