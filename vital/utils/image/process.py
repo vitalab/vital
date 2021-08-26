@@ -148,7 +148,7 @@ class PostGaussianFilter:
         sigmas: Mapping[int, float],
         sigmas_as_ratio: bool = False,
         extend_modes: Mapping[int, str] = None,
-        keep_softmax: bool = False,
+        do_argmax: bool = True,
     ):
         """Initializes class instance.
 
@@ -159,14 +159,14 @@ class PostGaussianFilter:
                 that the true standard deviation for a given `dim` becomes `sigma * input.shape[dim]`.
             extend_modes: Mapping between dimension(s) along which to apply the filter, and the mode to use to extend
                 the input when the filter overlaps a border.
-            keep_softmax: If `True`, returns directly the "softmax" values at each pixel computed by the Gaussian
-                filter, with the new dimension added last. Otherwise, pass the filter's result through an argmax to
-                regain "hard" class labels.
+            do_argmax: If `True`, pass the filter's result through an argmax to restore "hard" class labels. Otherwise,
+                returns directly the "soft" class probabilities computed by the Gaussian filter, in a new dimension
+                added last.
         """
         self._kernel_stddevs = sigmas
         self._scale_stddevs = sigmas_as_ratio
         self._extend_modes = extend_modes if extend_modes else {}
-        self._softmax = keep_softmax
+        self._do_argmax = do_argmax
 
     def __call__(self, seg: np.ndarray, **kwargs) -> np.ndarray:
         """Applies a gaussian filter along specific dimensions of the segmentation maps.
@@ -184,6 +184,6 @@ class PostGaussianFilter:
             sigmas = sigmas * onehot_seg.shape
         modes = [self._extend_modes.get(dim, "reflect") for dim in range(onehot_seg.ndim)]
         filtered_seg = gaussian_filter(onehot_seg, sigmas, output=float, mode=modes)
-        if not self._softmax:
+        if self._do_argmax:
             filtered_seg = filtered_seg.argmax(axis=-1).astype(seg.dtype)
         return filtered_seg
