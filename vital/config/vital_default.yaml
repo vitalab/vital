@@ -5,7 +5,9 @@ defaults:
   - callbacks:
       - early_stopping
       - model_checkpoint
-  - logger: comet/online.yaml
+  - logger: tensorboard
+
+  - exp: null
 
 seed: None
 
