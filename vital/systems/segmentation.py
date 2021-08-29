@@ -1,5 +1,7 @@
-from typing import Dict
+import types
+from typing import Dict, Optional, Sequence, Union
 
+import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
@@ -46,15 +48,31 @@ class SegmentationComputationMixin(TrainValComputationMixin):
         x, y = batch[Tags.img], batch[Tags.gt]
 
         # Forward
-        y_hat = self.module(x)
+        y_hat = self(x)
 
         # Segmentation accuracy metrics
-        ce = F.cross_entropy(y_hat, y)
+        if y_hat.shape[1] == 1:
+            ce = F.binary_cross_entropy_with_logits(y_hat.squeeze(), y.type_as(y_hat))
+        else:
+            ce = F.cross_entropy(y_hat, y)
+
         dice_values = self._dice(y_hat, y)
         dices = {f"dice_{label}": dice for label, dice in zip(self.hparams.data_params.labels[1:], dice_values)}
         mean_dice = dice_values.mean()
 
         loss = (self.cross_entropy_weight * ce) + (self.dice_weight * (1 - mean_dice))
+
+        if self.is_val_step and batch_idx == 0:
+            y_hat = y_hat.argmax(1) if y_hat.shape[1] > 1 else torch.sigmoid(y_hat).round()
+            self.log_images(
+                title="Sample",
+                num_images=5,
+                axes_content={
+                    "Image": x.cpu().squeeze().numpy(),
+                    "Gt": y.squeeze().cpu().numpy(),
+                    "Pred": y_hat.detach().cpu().squeeze().numpy(),
+                },
+            )
 
         # Format output
         return {"loss": loss, "ce": ce, "dice": mean_dice, **dices}

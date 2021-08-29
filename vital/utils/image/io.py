@@ -4,6 +4,7 @@ from typing import Tuple
 
 import numpy as np
 import SimpleITK
+from PIL import Image, ImageSequence
 
 
 def load_mhd(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[Number, ...], ...]]:
@@ -42,3 +43,15 @@ def save_as_mhd(
     seg.SetOrigin(origin)
     seg.SetSpacing(spacing)
     SimpleITK.WriteImage(seg, str(output_filepath))
+
+
+def load_gif(filepath: Path) -> np.ndarray:
+    """Loads an animated GIF image as a sequence of 2D images.
+
+    Args:
+        filepath: Path to the image.
+
+    Returns:
+        (T, H, W) array of the image's pixel values.
+    """
+    return np.array([np.array(frame) for frame in ImageSequence.Iterator(Image.open(filepath))])

@@ -5,16 +5,29 @@ defaults:
   - callbacks:
       - early_stopping
       - model_checkpoint
-  - logger: comet/online.yaml
+  - logger: tensorboard
+
+  - exp: null
 
   - experiment: null # Experiments defined in the experiment folder can override defaults defined in this file.
 
 seed: None
 
 resume: False
-ckpt_path: null
-weights_only: False
 
+# IMPORTANT NOTE: When using a local checkpoint with a relative path add the working_dir to the checkpoint path because
+# hydra will change the current working directory. For example:
+# If defined in the config:  `ckpt: ${work_dir}/path/to/checkpoint.ckpt`
+# If defined in the command line: `ckpt=\${work_dir}/path/to/checkpoint.ckpt`
+# Same syntax is expected for weights parameter.
+ckpt: null
+weights: null
+strict: True
 
 train: True
 test: True
+
+comet_tags: null # Tags to for comet experiment if CometLogger is used.
+
+# Copy of original working directory before hydra changes it. Useful for paths.
+work_dir: ${hydra:runtime.cwd}

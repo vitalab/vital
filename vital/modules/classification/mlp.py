@@ -6,49 +6,53 @@ import torch.nn as nn
 
 
 class MLP(nn.Module):
-    """Standard Multi-layer Perceptron model.
+    """Standard multilayer perceptron model.
 
     Args:
-        input_shape: Shape of the input images.
-        output_shape: Shape of the output segmentation map.
-        hidden: tuple of number of hidden neurons
-        output_activation: activation function for last layer
-        dropout_rate: rate for dropout layers
+        input_shape: Shape of the input. If this does not specify a single dim, the input will be automatically
+            flattened at the start of the forward pass.
+        output_shape: Shape of the output. If this does not specify a single dim, the output will be automatically
+            reshaped at the end of the forward pass.
+        hidden: Number of neurons at each hidden layer of the MLP. If None or empty, the MLP will correspond to a linear
+            model between the input and output.
+        output_activation: Activation function of the last layer.
+        dropout: Rate for dropout layers.
     """
 
     def __init__(
         self,
-        input_shape: Tuple[int],
-        output_shape: Tuple[int],
-        hidden: Sequence[int] = (128,),
+        input_shape: Tuple[int, ...],
+        output_shape: Tuple[int, ...],
+        hidden: Optional[Sequence[int]] = (128,),
         output_activation: Optional[nn.Module] = None,
-        dropout_rate: float = 0.25,
+        dropout: float = 0.25,
     ):
-
+        super().__init__()
+        self.input_shape = input_shape
+        self.output_shape = output_shape
         input_dim = int(np.prod(input_shape))
-        assert len(output_shape) == 1, "Output shape must be 1 dimension"
-        output_dim = int(output_shape[0])
+        output_dim = int(np.prod(output_shape))
 
-        super(MLP, self).__init__()
-
+        if not hidden:
+            hidden = []
+        layers = [*hidden, output_dim]
         self.net = nn.Sequential()
 
         # Input layer
-        self.net.add_module("input_layer", nn.Linear(input_dim, hidden[0]))
-        self.net.add_module("relu_{}".format(0), nn.ReLU())
-        self.net.add_module("drop_{}".format(0), nn.Dropout(p=dropout_rate))
+        self.net.add_module("layer_in", nn.Linear(input_dim, layers[0]))
 
         # Hidden layers
-        for i in range(0, len(hidden) - 1):
-            self.net.add_module("layer_{}".format(i + 1), nn.Linear(hidden[i], hidden[i + 1]))
-            self.net.add_module("relu_{}".format(i + 1), nn.ReLU())
-            self.net.add_module("drop_{}".format(i + 1), nn.Dropout(p=dropout_rate))
+        for i in range(0, len(layers) - 1):
+            self.net.add_module(f"relu_{i}", nn.ReLU())
+            self.net.add_module(f"drop_{i}", nn.Dropout(p=dropout))
+            self.net.add_module(f"layer_{i+1}", nn.Linear(layers[i], layers[i + 1]))
 
         # Output layers
-        self.net.add_module("output_layer", nn.Linear(hidden[-1], output_dim))
         if output_activation:
-            self.net.add_module("output_activation", output_activation)
+            self.net.add_module(f"{output_activation.__class__.__name__.lower()}_out", output_activation)
 
     def forward(self, x: torch.Tensor):  # noqa D102
-        x = torch.flatten(x, 1)
-        return self.net(x)
+        x = torch.flatten(x, start_dim=1)
+        x = self.net(x)
+        x = torch.reshape(x, (-1, *self.out_shape))
+        return x

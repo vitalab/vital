@@ -25,19 +25,19 @@ class UNet(nn.Module):
         """Initializes class instance.
 
         Args:
-            input_shape: Shape of the input images.
-            output_shape: Shape of the output segmentation map.
+            input_shape: (in_channels, H, W), Shape of the input images.
+            output_shape: (num_classes, H, W), Shape of the output segmentation map.
             init_channels: Number of output feature maps from the first layer, used to compute the number of feature
                 maps in following layers.
             use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
                 convolutional blocks.
-            bilinear: Whether to use bilinear interpolation or transposed
-                convolutions for upsampling.
+            bilinear: Whether to use bilinear interpolation or transposed convolutions for upsampling.
             dropout: probability from dropout layers.
         """
         super().__init__()
         in_channels = input_shape[0]
         out_channels = output_shape[0]
+        self.dropout = dropout
 
         self.layer1 = _DoubleConv(in_channels, init_channels // 2, dropout / 2, use_batchnorm)
         self.layer2 = _Down(init_channels // 2, init_channels, dropout, use_batchnorm)
@@ -101,7 +101,7 @@ class _DoubleConv(nn.Module):
                 nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1),
                 nn.BatchNorm2d(out_ch),
                 nn.ReLU(inplace=True),
-                nn.Dropout(p=dropout_prob),
+                # nn.Dropout(p=dropout_prob),
             )
         else:
             self.net = nn.Sequential(
@@ -110,7 +110,7 @@ class _DoubleConv(nn.Module):
                 nn.Dropout(p=dropout_prob),
                 nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1),
                 nn.ReLU(inplace=True),
-                nn.Dropout(p=dropout_prob),
+                # nn.Dropout(p=dropout_prob),
             )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -168,6 +168,6 @@ This script can be run to visualize the network layers.
 if __name__ == "__main__":
     from torchsummary import summary
 
-    model = UNet(input_shape=(1,256,256), output_shape=(4,256,256))
+    model = UNet(input_shape=(1, 256, 256), output_shape=(4, 256, 256))
 
     summary(model, (1, 256, 256), device="cpu")
