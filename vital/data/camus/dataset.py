@@ -34,6 +34,7 @@ class Camus(VisionDataset):
         use_sequence: bool = False,
         predict: bool = False,
         neighbors: Union[int, Sequence[int]] = 0,
+        neighbor_padding: Literal["edge", "wrap"] = "edge",
         transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
         transform: Callable[[Tensor], Tensor] = None,
         target_transform: Callable[[Tensor], Tensor] = None,
@@ -50,6 +51,8 @@ class Camus(VisionDataset):
             neighbors: Neighboring frames to include in a train/val item. The value either indicates the number of
                 neighboring frames on each side of the item's frame (`int`), or a list of offsets w.r.t the item's
                 frame (`Sequence[int]`).
+            neighbor_padding: Mode used to determine how to pad neighboring instants at the beginning/end of a sequence.
+                The options mirror those of the ``mode`` parameter of ``numpy.pad``.
             transforms: Function that takes in an input/target pair and transforms them in a corresponding way.
                 (only applied when `predict` is `False`, i.e. in train/validation mode)
             transform: Function that takes in an input and transforms it.
@@ -68,6 +71,7 @@ class Camus(VisionDataset):
         self.use_sequence = use_sequence
         self.predict = predict
         self.neighbors = neighbors
+        self.neighbor_padding = neighbor_padding
 
         with h5py.File(path, "r") as f:
             self.registered_dataset = f.attrs[CamusTags.registered]
@@ -181,14 +185,22 @@ class Camus(VisionDataset):
             else:  # If `neighbors` is a list of the neighbors offset w.r.t the current item
                 instant_diffs = self.neighbors
 
-            # Fetch the neighbors' data
+            # Determine which items' to use as neighbors
             with h5py.File(self.root, "r") as dataset:
-                patient_view_len = len(dataset[patient_view_key][CamusTags.img_proc])
-            item[CamusTags.neighbors] = {
-                instant_diff: self._get_instant_item(
-                    self.item_list.index((patient_view_key, (instant + instant_diff) % patient_view_len))
+                seq_len = len(dataset[patient_view_key][CamusTags.img_proc])
+            if self.neighbor_padding == "edge":
+                neigh_instants = {diff: np.clip(instant + diff, 0, seq_len) for diff in instant_diffs}
+            elif self.neighbor_padding == "wrap":
+                neigh_instants = {diff: (instant + diff) % seq_len for diff in instant_diffs}
+            else:
+                raise ValueError(
+                    f"Unexpected value for `neighbor_padding`: {self.neighbor_padding}. Use one of: ('edge', 'wrap')"
                 )
-                for instant_diff in instant_diffs
+
+            # Fetch the neighbors' data
+            item[CamusTags.neighbors] = {
+                diff: self._get_instant_item(self.item_list.index((patient_view_key, instant)))
+                for diff, instant in neigh_instants.items()
             }
 
         return item
