@@ -18,6 +18,8 @@ from vital.utils.decorators import squeeze
 from vital.utils.image.transform import remove_labels, segmentation_to_tensor
 
 ItemId = Tuple[str, int]
+InstantItem = Dict[str, Union[str, Tensor]]
+RecursiveInstantItem = Dict[str, Union[str, Tensor, Dict[str, InstantItem]]]
 
 
 class Camus(VisionDataset):
@@ -87,7 +89,7 @@ class Camus(VisionDataset):
             self.item_list = self._get_instant_paths()
             self.getter = self._get_train_item
 
-    def __getitem__(self, index) -> Union[Dict[str, Union[str, Tensor]], PatientData]:
+    def __getitem__(self, index) -> Union[RecursiveInstantItem, PatientData]:
         """Fetches an item, whose structure depends on the ``predict`` value, from the internal list of items.
 
         Notes:
@@ -156,18 +158,49 @@ class Camus(VisionDataset):
                         image_paths.append((view_path, instant))
         return image_paths
 
-    def _get_train_item(
-        self, index: int, include_neighbors: bool = True
-    ) -> Dict[str, Union[str, Tensor, Dict[str, Union[str, Tensor]]]]:
-        """Fetches data required for training on a train/val item (single image/groundtruth pair).
+    def _get_train_item(self, index: int) -> RecursiveInstantItem:
+        """Fetches data required for training on a train/val item.
+
+        Notes:
+            -  If ``self.neighbors>0``, the result will include data from other items: neighboring instants from the
+               patient/view sequence of the item pointed at by ``index``. Because of this, setting ``self.neighbors>0``
+               can rapidly increase the memory footprint of the program.
 
         Args:
             index: Index of the train/val sample in the train/val set's ``self.item_list``.
-            include_neighbors: Flag to indicate whether to search this item's neighbors. Useful parameter to break
-                infinite recursion when the method was called on an item's neighbors.
 
         Returns:
             Data for training on a train/val item.
+        """
+        item = self._get_instant_item(index)
+        if self.neighbors:
+            patient_view_key, instant = self.item_list[index]
+            # Determine the requested neighbors' offset to the current item
+            if isinstance(self.neighbors, int):  # If `neighbors` indicates the number of neighbors on each side
+                instant_diffs = itertools.chain(range(-self.neighbors, 0), range(1, self.neighbors + 1))
+            else:  # If `neighbors` is a list of the neighbors offset w.r.t the current item
+                instant_diffs = self.neighbors
+
+            # Fetch the neighbors' data
+            with h5py.File(self.root, "r") as dataset:
+                patient_view_len = len(dataset[patient_view_key][CamusTags.img_proc])
+            item[CamusTags.neighbors] = {
+                instant_diff: self._get_instant_item(
+                    self.item_list.index((patient_view_key, (instant + instant_diff) % patient_view_len))
+                )
+                for instant_diff in instant_diffs
+            }
+
+        return item
+
+    def _get_instant_item(self, index: int) -> InstantItem:
+        """Fetches data and metadata related to an instant (single image/groundtruth pair + metadata).
+
+        Args:
+            index: Index of the instant sample in the train/val set's ``self.item_list``.
+
+        Returns:
+            Data and metadata related to an instant.
         """
         patient_view_key, instant = self.item_list[index]
 
@@ -184,23 +217,6 @@ class Camus(VisionDataset):
         if self.transforms:
             img, gt = self.transforms(img, gt)
 
-        neighbors = {}
-        if self.neighbors and include_neighbors:
-            # Determine the requested neighbors' offset to the current item
-            if isinstance(self.neighbors, int):  # If `neighbors` indicates the number of neighbors on each side
-                instant_diffs = itertools.chain(range(-self.neighbors, 0), range(1, self.neighbors + 1))
-            else:  # If `neighbors` is a list of the neighbors offset w.r.t the current item
-                instant_diffs = neighbors
-
-            # Fetch the neighbors' data
-            neighbors = {
-                instant_diff: self._get_train_item(
-                    self.item_list.index((patient_view_key, (instant + instant_diff) % len(img))),
-                    include_neighbors=False,
-                )
-                for instant_diff in instant_diffs
-            }
-
         # Compute attributes on the data
         frame_pos = torch.tensor([instant / len(view_imgs)])
         gt_attrs = get_segmentation_attributes(gt, self.labels)
@@ -212,7 +228,6 @@ class Camus(VisionDataset):
             CamusTags.gt: gt,
             CamusTags.frame_pos: frame_pos,
             **gt_attrs,
-            CamusTags.neighbors: neighbors,
         }
 
     def _get_test_item(self, index: int) -> PatientData:
