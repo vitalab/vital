@@ -1,0 +1,6 @@
+defaults:
+  - data
+
+_target_: vital.data.HMC_QU.data_module.HMC_QUDataModule
+
+dataset_path: ${oc.env:HMCQU_DATA_PATH}
