@@ -80,6 +80,7 @@ class VitalSystem(pl.LightningModule, ABC):
         self, title: str, num_images: int, axes_content: Dict[str, np.ndarray], info: Optional[List[str]] = None
     ):
         """Log images to Logger if it is a TensorBoardLogger or CometLogger.
+
         Args:
             title: Name of the figure.
             num_images: Number of images to log.
