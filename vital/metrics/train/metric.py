@@ -38,7 +38,7 @@ class DifferentiableDiceCoefficient(nn.Module):
         """Actual metric calculation.
 
         Args:
-            input: (N, C, H, W), Raw, unnormalized (or normalized apply_activation == True) if scores for each class.
+            input: (N, C, H, W), Raw, unnormalized (or normalized apply_activation == False) if scores for each class.
             target: (N, H, W), Groundtruth labels, where each value is 0 <= targets[i] <= C-1.
 
 
