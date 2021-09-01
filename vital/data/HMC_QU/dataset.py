@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, List, Literal, Sequence, Tuple, Union
+from typing import Callable, Dict, List, Literal, Tuple, Union
 
 import h5py
 import numpy as np
@@ -8,12 +8,11 @@ from torch import Tensor
 from torchvision.datasets import VisionDataset
 from torchvision.transforms.functional import to_tensor
 
-from vital.data.camus.config import CamusTags, Label, View
+from vital.data.camus.config import CamusTags
 from vital.data.camus.data_struct import PatientData, ViewData
-from vital.data.camus.utils.register import CamusRegisteringTransformer
 from vital.data.config import Subset
 from vital.utils.decorators import squeeze
-from vital.utils.image.transform import remove_labels, segmentation_to_tensor
+from vital.utils.image.transform import segmentation_to_tensor
 
 ItemId = Tuple[str, int]
 
@@ -22,13 +21,13 @@ class HMC_QU(VisionDataset):
     """Implementation of torchvision's ``VisionDataset`` for the HMC_QU dataset."""
 
     def __init__(
-            self,
-            path: Path,
-            image_set: Subset,
-            predict: bool = False,
-            transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
-            transform: Callable[[Tensor], Tensor] = None,
-            target_transform: Callable[[Tensor], Tensor] = None,
+        self,
+        path: Path,
+        image_set: Subset,
+        predict: bool = False,
+        transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
+        transform: Callable[[Tensor], Tensor] = None,
+        target_transform: Callable[[Tensor], Tensor] = None,
     ):
         """Initializes class instance.
 
@@ -42,10 +41,6 @@ class HMC_QU(VisionDataset):
                 (only applied when `predict` is `False`, i.e. in train/validation mode)
             target_transform: Function that takes in a target and transforms it.
                 (only applied when `predict` is `False`, i.e. in train/validation mode)
-
-        Raises:
-            RuntimeError: If flags/arguments are requested that cannot be provided by the HDF5 dataset.
-                - ``use_sequence`` flag is active, while the HDF5 dataset doesn't include full sequences.
         """
         super().__init__(path, transforms=transforms, transform=transform, target_transform=target_transform)
         self.image_set = image_set
@@ -105,7 +100,6 @@ class HMC_QU(VisionDataset):
         Returns:
             Paths to the instants, from the requested ``self.image_set``, inside the HDF5 file.
         """
-
         image_paths = []
         view_paths = self.list_groups(level="view")
         with h5py.File(self.root, "r") as dataset:
@@ -182,7 +176,7 @@ class HMC_QU(VisionDataset):
                     img_proc=proc_imgs_tensor,
                     gt_proc=proc_gts_tensor,
                     gt=gts,
-                    voxelspacing=(1., 1., 1.),
+                    voxelspacing=(1.0, 1.0, 1.0),
                     instants=None,
                     attrs=attrs,
                     registering=None,
@@ -210,9 +204,10 @@ class HMC_QU(VisionDataset):
 if __name__ == "__main__":
     import random
     from argparse import ArgumentParser
-    from vital.data.camus.config import View
 
     from matplotlib import pyplot as plt
+
+    from vital.data.camus.config import View
 
     args = ArgumentParser(add_help=False)
     args.add_argument("path", type=str)
