@@ -2,10 +2,11 @@ from pathlib import Path
 from typing import Literal, Union
 
 from torch.utils.data import DataLoader
-from vital.data.HMC_QU.dataset import HMC_QU
-from vital.data.HMC_QU.config import Label, image_size, in_channels
+
 from vital.data.config import DataParameters, Subset
 from vital.data.data_module import VitalDataModule
+from vital.data.HMC_QU.config import Label, image_size, in_channels
+from vital.data.HMC_QU.dataset import HMC_QU
 
 
 class HMC_QUDataModule(VitalDataModule):
