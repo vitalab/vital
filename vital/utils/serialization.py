@@ -1,6 +1,6 @@
 import logging
-import shutil
 import re
+import shutil
 from pathlib import Path
 from typing import Union
 
@@ -26,7 +26,6 @@ def fix_registry_name(registry_name: str) -> str:
     Returns:
         Updated registry name
     """
-
     registry_name = re.sub("[^a-zA-Z0-9]+", "-", registry_name)  # Replace all special characters with `-`
     registry_name = re.sub(r"^\W+|\W+$", "", registry_name)  # Remove all special characters at end of name
 

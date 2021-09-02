@@ -4,9 +4,9 @@
 # To run this experiment `python runner.py exp=mnist-mlp`
 defaults:
   # Set the system, module and data
-  - override /system: segmentation.yaml
-  - override /system/module: unet.yaml
-  - override /data: acdc.yaml
+  - override /system: segmentation
+  - override /system/module: unet
+  - override /data: acdc
 
   # If you do not want early stopping or you want to add new callbacks:
   - override /callbacks:

@@ -54,5 +54,5 @@ class MLP(nn.Module):
     def forward(self, x: torch.Tensor):  # noqa D102
         x = torch.flatten(x, start_dim=1)
         x = self.net(x)
-        x = torch.reshape(x, (-1, *self.out_shape))
+        x = torch.reshape(x, (-1, *self.output_shape))
         return x

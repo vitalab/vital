@@ -5,14 +5,14 @@ from torchmetrics.utilities.distributed import reduce
 
 
 def tversky_score(
-        input: Tensor,
-        target: Tensor,
-        beta: float = 0.5,
-        bg: bool = False,
-        nan_score: float = 0.0,
-        no_fg_score: float = 0.0,
-        reduction: str = "elementwise_mean",
-        apply_activation: bool = True
+    input: Tensor,
+    target: Tensor,
+    beta: float = 0.5,
+    bg: bool = False,
+    nan_score: float = 0.0,
+    no_fg_score: float = 0.0,
+    reduction: str = "elementwise_mean",
+    apply_activation: bool = True,
 ) -> Tensor:
     """Computes the loss definition of the Tversky index.
 
@@ -90,13 +90,13 @@ def tversky_score(
 
 
 def differentiable_dice_score(
-        input: Tensor,
-        target: Tensor,
-        bg: bool = False,
-        nan_score: float = 0.0,
-        no_fg_score: float = 0.0,
-        reduction: str = "elementwise_mean",
-        apply_activation: bool = True
+    input: Tensor,
+    target: Tensor,
+    bg: bool = False,
+    nan_score: float = 0.0,
+    no_fg_score: float = 0.0,
+    reduction: str = "elementwise_mean",
+    apply_activation: bool = True,
 ) -> Tensor:
     """Computes the loss definition of the dice coefficient.
 
@@ -116,8 +116,14 @@ def differentiable_dice_score(
         (1,) or (C,), Calculated dice coefficient, averaged or by labels.
     """
     return tversky_score(
-        input, target, beta=0.5, bg=bg, nan_score=nan_score, no_fg_score=no_fg_score, reduction=reduction,
-        apply_activation=apply_activation
+        input,
+        target,
+        beta=0.5,
+        bg=bg,
+        nan_score=nan_score,
+        no_fg_score=no_fg_score,
+        reduction=reduction,
+        apply_activation=apply_activation,
     )
 
 

@@ -6,6 +6,7 @@ from torchmetrics.functional import accuracy
 
 from vital.data.config import Tags
 from vital.systems.computation import TrainValComputationMixin
+from vital.utils.format.native import prefix
 
 
 class ClassificationComputationMixin(TrainValComputationMixin):
@@ -45,9 +46,17 @@ class ClassificationComputationMixin(TrainValComputationMixin):
         acc = accuracy(y_hat, y)
 
         if self.is_val_step and batch_idx == 0:
-            self.log_images(title='Sample', num_images=5,
-                            axes_content={'Image': x.cpu().squeeze().numpy()},
-                            info=[f"(Gt: {y[i].item()} - Pred: {y_hat.argmax(dim=1)[i].item()})" for i in range(5)])
+            self.log_images(
+                title="Sample",
+                num_images=5,
+                axes_content={"Image": x.cpu().squeeze().numpy()},
+                info=[f"(Gt: {y[i].item()} - Pred: {y_hat.argmax(dim=1)[i].item()})" for i in range(5)],
+            )
 
         # Format output
         return {"loss": loss, "accuracy": acc}
+
+    def test_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
+        result = prefix(self.trainval_step(*args, **kwargs), "test_")
+        self.log_dict(result, **self.val_log_kwargs)
+        return result

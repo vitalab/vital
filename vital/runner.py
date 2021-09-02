@@ -144,7 +144,7 @@ class VitalRunner(ABC):
             with open_dict(cfg):
                 cfg.trainer.default_root_dir = os.getcwd()
 
-        assert not (cfg.ckpt and cfg.weights), 'Cannot load `ckpt` and `weights`'
+        assert not (cfg.ckpt and cfg.weights), "Cannot load `ckpt` and `weights`"
 
         return cfg
 

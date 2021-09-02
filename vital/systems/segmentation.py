@@ -1,5 +1,4 @@
-import types
-from typing import Dict, Optional, Sequence, Union
+from typing import Dict
 
 import torch
 from torch import Tensor, nn
