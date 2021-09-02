@@ -12,8 +12,7 @@ class DifferentiableDiceCoefficient(nn.Module):
         nan_score: float = 0.0,
         no_fg_score: float = 0.0,
         reduction: str = "elementwise_mean",
-        apply_activation: bool = True
-
+        apply_activation: bool = True,
     ):
         """Initializes class instance.
 
@@ -53,5 +52,5 @@ class DifferentiableDiceCoefficient(nn.Module):
             nan_score=self.nan_score,
             no_fg_score=self.no_fg_score,
             reduction=self.reduction,
-            apply_activation=self.apply_activation
+            apply_activation=self.apply_activation,
         )

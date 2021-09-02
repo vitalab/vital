@@ -48,10 +48,10 @@ pip install .
 > NOTE: This instruction applies when you only want to use the project. If you want to play around with the code and
 > contribute to the project, see [the section on how to contribute](#how-to-contribute).
 
-### Hydra 
+### Hydra
 
-This project relies heavily on [Hydra](https://hydra.cc/). Hydra is a yaml based replacement for the standard Argparser. 
-The `@hydra.main` decorator is required in the script you want to run. 
+This project relies heavily on [Hydra](https://hydra.cc/). Hydra is a yaml based replacement for the standard Argparser.
+The `@hydra.main` decorator is required in the script you want to run.
 
 ### Environment variables
 
@@ -60,13 +60,13 @@ By default, Lightning logs runs locally in a format interpretable by
 [Tensorboard](https://www.tensorflow.org/tensorboard/).
 
 Another option is to use [Comet](https://www.comet.ml/) to log experiments, either online or offline. To enable the
-tracking of experiments using Comet change the instance of the logger in your config or when running your script. 
+tracking of experiments using Comet change the instance of the logger in your config or when running your script.
 ```bash
 python <your_runner_script.py> --logger=comet/{online or offline}
 ```
 
 Note that the online Comet Logger will require the `COMET_API_KEY` environment variable to be set. You must also specify
-the `project_name` and `workspace` parameters in your Hydra config.  
+the `project_name` and `workspace` parameters in your Hydra config.
 
 
 ## How to Contribute

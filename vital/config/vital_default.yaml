@@ -1,13 +1,16 @@
 defaults:
-  - trainer: default.yaml
-  - system: system.yaml # Not a usable file but contains common fields
-  - data: data.yaml # Not a usable file but contains common fields
+  - trainer: default
+  - system: system # Not a usable file but contains common fields
+  - data: data # Not a usable file but contains common fields
   - callbacks:
       - early_stopping
       - model_checkpoint
   - logger: tensorboard
 
   - exp: null
+
+  - override hydra/sweeper: config # Same as Hydra's BasicSweeper but allows sweep overrides in config. See hydra_plugins
+
 
 seed: None
 
