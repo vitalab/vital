@@ -33,8 +33,10 @@ class VitalRunner(ABC):
         # Set up the environment
         cls.pre_run_routine()
 
+        cfg = cls.get_config()
+
         # Run the system with config loaded by @hydra.main
-        cls.run_system()
+        cls.run_system(cfg)
 
     @classmethod
     def pre_run_routine(cls) -> None:
@@ -48,7 +50,21 @@ class VitalRunner(ABC):
 
     @staticmethod
     @hydra.main(config_path="config_example", config_name="default.yaml")
-    def run_system(cfg: DictConfig) -> None:
+    def get_config(cfg):
+        """Returns the config from @hydra.main decorator.
+
+        This is a separate static method because @hydra.main decorator does not work on class methods.
+
+        Args:
+            cfg: Configuration to run the experiment.
+
+        Returns:
+            Configuration to run the experiment.
+        """
+        return cfg
+
+    @classmethod
+    def run_system(cls, cfg: DictConfig) -> None:
         """Handles the training and evaluation of a model.
 
         Note: Must be static because of the hydra.main decorator and config pass-through.
@@ -56,14 +72,14 @@ class VitalRunner(ABC):
         Args:
             cfg: Configuration to run the experiment.
         """
-        cfg = VitalRunner._check_cfg(cfg)
+        cfg = cls._check_cfg(cfg)
 
         ckpt_path = resolve_model_checkpoint_path(cfg.ckpt) if cfg.ckpt else None
 
         cfg.seed = seed_everything(cfg.seed, workers=True)
 
-        callbacks = VitalRunner.configure_callbacks(cfg)
-        logger = VitalRunner.configure_logger(cfg)
+        callbacks = cls.configure_callbacks(cfg)
+        logger = cls.configure_logger(cfg)
 
         if cfg.resume:
             trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=logger, callbacks=callbacks)
@@ -85,7 +101,7 @@ class VitalRunner(ABC):
 
         if not cfg.trainer.get("fast_dev_run", False):
             # Configure Python logging right after instantiating the trainer (which determines the logs' path)
-            VitalRunner._configure_logging(log_dir, cfg)
+            cls._configure_logging(log_dir, cfg)
 
         # Instantiate datamodule
         datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data)
@@ -115,7 +131,7 @@ class VitalRunner(ABC):
 
             if not cfg.trainer.get("fast_dev_run", False):
                 # Copy best model checkpoint to a predictable path + online tracker (if used)
-                best_model_path = VitalRunner._best_model_path(log_dir, cfg)
+                best_model_path = cls._best_model_path(log_dir, cfg)
                 if trainer.checkpoint_callback is not None:
                     copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
                     # Ensure we use the best weights (and not the latest ones) by loading back the best model
@@ -222,4 +238,4 @@ class VitalRunner(ABC):
 
 
 if __name__ == "__main__":
-    VitalRunner.main()
+    VitalRunner().main()
