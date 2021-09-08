@@ -26,7 +26,7 @@ def tversky_score(
           https://lars76.github.io/2018/09/27/loss-functions-for-segmentation.html
 
     Args:
-        input: (N, C, H, W), Raw, unnormalized scores for each class.
+        input: (N, C, H, W), Raw, unnormalized (or normalized apply_activation == False) scores for each class.
         target: (N, H, W), Groundtruth labels, where each value is 0 <= targets[i] <= C-1
         beta: Weight to apply to false positives, and complement of the weight to apply to false negatives.
         bg: Whether to also compute the dice score for the background.
@@ -36,7 +36,7 @@ def tversky_score(
             Available reduction methods:
             - ``'elementwise_mean'``: takes the mean (default)
             - ``'none'``: no reduction will be applied
-        apply_activation: when True, softmax is applied to input.
+        apply_activation: when True, softmax or sigmoid is applied to input.
 
     Returns:
         (1,) or (C,), the calculated Tversky index, averaged or by labels.
@@ -72,6 +72,7 @@ def tversky_score(
             scores[i - bg] += score_cls
         return reduce(scores, reduction=reduction)
     else:
+        pred = pred.squeeze()
         score = torch.tensor([0], device=input.device, dtype=torch.float32)
         if not (target == 1).any():
             # no foreground class
@@ -101,7 +102,7 @@ def differentiable_dice_score(
     """Computes the loss definition of the dice coefficient.
 
     Args:
-        input: (N, C, H, W), Raw, unnormalized scores for each class.
+        input: (N, C, H, W), Raw, unnormalized (or normalized apply_activation == False) scores for each class.
         target: (N, H, W), Groundtruth labels, where each value is 0 <= targets[i] <= C-1.
         bg: Whether to also compute differentiable_dice_score for the background.
         nan_score: Score to return, if a NaN occurs during computation (denom zero).
@@ -110,7 +111,7 @@ def differentiable_dice_score(
             Available reduction methods:
             - ``'elementwise_mean'``: takes the mean (default)
             - ``'none'``: no reduction will be applied
-        apply_activation: when True, softmax is applied to input.
+        apply_activation: when True, softmax or sigmoid is applied to input.
 
     Returns:
         (1,) or (C,), Calculated dice coefficient, averaged or by labels.

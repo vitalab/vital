@@ -24,7 +24,7 @@ class DifferentiableDiceCoefficient(nn.Module):
                 Available reduction methods:
                 - ``'elementwise_mean'``: takes the mean (default)
                 - ``'none'``: no reduction will be applied
-            apply_activation: when True, softmax is applied to input.
+            apply_activation: when True, softmax or sigmoid is applied to input.
         """
         super().__init__()
         self.include_background = include_background
@@ -38,7 +38,7 @@ class DifferentiableDiceCoefficient(nn.Module):
         """Actual metric calculation.
 
         Args:
-            input: (N, C, H, W), Raw, unnormalized scores for each class.
+            input: (N, C, H, W), Raw, unnormalized (or normalized apply_activation == False) if scores for each class.
             target: (N, H, W), Groundtruth labels, where each value is 0 <= targets[i] <= C-1.
 
 
