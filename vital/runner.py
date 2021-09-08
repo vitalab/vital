@@ -228,11 +228,9 @@ class VitalRunner(ABC):
         Returns:
             Path where to copy the best model checkpoint after training.
         """
-        data = cfg.data._target_.split(".")[-1]
-        system = cfg.system._target_.split(".")[-1]
-        name = f"{data}_{system}"
-        if cfg.system.module is not None:  # Some systems do not have a module (ex. Auto-encoders)
-            module = cfg.system.module._target_.split(".")[-1]
+        module = cfg.hydra_choices['system/module']
+        name = f"{cfg.hydra_choices.data}_{cfg.hydra_choices.system}"
+        if module is not None:  # Some systems do not have a module (ex. Auto-encoders)
             name = f"{name}_{module}"
         return log_dir / f"{name}.ckpt"
 
