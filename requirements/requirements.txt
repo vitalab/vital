@@ -23,3 +23,6 @@ nibabel
 albumentations
 hydra-core
 python-dotenv
+scikit-video
+xlrd
+openpyxl
