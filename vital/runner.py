@@ -27,13 +27,28 @@ log = logging.getLogger(__name__)
 class VitalRunner(ABC):
     """Abstract runner that runs the main training/val loop, etc. using Lightning Trainer."""
 
+    # @staticmethod
+    # @hydra.main(config_path="config_example", config_name="default.yaml")
+    # def get_config(cfg):
+    #     """Returns the config from @hydra.main decorator.
+    #
+    #     This is a separate static method because @hydra.main decorator does not work on class methods.
+    #
+    #     Args:
+    #         cfg: Configuration to run the experiment.
+    #
+    #     Returns:
+    #         Configuration to run the experiment.
+    #     """
+    #     return cfg
+
     @classmethod
-    def main(cls) -> None:
+    def main(cls, cfg) -> None:
         """Runs the requested experiment."""
         # Set up the environment
         cls.pre_run_routine()
 
-        cfg = cls.get_config()
+        # cfg = cls.get_config()
 
         # Run the system with config loaded by @hydra.main
         cls.run_system(cfg)
@@ -47,21 +62,6 @@ class VitalRunner(ABC):
 
         OmegaConf.register_new_resolver("sys.gpus", lambda x=None: int(torch.cuda.is_available()))
         OmegaConf.register_new_resolver("sys.num_workers", lambda x=None: os.cpu_count() - 1)
-
-    @staticmethod
-    @hydra.main(config_path="config_example", config_name="default.yaml")
-    def get_config(cfg):
-        """Returns the config from @hydra.main decorator.
-
-        This is a separate static method because @hydra.main decorator does not work on class methods.
-
-        Args:
-            cfg: Configuration to run the experiment.
-
-        Returns:
-            Configuration to run the experiment.
-        """
-        return cfg
 
     @classmethod
     def run_system(cls, cfg: DictConfig) -> None:
