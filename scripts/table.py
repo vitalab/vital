@@ -44,8 +44,10 @@ def main():
     # parser.add_argument("--out_dir", type=Path, help="Output directory where to save the figures", required=True)
     args = parser.parse_args()
 
-    metrics = ['nb_edge_pixels', 'test_dice', 'val_dice', 'filtered_edge_error_pixels', 'validated_images',
-               'consulted_images']
+    metrics = ['test_dice', 'val_dice',
+               'nb_edge_pixels', 'filtered_edge_error_pixels',
+               'total_pixels', 'annotated_pixels',
+               'consulted_images', 'corrected_images', 'validated_images']
 
     # Cast to path excluded experiments arguments that are valid file paths
     excluded_experiments = (
@@ -74,9 +76,13 @@ def main():
 
     experiments_data = get_experiments_data(experiment_keys, metrics)
 
-    max_test_dice(experiments_data, args.group_by)
+    # max_test_dice(experiments_data, args.group_by)
+    initial_test_dice(experiments_data, args.group_by)
     val_test_dice(experiments_data, args.group_by)
     contour(experiments_data, args.group_by)
+    annotated_error(experiments_data, args.group_by)
+    consulted_images(experiments_data, args.group_by)
+    corrected_images(experiments_data, args.group_by)
 
 
 def max_test_dice(experiments_data, group_by):
@@ -89,9 +95,24 @@ def max_test_dice(experiments_data, group_by):
                     test_dice.loc[(test_dice.seed == seed) & (test_dice[group_by] == group)]['metricValue']).max()
                 seed_data.append(dice)
             seed_data = np.array(seed_data)
-            print(f"Max Test dice {group}: {seed_data.mean()} +- {seed_data.std()}")
+            print(f"Max Test dice {group}: {seed_data.mean():.4f} +- {seed_data.std():.4f}")
         except Exception as e:
             print(f"Max Test dice {group}: Failed, {e}")
+
+
+def initial_test_dice(experiments_data, group_by):
+    test_dice = experiments_data.loc[experiments_data.metricName == 'test_dice']
+    for group in set(test_dice[group_by]):
+        try:
+            seed_data = []
+            for seed in set(test_dice['seed']):
+                dice = np.array(
+                    test_dice.loc[(test_dice.seed == seed) & (test_dice[group_by] == group)]['metricValue'])[0]
+                seed_data.append(dice)
+            seed_data = np.array(seed_data)
+            print(f"Initial Test dice {group}: {seed_data.mean():.4f} +- {seed_data.std():.4f}")
+        except Exception as e:
+            print(f"Initial Test dice {group}: Failed, {e}")
 
 
 def val_test_dice(experiments_data, group_by):
@@ -110,7 +131,7 @@ def val_test_dice(experiments_data, group_by):
 
                 seed_data.append(run_test_dice[best_val_idx])
             seed_data = np.array(seed_data)
-            print(f"Max val Test dice {group}: {seed_data.mean()} +- {seed_data.std()}")
+            print(f"Max val Test dice {group}: {seed_data.mean():.4f} +- {seed_data.std():.4f}")
         except Exception as e:
             print(f"Max val Test dice {group}: Failed, {e}")
 
@@ -123,14 +144,74 @@ def contour(experiments_data, group_by):
             seed_data = []
             for seed in set(edge_error['seed']):
                 contour_error = \
-                    np.array(edge_error.loc[(edge_error.seed == seed) & (edge_error[group_by] == group)]['metricValue'])[
+                    np.array(
+                        edge_error.loc[(edge_error.seed == seed) & (edge_error[group_by] == group)]['metricValue'])[
                         -1]
                 total_pixels = np.array(edge.loc[(edge.seed == seed) & (edge[group_by] == group)]['metricValue'])[-1]
                 seed_data.append(contour_error / total_pixels)
             seed_data = np.array(seed_data)
-            print(f"Contour {group}: {seed_data.mean()} +- {seed_data.std()}")
+            print(f"Contour {group}: {seed_data.mean():.4f} +- {seed_data.std():.4f}")
         except Exception as e:
             print(f"Contour {group}: Failed {e}")
+
+
+def annotated_error(experiments_data, group_by):
+    annotated = experiments_data.loc[experiments_data.metricName == 'annotated_pixels']
+    total = experiments_data.loc[experiments_data.metricName == 'total_pixels']
+    for group in set(annotated[group_by]):
+        try:
+            seed_data = []
+            for seed in set(annotated['seed']):
+                contour_error = \
+                    np.array(
+                        annotated.loc[(annotated.seed == seed) & (annotated[group_by] == group)]['metricValue'])[
+                        -1]
+                total_pixels = np.array(total.loc[(total.seed == seed) & (total[group_by] == group)]['metricValue'])[-1]
+                seed_data.append(contour_error / total_pixels)
+            seed_data = np.array(seed_data)
+            print(f"Annotated {group}: {seed_data.mean():.4f} +- {seed_data.std():.4f}")
+        except Exception as e:
+            print(f"Annotated {group}: Failed {e}")
+
+
+def consulted_images(experiments_data, group_by):
+    consulted = experiments_data.loc[experiments_data.metricName == 'consulted_images']
+    validated = experiments_data.loc[experiments_data.metricName == 'validated_images']
+    for group in set(consulted[group_by]):
+        try:
+            seed_data = []
+            for seed in set(consulted['seed']):
+                contour_error = \
+                    np.array(consulted.loc[(consulted.seed == seed) & (consulted[group_by] == group)]['metricValue'])[
+                        -1]
+                total_pixels = \
+                    np.array(validated.loc[(validated.seed == seed) & (validated[group_by] == group)]['metricValue'])[
+                        -1]
+                seed_data.append(contour_error / total_pixels)
+            seed_data = np.array(seed_data)
+            print(f"Consulted {group}: {seed_data.mean():.4f} +- {seed_data.std():.4f}")
+        except Exception as e:
+            print(f"Consulted {group}: Failed {e}")
+
+
+def corrected_images(experiments_data, group_by):
+    corrected = experiments_data.loc[experiments_data.metricName == 'corrected_images']
+    validated = experiments_data.loc[experiments_data.metricName == 'validated_images']
+    for group in set(corrected[group_by]):
+        try:
+            seed_data = []
+            for seed in set(corrected['seed']):
+                contour_error = \
+                    np.array(corrected.loc[(corrected.seed == seed) & (corrected[group_by] == group)]['metricValue'])[
+                        -1]
+                total_pixels = \
+                    np.array(validated.loc[(validated.seed == seed) & (validated[group_by] == group)]['metricValue'])[
+                        -1]
+                seed_data.append(contour_error / total_pixels)
+            seed_data = np.array(seed_data)
+            print(f"Corrected {group}: {seed_data.mean():.4f} +- {seed_data.std():.4f}")
+        except Exception as e:
+            print(f"Corrected {group}: Failed {e}")
 
 
 if __name__ == "__main__":
