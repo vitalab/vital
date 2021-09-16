@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Literal
+from typing import Any, Dict, List, Literal, Sequence
 
 import numpy as np
 
@@ -94,6 +94,15 @@ class CamusTags(Tags):
             predicted segmentations before post-processing, etc.)
         rec: Tag referring to data that was reconstructed by an autoencoder model.
         frame_pos: Tag referring to the frame normalized index in the sequence (normalized so that ED=0 and ES=1).
+        lv_area: Tag referring to the number of pixels, in the groundtruths, associated to the left ventricle (LV).
+        lv_base_width: Tag referring to the width of the LV's base, in the groundtruths.
+        lv_length: Tag referring to the distance between the LV's base and apex, in the groundtruths.
+        lv_orientation: Tag referring to the angle between the LV's main axis and the vertical.
+        myo_area: Tag referring to the number of pixels, in the groundtruths, associated to the myocardium (MYO).
+        epi_center_x: Tag referring to the x-coordinate of the epicardium's center of mass.
+        epi_center_y: Tag referring to the y-coordinate of the epicardium's center of mass.
+        atrium_area: Tag referring to the number of pixels, in the groundtruths, associated to the left atrium.
+        seg_attrs: Collection of tags for attributes related to the segmentation sequences.
     """
 
     registered: str = "register"
@@ -109,6 +118,46 @@ class CamusTags(Tags):
     rec: str = "rec"
 
     frame_pos: str = "frame_pos"
+    lv_area: str = "lv_area"
+    lv_base_width: str = "lv_base_width"
+    lv_length: str = "lv_length"
+    lv_orientation: str = "lv_orientation"
+    myo_area: str = "myo_area"
+    epi_center_x: str = "epi_center_x"
+    epi_center_y: str = "epi_center_y"
+    atrium_area: str = "atrium_area"
+    seg_attrs: Sequence[str] = (
+        lv_area,
+        lv_base_width,
+        lv_length,
+        lv_orientation,
+        myo_area,
+        epi_center_x,
+        epi_center_y,
+        atrium_area,
+    )
+
+    @classmethod
+    def list_available_attrs(cls, labels: Sequence[Label]) -> List[str]:
+        """Lists attributes that are available for a segmentation, given the labels provided in the segmentation.
+
+        Args:
+            labels: Labels provided in the segmentation, that determine what attributes can be extracted from the
+                segmentation.
+
+        Returns:
+            Attributes available for the segmentation.
+        """
+        attrs = []
+        if Label.LV in labels:
+            attrs.extend([cls.lv_area, cls.lv_orientation])
+        if Label.MYO in labels:
+            attrs.append(cls.myo_area)
+        if Label.LV in labels and Label.MYO in labels:
+            attrs.extend([cls.lv_base_width, cls.lv_length, cls.epi_center_x, cls.epi_center_y])
+        if Label.ATRIUM in labels:
+            attrs.append(cls.atrium_area)
+        return sorted(attrs, key=cls.seg_attrs.index)
 
 
 in_channels: int = 1
