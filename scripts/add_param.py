@@ -47,20 +47,26 @@ def main():
         params = params.T
         params.columns = columns
         params = params.iloc[1]
+        heuristic = params['heuristic']
+        heuristic = 'MCP' if heuristic.lower() == 'certainty' else heuristic
         if params['human'] == 'true':
             name = f"{'human-' + params['correct_thresh'] if params['human'] == 'true' else ''}"
+            human_name = 'human'
         else:
-            name = f"{params['heuristic']}" \
+            name = f"{heuristic}" \
                    f"{'-flipped' if params['flip_uncertainties'] == 'true' else ''}" \
                    # f"{'_human_' + params['correct_thresh'] if params['human'] == 'true' else ''}"
+            human_name = name
 
         weights = params['weights'] if params['weights'] != 'None' else params['skip_0_weights']
         weights_name = f"{weights}_{name}"
 
         print(name)
         print(weights_name)
+        print(human_name)
 
         exp.log_parameter('group_by', name)
+        exp.log_parameter('group_by_human', human_name)
         exp.log_parameter('group_by_weights', weights_name)
 
 
