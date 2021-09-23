@@ -48,8 +48,10 @@ def main():
         params.columns = columns
         params = params.iloc[1]
         if params['human'] == 'true':
+            exp.add_tags(["HUMAN"])
             name = f"{'human-' + params['correct_thresh'] if params['human'] == 'true' else ''}"
         else:
+            exp.add_tags(["NOT_HUMAN"])
             name = f"{params['heuristic']}" \
                    f"{'-flipped' if params['flip_uncertainties'] == 'true' else ''}" \
                    # f"{'_human_' + params['correct_thresh'] if params['human'] == 'true' else ''}"
