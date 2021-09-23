@@ -162,6 +162,7 @@ def plot_mean_std_curve(
         ax = sns.lineplot(data=data, x=x, y="metricValue", hue=group_by)
         ax.set_title(plot_title)
         ax.set_ylabel(metric)
+        ax.legend_.set_title(None)
         if scale is not None:
             ax.set(yscale=scale)
 
@@ -204,9 +205,6 @@ def main():
         help="Key of the experiment to plot, or path to a file listing key of experiments to exclude from the plots",
     )
     parser.add_argument(
-        "--metric", type=str, nargs="+", help="Metric for which to plot each group's curve", required=True
-    )
-    parser.add_argument(
         "--scale",
         action=StoreDictKeyPair,
         default=dict(),
@@ -243,8 +241,13 @@ def main():
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    experiments_data = get_experiments_data(experiment_keys, args.metric)
-    for metric in args.metric:
+    metrics = ['test_dice', 'val_dice',
+               'nb_edge_pixels', 'filtered_edge_error_pixels',
+               'total_pixels', 'annotated_pixels',
+               'consulted_images', 'corrected_images', 'validated_images']
+
+    experiments_data = get_experiments_data(experiment_keys, metrics)
+    for metric in metrics:
         plot_mean_std_curve(experiments_data, metric, args.group_by, args.out_dir, scale=args.scale.get(metric))
 
 
