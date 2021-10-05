@@ -25,6 +25,7 @@ class MLP(nn.Module):
         output_shape: Tuple[int, ...],
         hidden: Optional[Sequence[int]] = (128,),
         output_activation: Optional[nn.Module] = None,
+        activation: str = 'ReLU',
         dropout: float = 0.25,
     ):
         super().__init__()
@@ -43,8 +44,9 @@ class MLP(nn.Module):
 
         # Hidden layers
         for i in range(0, len(layers) - 1):
-            self.net.add_module(f"relu_{i}", nn.ReLU())
-            self.net.add_module(f"drop_{i}", nn.Dropout(p=dropout))
+            self.net.add_module(f"{activation.lower()}_{i}", getattr(nn, activation)())
+            if dropout > 0:
+                self.net.add_module(f"drop_{i}", nn.Dropout(p=dropout))
             self.net.add_module(f"layer_{i+1}", nn.Linear(layers[i], layers[i + 1]))
 
         # Output layers
