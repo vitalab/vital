@@ -147,3 +147,11 @@ def reparameterize(mu: Tensor, logvar: Tensor) -> Tensor:
     std = torch.exp(0.5 * logvar)
     eps = torch.randn_like(std)
     return mu + eps * std
+
+
+class Reshape(nn.Module):
+    def __init__(self, shape: Tuple[int]):
+        self.shape
+
+    def __call__(self, x: torch.Tensor):
+        return x.view((-1, *self.shape))

@@ -52,6 +52,9 @@ class Decoder(nn.Module):
 
         # Projection from encoding to bottleneck
         self.feature_shape = (init_channels, image_size[0] // 2 ** (blocks + 1), image_size[1] // 2 ** (blocks + 1))
+
+        self.reshape = Reshape(self.feature_shape)
+
         self.encoding2features = nn.Sequential(
             OrderedDict(
                 [
@@ -96,6 +99,7 @@ class Decoder(nn.Module):
             (N, ``channels``, H, W), Raw, unnormalized scores for each class in the input's reconstruction.
         """
         features = self.encoding2features(z)
-        features = self.features2output(features.view((-1, *self.feature_shape)))
+        reshaped_features = self.reshape(features)
+        features = self.features2output(reshaped_features)
         out = self.classifier(features)
         return out
