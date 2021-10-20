@@ -19,6 +19,8 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         labels: Sequence[Union[str, Label]] = Label,
         fold: int = 5,
         use_sequence: bool = False,
+        num_neighbors: int = 0,
+        neighbor_padding: Literal["edge", "wrap"] = "edge",
         **kwargs,
     ):
         """Initializes class instance.
@@ -29,6 +31,10 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
                 labels included in the data.
             fold: ID of the cross-validation fold to use.
             use_sequence: Enable use of full temporal sequences.
+            num_neighbors: Number of neighboring frames on each side of an item's frame to include as part of an item's
+                data.
+            neighbor_padding: Mode used to determine how to pad neighboring instants at the beginning/end of a sequence.
+                The options mirror those of the ``mode`` parameter of ``numpy.pad``.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
         dataset_path = Path(dataset_path)
@@ -49,7 +55,14 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
             **kwargs,
         )
 
-        self._dataset_kwargs = {"path": dataset_path, "fold": fold, "labels": labels, "use_sequence": use_sequence}
+        self._dataset_kwargs = {
+            "path": dataset_path,
+            "fold": fold,
+            "labels": labels,
+            "use_sequence": use_sequence,
+            "neighbors": num_neighbors,
+            "neighbor_padding": neighbor_padding,
+        }
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
         if stage == "fit":

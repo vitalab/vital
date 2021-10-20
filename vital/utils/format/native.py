@@ -38,6 +38,18 @@ def squeeze(seq: Sequence[Item]) -> Union[Item, Sequence[Item]]:
     return seq
 
 
+def flatten(nested_list) -> List:
+    """Flattens a (nested) list recursively.
+
+    Args:
+        nested_list: List to flatten.
+
+    Returns:
+        Flattened list.
+    """
+    return sum(map(flatten, nested_list), []) if isinstance(nested_list, list) else [nested_list]
+
+
 def filter_excluded(seq: Sequence[str], to_exclude: Sequence[Union[str, Path]]) -> List[str]:
     """Filters a sequence of strings to exclude specific strings.
 
