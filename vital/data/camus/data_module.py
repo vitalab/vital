@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Literal, Sequence, Union
+from typing import List, Literal, Sequence, Union, Tuple, Optional
 
 from torch.utils.data import DataLoader
 
@@ -19,6 +19,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         labels: Sequence[Union[str, Label]] = Label,
         fold: int = 5,
         use_sequence: bool = False,
+        max_patients: Optional[int] = None,
         **kwargs,
     ):
         """Initializes class instance.
@@ -33,6 +34,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         """
         dataset_path = Path(dataset_path)
         labels = tuple(Label.from_name(str(label)) for label in labels)
+        self.max_patients = max_patients
 
         # Infer the shape of the data from the content of the dataset.
         try:
@@ -54,7 +56,8 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
         if stage == "fit":
-            self._dataset[Subset.TRAIN] = Camus(image_set=Subset.TRAIN, **self._dataset_kwargs)
+            self._dataset[Subset.TRAIN] = Camus(image_set=Subset.TRAIN, **self._dataset_kwargs,
+                                                max_patients=self.max_patients)
             self._dataset[Subset.VAL] = Camus(image_set=Subset.VAL, **self._dataset_kwargs)
         if stage == "test":
             self._dataset[Subset.TEST] = Camus(image_set=Subset.TEST, predict=True, **self._dataset_kwargs)
