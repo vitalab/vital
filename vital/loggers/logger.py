@@ -7,6 +7,7 @@ from pathos.multiprocessing import Pool
 from tqdm import tqdm
 
 from vital.loggers.utils.itertools import IterableResult, Result
+from vital.utils.logging import configure_logging
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,7 @@ class Logger:
     @classmethod
     def main(cls):
         """Generic main that handles CLI and logger calling for use in loggers that could be executable scripts."""
+        configure_logging(log_to_console=True, console_level=logging.INFO)
         parser = cls.build_parser()
         kwargs = vars(parser.parse_args())
 
