@@ -233,6 +233,9 @@ class Camus(VisionDataset):
         frame_pos = torch.tensor([instant / len(view_imgs)])
         gt_attrs = get_segmentation_attributes(gt, self.labels)
 
+        if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
+            gt[gt != 0] = 1
+
         return {
             CamusTags.id: f"{patient_view_key}/{instant}",
             CamusTags.group: patient_view_key,
@@ -274,7 +277,6 @@ class Camus(VisionDataset):
 
                 # If we do not use the whole sequence
                 if self.dataset_with_sequence and not self.use_sequence:
-
                     # Only keep clinically important instants
                     instant_indices = list(instants.values())
                     proc_imgs = proc_imgs[instant_indices]
@@ -301,6 +303,12 @@ class Camus(VisionDataset):
                     CamusTags.frame_pos: torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1),
                     **get_segmentation_attributes(proc_gts_tensor, self.labels),
                 }
+
+                if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
+                    proc_gts_tensor[proc_gts_tensor != 0] = 1
+
+                if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
+                    gts[gts != 0] = 1
 
                 patient_data.views[view] = ViewData(
                     img_proc=proc_imgs_tensor,

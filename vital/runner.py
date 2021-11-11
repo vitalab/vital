@@ -1,3 +1,4 @@
+import collections
 import logging
 import os
 from abc import ABC
@@ -57,8 +58,7 @@ class VitalRunner(ABC):
         """
         cfg = VitalRunner._check_cfg(cfg)
 
-        if cfg.ckpt:
-            ckpt_path = resolve_model_checkpoint_path(cfg.ckpt)
+        ckpt_path = resolve_model_checkpoint_path(cfg.ckpt) if cfg.ckpt else None
 
         cfg.seed = seed_everything(cfg.seed, workers=True)
 
@@ -75,7 +75,10 @@ class VitalRunner(ABC):
         if isinstance(trainer.logger, CometLogger):
             logger.experiment.log_asset_folder(".hydra", log_file_name=True)
             if cfg.get("comet_tags", None):
-                logger.experiment.add_tags(list(cfg.comet_tags))
+                if isinstance(cfg.comet_tags, collections.Sequence):
+                    logger.experiment.add_tags(list(cfg.comet_tags))
+                else:
+                    logger.experiment.add_tag(cfg.comet_tags)
 
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
         log_dir = Path(trainer.log_dir) if trainer.log_dir else Path(cfg.trainer.default_root_dir)
@@ -97,15 +100,15 @@ class VitalRunner(ABC):
         # Instantiate model with the created module.
         model: VitalSystem = hydra.utils.instantiate(cfg.system, module=module, data_params=datamodule.data_params)
 
-        if cfg.ckpt:  # Load pretrained model if checkpoint is provided
-            if cfg.weights_only:
-                log.info(f"Loading weights from {ckpt_path}")
-                model.load_state_dict(torch.load(ckpt_path, map_location=model.device)["state_dict"], strict=cfg.strict)
-            else:
-                log.info(f"Loading model from {ckpt_path}")
-                model = model.load_from_checkpoint(
-                    ckpt_path, module=module, data_params=datamodule.data_params, strict=cfg.strict
-                )
+        if ckpt_path:  # Load pretrained model if checkpoint is provided
+            log.info(f"Loading model from {ckpt_path}")
+            model = model.load_from_checkpoint(
+                str(ckpt_path), module=module, data_params=datamodule.data_params, strict=cfg.strict
+            )
+        elif cfg.weights:
+            weights = resolve_model_checkpoint_path(cfg.weights)
+            log.info(f"Loading weights from {weights}")
+            model.load_state_dict(torch.load(weights, map_location=model.device)["state_dict"], strict=cfg.strict)
 
         if cfg.train:
             trainer.fit(model, datamodule=datamodule)
@@ -140,6 +143,8 @@ class VitalRunner(ABC):
         if not cfg.trainer.get("default_root_dir", None):
             with open_dict(cfg):
                 cfg.trainer.default_root_dir = os.getcwd()
+
+        assert not (cfg.ckpt and cfg.weights), "Cannot load `ckpt` and `weights`"
 
         return cfg
 

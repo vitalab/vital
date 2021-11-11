@@ -15,8 +15,9 @@ resume: False
 # hydra will change the current working directory. For example:
 # If defined in the config:  `ckpt: ${work_dir}/path/to/checkpoint.ckpt`
 # If defined in the command line: `ckpt=\${work_dir}/path/to/checkpoint.ckpt`
+# Same syntax is expected for weights parameter.
 ckpt: null
-weights_only: False
+weights: null
 strict: True
 
 train: True

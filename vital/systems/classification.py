@@ -44,5 +44,13 @@ class ClassificationComputationMixin(TrainValComputationMixin):
         loss = F.cross_entropy(y_hat, y)
         acc = accuracy(y_hat, y)
 
+        if self.is_val_step and batch_idx == 0:
+            self.log_images(
+                title="Sample",
+                num_images=5,
+                axes_content={"Image": x.cpu().squeeze().numpy()},
+                info=[f"(Gt: {y[i].item()} - Pred: {y_hat.argmax(dim=1)[i].item()})" for i in range(5)],
+            )
+
         # Format output
         return {"loss": loss, "accuracy": acc}
