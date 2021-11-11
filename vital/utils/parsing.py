@@ -1,5 +1,5 @@
 import argparse
-from typing import Type
+from typing import Type, Union
 
 import yaml
 
@@ -21,6 +21,25 @@ class StoreDictKeyPair(argparse.Action):
         args_map = yaml.safe_load(yaml_str)
 
         setattr(namespace, self.dest, args_map)
+
+
+def int_or_float(val: str) -> Union[int, float]:
+    """Parses a string as either an integer or a float.
+
+    Args:
+        val: String representation of an integer/float to parse.
+
+    Returns:
+        Integer/float value parsed from the string.
+    """
+    try:
+        cast_val = int(val)
+    except ValueError:
+        try:
+            cast_val = float(val)
+        except ValueError:
+            raise
+    return cast_val
 
 
 def get_classpath_group(parser: argparse.ArgumentParser, cls: Type) -> argparse._ArgumentGroup:
