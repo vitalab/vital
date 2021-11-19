@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, List, Literal, Sequence, Tuple, Union
+from typing import Callable, Dict, List, Literal, Sequence, Tuple, Union, Optional
 
 import h5py
 import numpy as np
@@ -32,6 +32,7 @@ class Camus(VisionDataset):
         transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
         transform: Callable[[Tensor], Tensor] = None,
         target_transform: Callable[[Tensor], Tensor] = None,
+        max_patients: Optional[int] = None
     ):
         """Initializes class instance.
 
@@ -59,6 +60,7 @@ class Camus(VisionDataset):
         self.labels = labels
         self.use_sequence = use_sequence
         self.predict = predict
+        self.max_patients = max_patients
 
         with h5py.File(path, "r") as f:
             self.registered_dataset = f.attrs[CamusTags.registered]
@@ -117,6 +119,7 @@ class Camus(VisionDataset):
                 patient_path_byte.decode()
                 for patient_path_byte in dataset[f"cross_validation/fold_{self.fold}/{self.image_set.value}"]
             ]
+            groups = groups[:self.max_patients] if self.max_patients is not None else groups
             if level == "view":
                 groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys()]
 
