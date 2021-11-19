@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 import numpy as np
+
 from vital.data.config import DataTag
 
 
@@ -11,6 +12,7 @@ class Label(DataTag):
         BG: Label of the background.
         MYO: Label of the myocardium, bounded by the encocardium and epicardium.
     """
+
     BG = 0
     MYO = 1
 

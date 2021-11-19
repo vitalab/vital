@@ -10,6 +10,10 @@ from vital.utils.format.native import prefix as prefix_fn
 from vital.utils.format.native import squeeze as squeeze_fn
 
 
+def _has_method(o: object, name: str) -> bool:
+    return callable(getattr(o, name, None))
+
+
 def prefix(
     prefix: str, exclude: Union[str, Sequence[str]] = None
 ) -> Callable[[Callable[..., Mapping[str, Any]]], Callable[..., Dict[str, Any]]]:
@@ -64,13 +68,24 @@ def batch_function(item_ndim: int) -> Callable:
 
     def batch_function_decorator(func: Callable) -> Callable:
         @wraps(func)
-        def _loop_function_on_batch(data, *args, **kwargs):
+        def _loop_function_on_batch(*args, **kwargs):
+            if _has_method(args[0], func.__name__):
+                # If `func` is a method, pass over the implicit `self` as first argument
+                self_or_empty, args = args[0:1], args[1:]
+            else:
+                self_or_empty = ()
+            data, *args = args
+            if not isinstance(data, np.ndarray):
+                raise ValueError(
+                    f"The first argument provided to '{func.__name__}' was not the input data, as a numpy array, "
+                    f"expected by the function. The first argument of the function was rather of type '{type(data)}'."
+                )
             if data.ndim == item_ndim:  # If the input data is a single item
-                result = np.array(func(data, *args, **kwargs))
+                result = np.array(func(*self_or_empty, data, *args, **kwargs))
                 if result.ndim == 0:  # If the function's output is a single number, add a dim of 1 for consistency
                     result = result[None]
             elif data.ndim == (item_ndim + 1):  # If the input data is a batch of items
-                result = np.array([func(item, *args, **kwargs) for item in data])
+                result = np.array([func(*self_or_empty, item, *args, **kwargs) for item in data])
             else:
                 raise RuntimeError(
                     f"Couldn't apply '{func.__name__}', either in batch or one-shot, over the input data. The use of"

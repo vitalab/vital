@@ -1,3 +1,4 @@
+import itertools
 from pathlib import Path
 from typing import Callable, Dict, List, Literal, Sequence, Tuple, Union, Optional
 
@@ -10,12 +11,15 @@ from torchvision.transforms.functional import to_tensor
 
 from vital.data.camus.config import CamusTags, Label
 from vital.data.camus.data_struct import PatientData, ViewData
+from vital.data.camus.utils.measure import EchoMeasure
 from vital.data.camus.utils.register import CamusRegisteringTransformer
 from vital.data.config import Subset
 from vital.utils.decorators import squeeze
 from vital.utils.image.transform import remove_labels, segmentation_to_tensor
 
 ItemId = Tuple[str, int]
+InstantItem = Dict[str, Union[str, Tensor]]
+RecursiveInstantItem = Dict[str, Union[str, Tensor, Dict[str, InstantItem]]]
 
 
 class Camus(VisionDataset):
@@ -29,6 +33,8 @@ class Camus(VisionDataset):
         labels: Sequence[Label] = Label,
         use_sequence: bool = False,
         predict: bool = False,
+        neighbors: Union[int, Sequence[int]] = 0,
+        neighbor_padding: Literal["edge", "wrap"] = "edge",
         transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
         transform: Callable[[Tensor], Tensor] = None,
         target_transform: Callable[[Tensor], Tensor] = None,
@@ -43,6 +49,11 @@ class Camus(VisionDataset):
             labels: Labels of the segmentation classes to take into account.
             use_sequence: Whether to use the complete sequence between ED and ES for each view.
             predict: Whether to receive the data in a format fit for inference (``True``) or training (``False``).
+            neighbors: Neighboring frames to include in a train/val item. The value either indicates the number of
+                neighboring frames on each side of the item's frame (`int`), or a list of offsets w.r.t the item's
+                frame (`Sequence[int]`).
+            neighbor_padding: Mode used to determine how to pad neighboring instants at the beginning/end of a sequence.
+                The options mirror those of the ``mode`` parameter of ``numpy.pad``.
             transforms: Function that takes in an input/target pair and transforms them in a corresponding way.
                 (only applied when `predict` is `False`, i.e. in train/validation mode)
             transform: Function that takes in an input and transforms it.
@@ -60,6 +71,8 @@ class Camus(VisionDataset):
         self.labels = labels
         self.use_sequence = use_sequence
         self.predict = predict
+        self.neighbors = neighbors
+        self.neighbor_padding = neighbor_padding
         self.max_patients = max_patients
 
         with h5py.File(path, "r") as f:
@@ -82,7 +95,7 @@ class Camus(VisionDataset):
             self.item_list = self._get_instant_paths()
             self.getter = self._get_train_item
 
-    def __getitem__(self, index) -> Union[Dict[str, Union[str, Tensor]], PatientData]:
+    def __getitem__(self, index) -> Union[RecursiveInstantItem, PatientData]:
         """Fetches an item, whose structure depends on the ``predict`` value, from the internal list of items.
 
         Notes:
@@ -152,8 +165,13 @@ class Camus(VisionDataset):
                         image_paths.append((view_path, instant))
         return image_paths
 
-    def _get_train_item(self, index: int) -> Dict[str, Union[str, Tensor]]:
-        """Fetches data required for training on a train/val item (single image/groundtruth pair).
+    def _get_train_item(self, index: int) -> RecursiveInstantItem:
+        """Fetches data required for training on a train/val item.
+
+        Notes:
+            -  If ``self.neighbors>0``, the result will include data from other items: neighboring instants from the
+               patient/view sequence of the item pointed at by ``index``. Because of this, setting ``self.neighbors>0``
+               can rapidly increase the memory footprint of the program.
 
         Args:
             index: Index of the train/val sample in the train/val set's ``self.item_list``.
@@ -161,23 +179,62 @@ class Camus(VisionDataset):
         Returns:
             Data for training on a train/val item.
         """
+        item = self._get_instant_item(index)
+        if self.neighbors:
+            patient_view_key, instant = self.item_list[index]
+            # Determine the requested neighbors' offset to the current item
+            if isinstance(self.neighbors, int):  # If `neighbors` indicates the number of neighbors on each side
+                instant_diffs = itertools.chain(range(-self.neighbors, 0), range(1, self.neighbors + 1))
+            else:  # If `neighbors` is a list of the neighbors offset w.r.t the current item
+                instant_diffs = self.neighbors
+
+            # Determine which items' to use as neighbors
+            with h5py.File(self.root, "r") as dataset:
+                seq_len = len(dataset[patient_view_key][CamusTags.img_proc])
+            if self.neighbor_padding == "edge":
+                neigh_instants = {diff: np.clip(instant + diff, 0, seq_len) for diff in instant_diffs}
+            elif self.neighbor_padding == "wrap":
+                neigh_instants = {diff: (instant + diff) % seq_len for diff in instant_diffs}
+            else:
+                raise ValueError(
+                    f"Unexpected value for `neighbor_padding`: {self.neighbor_padding}. Use one of: ('edge', 'wrap')"
+                )
+
+            # Fetch the neighbors' data
+            item[CamusTags.neighbors] = {
+                diff: self._get_instant_item(self.item_list.index((patient_view_key, instant)))
+                for diff, instant in neigh_instants.items()
+            }
+
+        return item
+
+    def _get_instant_item(self, index: int) -> InstantItem:
+        """Fetches data and metadata related to an instant (single image/groundtruth pair + metadata).
+
+        Args:
+            index: Index of the instant sample in the train/val set's ``self.item_list``.
+
+        Returns:
+            Data and metadata related to an instant.
+        """
         patient_view_key, instant = self.item_list[index]
 
+        # Collect data
         with h5py.File(self.root, "r") as dataset:
-            # Collect and process data
             view_imgs, view_gts = self._get_data(dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
-            img = view_imgs[instant]
-            gt = self._process_target_data(view_gts[instant])
 
-            # Collect metadata
-            # Explicit cast to float32 to avoid "Expected object" type error in PyTorch models
-            # that output ``FloatTensor`` by default (and not ``DoubleTensor``)
-            frame_pos = np.float32(instant / view_imgs.shape[0])
-
+        # Format data
+        img = view_imgs[instant]
+        gt = self._process_target_data(view_gts[instant])
         img, gt = to_tensor(img), segmentation_to_tensor(gt)
+
+        # Apply transforms on the data
         if self.transforms:
             img, gt = self.transforms(img, gt)
-        frame_pos = torch.tensor([frame_pos])
+
+        # Compute attributes on the data
+        frame_pos = torch.tensor([instant / len(view_imgs)])
+        gt_attrs = get_segmentation_attributes(gt, self.labels)
 
         if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
             gt[gt != 0] = 1
@@ -188,6 +245,7 @@ class Camus(VisionDataset):
             CamusTags.img: img,
             CamusTags.gt: gt,
             CamusTags.frame_pos: frame_pos,
+            **gt_attrs,
         }
 
     def _get_test_item(self, index: int) -> PatientData:
@@ -244,7 +302,10 @@ class Camus(VisionDataset):
                     }
 
                 # Compute attributes for the sequence
-                attrs = {CamusTags.frame_pos: torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1)}
+                attrs = {
+                    CamusTags.frame_pos: torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1),
+                    **get_segmentation_attributes(proc_gts_tensor, self.labels),
+                }
 
                 if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
                     proc_gts_tensor[proc_gts_tensor != 0] = 1
@@ -312,3 +373,45 @@ class Camus(VisionDataset):
         """
         patient_view = file[patient_view_key]
         return [patient_view.attrs[attr_tag] for attr_tag in metadata_tags]
+
+
+def get_segmentation_attributes(
+    segmentation: Union[np.ndarray, Tensor], labels: Sequence[Label]
+) -> Dict[str, Union[np.ndarray, Tensor]]:
+    """Measures a variety of attributes on a (batch of) segmentation(s).
+
+    Args:
+        segmentation: ([N], H, W), Segmentation(s) on which to compute a variety of attributes.
+        labels: Labels of the classes included in the segmentation(s).
+
+    Returns:
+        Mapping between the attributes and ([N], 1) arrays of their values for each segmentation in the batch.
+    """
+    attrs = {}
+    if Label.LV in labels:
+        attrs.update(
+            {
+                CamusTags.lv_area: EchoMeasure.structure_area(segmentation, Label.LV.value),
+                CamusTags.lv_orientation: EchoMeasure.structure_orientation(
+                    segmentation, Label.LV.value, reference_orientation=90
+                ),
+            }
+        )
+    if Label.MYO in labels:
+        attrs.update({CamusTags.myo_area: EchoMeasure.structure_area(segmentation, Label.MYO.value)})
+    if Label.LV in labels and Label.MYO in labels:
+        attrs.update(
+            {
+                CamusTags.lv_base_width: EchoMeasure.lv_base_width(segmentation),
+                CamusTags.lv_length: EchoMeasure.lv_length(segmentation),
+                CamusTags.epi_center_x: EchoMeasure.structure_center(
+                    segmentation, [Label.LV.value, Label.MYO.value], axis=1
+                ),
+                CamusTags.epi_center_y: EchoMeasure.structure_center(
+                    segmentation, [Label.LV.value, Label.MYO.value], axis=0
+                ),
+            }
+        )
+    if Label.ATRIUM in labels:
+        attrs.update({CamusTags.atrium_area: EchoMeasure.structure_area(segmentation, Label.ATRIUM.value)})
+    return attrs
