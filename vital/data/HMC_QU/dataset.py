@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Callable, Dict, List, Literal, Tuple, Union
 
@@ -6,11 +7,13 @@ import numpy as np
 import torch
 from torch import Tensor
 from torchvision.datasets import VisionDataset
+from torchvision.transforms import Compose, Normalize
 from torchvision.transforms.functional import to_tensor
 
 from vital.data.camus.config import CamusTags
 from vital.data.camus.data_struct import PatientData, ViewData
 from vital.data.config import Subset
+from vital.data.transforms import NormalizeSample
 from vital.utils.decorators import squeeze
 from vital.utils.image.transform import segmentation_to_tensor
 
@@ -46,6 +49,8 @@ class HMC_QU(VisionDataset):
         self.image_set = image_set
 
         self.predict = predict
+
+        print(transform)
 
         # Determine whether to return data in a format suitable for training or inference
         if self.predict:
@@ -88,9 +93,12 @@ class HMC_QU(VisionDataset):
         """
         with h5py.File(self.root, "r") as dataset:
             # List the patients
-            groups = [f"{self.image_set.value}/{key}" for key in dataset[self.image_set.value].keys()]
+            groups = list(dataset[self.image_set.value].keys())
             if level == "view":
-                groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys()]
+                groups = [f"{patient}/{view}"
+                          for patient in groups
+                          for view in dataset[f"{self.image_set}/{patient}"].keys()
+                          ]
 
         return groups
 
@@ -104,7 +112,7 @@ class HMC_QU(VisionDataset):
         view_paths = self.list_groups(level="view")
         with h5py.File(self.root, "r") as dataset:
             for view_path in view_paths:
-                view_group = dataset[view_path]
+                view_group = dataset[f"{self.image_set}/{view_path}"]
                 for instant in range(view_group[CamusTags.gt].shape[0]):
                     image_paths.append((view_path, instant))
         return image_paths
@@ -122,7 +130,8 @@ class HMC_QU(VisionDataset):
 
         with h5py.File(self.root, "r") as dataset:
             # Collect and process data
-            view_imgs, view_gts = self._get_data(dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
+            view_imgs, view_gts = self._get_data(dataset, f"{self.image_set}/{patient_view_key}",
+                                                 CamusTags.img_proc, CamusTags.gt_proc)
             img = view_imgs[instant]
             gt = view_gts[instant]
 
@@ -155,8 +164,8 @@ class HMC_QU(VisionDataset):
         """
         with h5py.File(self.root, "r") as dataset:
             patient_data = PatientData(id=self.item_list[index])
-            for view in dataset[self.item_list[index]]:
-                patient_view_key = f"{self.item_list[index]}/{view}"
+            for view in dataset[f"{self.image_set}/{self.item_list[index]}"]:
+                patient_view_key = f"{self.image_set}/{self.item_list[index]}/{view}"
 
                 # Collect and process data
                 proc_imgs, proc_gts, gts = self._get_data(
@@ -177,7 +186,7 @@ class HMC_QU(VisionDataset):
                     gt_proc=proc_gts_tensor,
                     gt=gts,
                     voxelspacing=(1.0, 1.0, 1.0),
-                    instants=None,
+                    instants={str(i): i for i in range(proc_imgs_tensor.shape[0])},
                     attrs=attrs,
                     registering=None,
                 )
@@ -214,7 +223,18 @@ if __name__ == "__main__":
     args.add_argument("--predict", action="store_true")
     params = args.parse_args()
 
-    ds = HMC_QU(Path(params.path), image_set=Subset.TRAIN, predict=params.predict)
+    ds = HMC_QU(Path(params.path), image_set=Subset.TRAIN, predict=params.predict) #, transform=Normalize(mean=0.1555, std=0.2126))
+
+    samples = []
+    for sample in ds:
+        samples.append(sample[CamusTags.img].squeeze().numpy())
+
+    samples = np.array(samples)
+
+    print(samples.min())
+    print(samples.max())
+    print(samples.mean())
+    print(samples.std())
 
     if params.predict:
         patient = ds[random.randint(0, len(ds) - 1)]
@@ -229,13 +249,19 @@ if __name__ == "__main__":
         img = img[slice].squeeze()
         gt = gt[slice]
     else:
-        sample = ds[random.randint(0, len(ds) - 1)]
+        sample = ds[10]
         img = sample[CamusTags.img].squeeze()
         print(img.min())
         print(img.max())
         gt = sample[CamusTags.gt]
         print("Image shape: {}".format(img.shape))
         print("GT shape: {}".format(gt.shape))
+
+
+    print(img.min())
+    print(img.max())
+    print(img.mean())
+    print(img.std())
 
     f, (ax1, ax2) = plt.subplots(1, 2)
     ax1.imshow(img)

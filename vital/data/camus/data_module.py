@@ -1,8 +1,9 @@
 from pathlib import Path
+from typing import Callable, Tuple
 from typing import List, Literal, Sequence, Union, Optional
 
+from torch import Tensor
 from torch.utils.data import DataLoader
-
 from vital.data.camus.config import CamusTags, Label, in_channels
 from vital.data.camus.dataset import Camus
 from vital.data.config import DataParameters, Subset
@@ -19,9 +20,13 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         labels: Sequence[Union[str, Label]] = Label,
         fold: int = 5,
         use_sequence: bool = False,
+        transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
+        transform: Callable[[Tensor], Tensor] = None,
+        target_transform: Callable[[Tensor], Tensor] = None,
         num_neighbors: int = 0,
         neighbor_padding: Literal["edge", "wrap"] = "edge",
         max_patients: Optional[int] = None,
+        da: Literal["pixel", "spatial"] = None,
         **kwargs,
     ):
         """Initializes class instance.
@@ -41,6 +46,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         dataset_path = Path(dataset_path)
         labels = tuple(Label.from_name(str(label)) for label in labels)
         self.max_patients = max_patients
+        self.data_augmentation = da
 
         # Infer the shape of the data from the content of the dataset.
         try:
@@ -65,12 +71,16 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
             "use_sequence": use_sequence,
             "neighbors": num_neighbors,
             "neighbor_padding": neighbor_padding,
+            'transforms': transforms,
+            'transform': transform,
+            'target_transform': target_transform
         }
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
         if stage == "fit":
             self._dataset[Subset.TRAIN] = Camus(image_set=Subset.TRAIN, **self._dataset_kwargs,
-                                                max_patients=self.max_patients)
+                                                max_patients=self.max_patients,
+                                                data_augmentation=self.data_augmentation)
             self._dataset[Subset.VAL] = Camus(image_set=Subset.VAL, **self._dataset_kwargs)
         if stage == "test":
             self._dataset[Subset.TEST] = Camus(image_set=Subset.TEST, predict=True, **self._dataset_kwargs)

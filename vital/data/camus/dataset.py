@@ -2,13 +2,14 @@ import itertools
 from pathlib import Path
 from typing import Callable, Dict, List, Literal, Sequence, Tuple, Union, Optional
 
+import albumentations as A
+import cv2
 import h5py
 import numpy as np
 import torch
+import torchvision
 from torch import Tensor
 from torchvision.datasets import VisionDataset
-from torchvision.transforms.functional import to_tensor
-
 from vital.data.camus.config import CamusTags, Label
 from vital.data.camus.data_struct import PatientData, ViewData
 from vital.data.camus.utils.measure import EchoMeasure
@@ -38,7 +39,8 @@ class Camus(VisionDataset):
         transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
         transform: Callable[[Tensor], Tensor] = None,
         target_transform: Callable[[Tensor], Tensor] = None,
-        max_patients: Optional[int] = None
+        max_patients: Optional[int] = None,
+        data_augmentation: Literal["pixel", "spatial"] = None,
     ):
         """Initializes class instance.
 
@@ -74,6 +76,32 @@ class Camus(VisionDataset):
         self.neighbors = neighbors
         self.neighbor_padding = neighbor_padding
         self.max_patients = max_patients
+
+        if transforms is not None:
+            self.transforms = A.Compose(transforms)
+        elif data_augmentation:
+            if data_augmentation == "pixel":
+                # TODO: Fix normalization of intensity values in input image
+                self.transforms = A.Compose(
+                    [
+                        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2),
+                        A.RandomGamma(gamma_limit=(80, 120)),
+                    ]
+                )
+            elif data_augmentation == "spatial":
+                self.transforms = A.ShiftScaleRotate(
+                    shift_limit=0.0625, scale_limit=0.1, rotate_limit=10, border_mode=cv2.BORDER_CONSTANT, value=0
+                )
+            else:
+                raise ValueError(
+                    f"Unexpected value for parameter `data_augmentation`: {data_augmentation}. "
+                    f"Please change it to one of the supported values: ['pixel', 'spatial']."
+                )
+        else:
+            self.transforms = None
+
+        self._base_transform = torchvision.transforms.ToTensor()
+        self._base_target_transform = segmentation_to_tensor
 
         with h5py.File(path, "r") as f:
             self.registered_dataset = f.attrs[CamusTags.registered]
@@ -222,15 +250,17 @@ class Camus(VisionDataset):
         # Collect data
         with h5py.File(self.root, "r") as dataset:
             view_imgs, view_gts = self._get_data(dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
-
-        # Format data
         img = view_imgs[instant]
         gt = self._process_target_data(view_gts[instant])
-        img, gt = to_tensor(img), segmentation_to_tensor(gt)
 
-        # Apply transforms on the data
+        img = img / 255
+
         if self.transforms:
-            img, gt = self.transforms(img, gt)
+            transformed = self.transforms(image=img, mask=gt)
+            img = transformed["image"]
+            gt = transformed["mask"]
+
+        img, gt = self._base_transform(img), self._base_target_transform(gt)
 
         # Compute attributes on the data
         frame_pos = torch.tensor([instant / len(view_imgs)])
@@ -289,9 +319,11 @@ class Camus(VisionDataset):
                     # Update indices of clinically important instants to match the new slicing of the sequences
                     instants = {instant: idx for idx, instant in enumerate(instants)}
 
+                proc_imgs = proc_imgs / 255
+
                 # Transform arrays to tensor
-                proc_imgs_tensor = torch.stack([to_tensor(proc_img) for proc_img in proc_imgs])
-                proc_gts_tensor = torch.stack([segmentation_to_tensor(proc_gt) for proc_gt in proc_gts])
+                proc_imgs_tensor = torch.stack([self._base_transform(proc_img) for proc_img in proc_imgs])
+                proc_gts_tensor = torch.stack([self._base_target_transform(proc_gt) for proc_gt in proc_gts])
 
                 # Extract metadata concerning the registering applied
                 registering_parameters = None
@@ -415,3 +447,64 @@ def get_segmentation_attributes(
     if Label.ATRIUM in labels:
         attrs.update({CamusTags.atrium_area: EchoMeasure.structure_area(segmentation, Label.ATRIUM.value)})
     return attrs
+
+
+if __name__ == "__main__":
+    import random
+    from argparse import ArgumentParser
+
+    from matplotlib import pyplot as plt
+
+    from vital.data.camus.config import View
+
+    args = ArgumentParser(add_help=False)
+    args.add_argument("path", type=str)
+    args.add_argument("--predict", action="store_true")
+    params = args.parse_args()
+
+    ds = Camus(Path(params.path), image_set=Subset.TRAIN, predict=params.predict, fold=5, data_augmentation='pixel')
+
+    samples = []
+    for sample in ds:
+        samples.append(sample[CamusTags.img].squeeze().numpy())
+
+    samples = np.array(samples)
+
+    print(samples.min())
+    print(samples.max())
+    print(samples.mean())
+    print(samples.std())
+
+    if params.predict:
+        patient = ds[random.randint(0, len(ds) - 1)]
+        instant = patient.views[View.A4C]
+        img = instant.img_proc
+        gt = instant.gt_proc
+        print("Image shape: {}".format(img.shape))
+        print("GT shape: {}".format(gt.shape))
+        print("ID: {}".format(patient.id))
+
+        slice = random.randint(0, len(img) - 1)
+        img = img[slice].squeeze()
+        gt = gt[slice]
+    else:
+        sample = ds[random.randint(0, len(ds) - 1)]
+        img = sample[CamusTags.img].squeeze()
+        gt = sample[CamusTags.gt]
+        print("Image shape: {}".format(img.shape))
+        print("GT shape: {}".format(gt.shape))
+
+    print(img.min())
+    print(img.max())
+    print(img.mean())
+    print(img.std())
+
+    f, (ax1, ax2) = plt.subplots(1, 2)
+    ax1.imshow(img)
+    ax2.imshow(gt)
+    plt.show(block=False)
+
+    plt.figure(2)
+    plt.imshow(img, cmap="gray")
+    plt.imshow(gt, alpha=0.2)
+    plt.show()

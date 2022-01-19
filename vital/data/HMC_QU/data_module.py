@@ -1,6 +1,7 @@
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal, Union, Callable, Tuple
 
+from torch import Tensor
 from torch.utils.data import DataLoader
 
 from vital.data.config import DataParameters, Subset
@@ -12,7 +13,13 @@ from vital.data.HMC_QU.dataset import HMC_QU
 class HMC_QUDataModule(VitalDataModule):
     """Implementation of the ``VitalDataModule`` for the ACDC dataset."""
 
-    def __init__(self, dataset_path: Union[str, Path], predict_on_test: bool = True, **kwargs):
+    def __init__(self,
+                 dataset_path: Union[str, Path],
+                 predict_on_test: bool = True,
+                 transforms: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = None,
+                 transform: Callable[[Tensor], Tensor] = None,
+                 target_transform: Callable[[Tensor], Tensor] = None,
+                 **kwargs):
         """Initializes class instance.
 
         Args:
@@ -23,13 +30,14 @@ class HMC_QUDataModule(VitalDataModule):
         super().__init__(
             data_params=DataParameters(
                 in_shape=(in_channels, image_size, image_size),
-                out_shape=(len(Label), image_size, image_size),
+                out_shape=(1, image_size, image_size),
                 labels=tuple(Label),
             ),
             **kwargs,
         )
 
-        self._dataset_kwargs = {"path": Path(dataset_path)}
+        self._dataset_kwargs = {"path": Path(dataset_path),
+                                'transforms': transforms, 'transform': transform, 'target_transform': target_transform}
         self.predict_on_test = predict_on_test
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102

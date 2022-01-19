@@ -117,7 +117,7 @@ def main():
         "--path", type=Path, required=True, help="Path of the HMC_QU downloaded dataset unziped folder."
     )
     parser.add_argument("--name", type=Path, default=Path("HMC_QU.h5"), help="Name of the generated hdf5 file.")
-    parser.add_argument("--seed", type=int, default=None, help="Seed for the random ")
+    parser.add_argument("--seed", type=int, default=0, help="Seed for the data split")
     parser.add_argument("--test_size", type=float, default=0.25, help="Size of test set")
     parser.add_argument("--val_size", type=float, default=0.1, help="Size of validation set")
 
