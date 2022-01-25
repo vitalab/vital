@@ -8,10 +8,9 @@ from vital.data.config import DataParameters, Subset
 from vital.data.data_module import VitalDataModule
 from vital.data.lung_xray.config import Label
 from vital.data.lung_xray.dataset import LungXRay
-from vital.data.mixins import StructuredDataMixin
 
 
-class LungXRayDataModule(StructuredDataMixin, VitalDataModule):
+class LungXRayDataModule(VitalDataModule):
     """Implementation of the ``VitalDataModule`` for the Lung X-ray dataset."""
 
     def __init__(

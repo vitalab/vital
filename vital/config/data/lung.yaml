@@ -5,3 +5,4 @@ _target_: vital.data.lung_xray.data_module.LungXRayDataModule
 
 dataset_path: ${oc.env:LUNG_DATA_PATH}
 da: null
+max_patients: null
