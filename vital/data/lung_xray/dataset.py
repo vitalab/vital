@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Callable, Dict, List, Literal, Tuple, Union, Optional
 
@@ -162,7 +163,7 @@ class LungXRay(VisionDataset):
             Data related a to a test item, i.e. a patient.
         """
         with h5py.File(self.root, "r") as dataset:
-            patient_data = PatientData(id=self.item_list[index])
+            patient_data = PatientData(id=os.path.basename(self.item_list[index]))
             item_key = self.item_list[index]
 
             # Collect and process data
@@ -175,11 +176,11 @@ class LungXRay(VisionDataset):
             gt_tensor = self._base_target_transform(gt)
 
             patient_data.views[View.PA] = ViewData(
-                img_proc=img_tensor,
-                gt=gt,
-                gt_proc=gt_tensor,
+                img_proc=img_tensor[None],
+                gt=gt[None],
+                gt_proc=gt_tensor[None],
                 voxelspacing=(1, 1, 1),
-                instants=None
+                instants={'': 0}
             )
 
         return patient_data

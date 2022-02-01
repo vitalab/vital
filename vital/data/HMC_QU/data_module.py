@@ -3,10 +3,11 @@ from typing import Literal, Union, Callable, Tuple
 
 from torch import Tensor
 from torch.utils.data import DataLoader
+from vital.data.camus.config import Label
 
 from vital.data.config import DataParameters, Subset
 from vital.data.data_module import VitalDataModule
-from vital.data.HMC_QU.config import Label, image_size, in_channels
+from vital.data.HMC_QU.config import image_size, in_channels
 from vital.data.HMC_QU.dataset import HMC_QU
 
 
@@ -31,7 +32,7 @@ class HMC_QUDataModule(VitalDataModule):
             data_params=DataParameters(
                 in_shape=(in_channels, image_size, image_size),
                 out_shape=(1, image_size, image_size),
-                labels=tuple(Label),
+                labels=(Label.BG, Label.MYO),
             ),
             **kwargs,
         )
