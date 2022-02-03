@@ -39,13 +39,19 @@ def write_group_hdf5(group, file_list, img_folder_path, gt_folder_path, img_size
             sample_group.create_dataset(name=Tags.gt, data=gt_resize, **seg_save_options)
 
 
-def write_hdf5(raw_data_path, h5_name, test_split, val_split, img_size):
+def write_hdf5(raw_data_path, h5_name, test_split, val_split, img_size, split_source):
     xray_folder_path = pjoin(raw_data_path, 'CXR_png')
     gt_folder_path = pjoin(raw_data_path, 'masks')
 
     files = glob.glob(pjoin(xray_folder_path, '*.png'))
 
-    train_files, test_files = train_test_split(files, test_size=test_split)
+    if split_source:
+        china_files = [f for f in files if "CHN" in f]
+        montgomery_files = [f for f in files if "MCU" in f]
+        train_files, test_files = china_files, montgomery_files
+    else:
+
+        train_files, test_files = train_test_split(files, test_size=test_split)
     train_files, val_files = train_test_split(files, test_size=val_split)
 
     print(f"Number of train files {len(train_files)}")
@@ -77,6 +83,7 @@ if __name__ == '__main__':
                         help="Name of the hdf5 file in which to save the data")
     parser.add_argument("--test_split", type=float, help="Test set split", default=0.15)
     parser.add_argument("--val_split", type=float, help="Validation set split", default=0.1)
+    parser.add_argument("--split_source", action='store_true', help="Split train test split with image origin")
     parser.add_argument("--img_size", type=int, help="Size of resized images", default=256)
     parser.add_argument("--seed", type=int, help="Seed", default=0)
 
@@ -85,4 +92,4 @@ if __name__ == '__main__':
     seed_everything(args.seed)
 
     write_hdf5(raw_data_path=args.data_path, h5_name=args.h5_name, test_split=args.test_split,
-               val_split=args.val_split, img_size=args.img_size)
+               val_split=args.val_split, img_size=args.img_size, split_source=args.split_source)
