@@ -12,6 +12,7 @@ from torchvision.datasets import VisionDataset
 from vital.data.camus.data_struct import PatientData, ViewData
 from vital.data.config import Subset, Tags
 from vital.data.lung_xray.config import View
+from vital.data.transforms import DiffusedNoise
 from vital.utils.decorators import squeeze
 from vital.utils.image.transform import segmentation_to_tensor
 
@@ -172,6 +173,11 @@ class LungXRay(VisionDataset):
             img = img / 255
             gt[gt != 0] = 1
 
+            if self.transforms:
+                transformed = self.transforms(image=img, mask=gt)
+                img = transformed["image"]
+                gt = transformed["mask"]
+
             img_tensor = self._base_transform(img)
             gt_tensor = self._base_target_transform(gt)
 
@@ -213,7 +219,9 @@ if __name__ == "__main__":
     args.add_argument("--predict", action="store_true")
     params = args.parse_args()
 
-    ds = LungXRay(Path(params.path), image_set=Subset.TRAIN, predict=params.predict)
+
+
+    ds = LungXRay(Path(params.path), image_set=Subset.TRAIN, predict=params.predict, transforms=[DiffusedNoise()])
 
     # samples = []
     # for sample in ds:
@@ -239,7 +247,7 @@ if __name__ == "__main__":
 
         img = img.squeeze()
     else:
-        sample = ds[random.randint(0, len(ds) - 1)]
+        sample = ds[0] #random.randint(0, len(ds) - 1)]
         img = sample[Tags.img].squeeze()
         gt = sample[Tags.gt]
         print("Image shape: {}".format(img.shape))

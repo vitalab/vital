@@ -321,9 +321,19 @@ class Camus(VisionDataset):
 
                 proc_imgs = proc_imgs / 255
 
+                proc_imgs_tensor = []
+                proc_gts_tensor = []
+                for img, gt in zip(proc_imgs, proc_gts):
+                    if self.transforms:
+                        transformed = self.transforms(image=img, mask=gt)
+                        img = transformed["image"]
+                        gt = transformed["mask"]
+                    proc_imgs_tensor.append(self._base_transform(img))
+                    proc_gts_tensor.append(self._base_target_transform(gt))
+
                 # Transform arrays to tensor
-                proc_imgs_tensor = torch.stack([self._base_transform(proc_img) for proc_img in proc_imgs])
-                proc_gts_tensor = torch.stack([self._base_target_transform(proc_gt) for proc_gt in proc_gts])
+                proc_imgs_tensor = torch.stack(proc_imgs_tensor)
+                proc_gts_tensor = torch.stack(proc_gts_tensor)
 
                 # Extract metadata concerning the registering applied
                 registering_parameters = None

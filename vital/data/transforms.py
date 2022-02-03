@@ -1,6 +1,9 @@
 import numpy as np
 import torch
 import torchvision.transforms.functional as F
+from albumentations import ImageOnlyTransform
+from skimage.draw import random_shapes
+from skimage.filters import gaussian
 from torch import Tensor
 
 from vital.utils.image.transform import segmentation_to_tensor
@@ -65,4 +68,46 @@ class GrayscaleToRGB(torch.nn.Module):
                 f"{self.__class__.__name__} only supports converting single channel grayscale images to RGB images "
                 f"where r == g == b. The image data you provided consists of {img.shape[1]} channel images."
             )
+        return img
+
+
+class DiffusedNoise(ImageOnlyTransform):
+    """Diffused Noise
+
+    Reference:
+    "
+
+    https://github.com/raghavian/lungVAE/blob/9bfc6b940b762b378e11d2fea31e944a2eaf14a4/data/dataset.py#L51
+
+
+
+    Targets:
+        image
+
+    Image types:
+        uint8, float32
+    """
+
+    def __init__(
+            self,
+            s: int = 50,
+            min_shapes: int = 10,
+            max_shapes: int = 20,
+            always_apply=False,
+            p=0.5,
+    ):
+        super(DiffusedNoise, self).__init__(always_apply, p)
+        self.s = s
+        self.min_shapes = min_shapes
+        self.max_shapes = max_shapes
+        self.seed = 0
+
+    def apply(self, img, **params):
+        skMask = (random_shapes((img.shape[0], img.shape[1]), min_shapes=self.min_shapes, max_shapes=self.max_shapes,
+                                min_size=self.s, allow_overlap=True,
+                                multichannel=False, shape='circle',
+                                random_seed=self.seed)[0] < 128).astype(float)
+        self.seed += 1
+        skMask = gaussian(skMask, sigma=self.s / 2)  # 0.8 is ~dense opacity
+        img += (0.6 * skMask - 0.1)
         return img

@@ -1,13 +1,14 @@
 from pathlib import Path
 from typing import Callable, Tuple
 from typing import Literal, Union, Optional
-
+import albumentations as A
 from torch import Tensor
 from torch.utils.data import DataLoader
 from vital.data.config import DataParameters, Subset
 from vital.data.data_module import VitalDataModule
 from vital.data.lung_xray.config import Label
 from vital.data.lung_xray.dataset import LungXRay
+from vital.data.transforms import DiffusedNoise
 
 
 class LungXRayDataModule(VitalDataModule):
@@ -21,6 +22,7 @@ class LungXRayDataModule(VitalDataModule):
             target_transform: Callable[[Tensor], Tensor] = None,
             max_patients: Optional[int] = None,
             da: Literal["pixel", "spatial"] = None,
+            test_da: bool = True,
             **kwargs,
     ):
         """Initializes class instance.
@@ -32,6 +34,7 @@ class LungXRayDataModule(VitalDataModule):
         dataset_path = Path(dataset_path)
         self.max_patients = max_patients
         self.data_augmentation = da
+        self.test_da = test_da
 
         image_shape = (256, 256)
         in_channels = 1
@@ -57,7 +60,20 @@ class LungXRayDataModule(VitalDataModule):
                                                    data_augmentation=self.data_augmentation)
             self._dataset[Subset.VAL] = LungXRay(image_set=Subset.VAL, **self._dataset_kwargs)
         if stage == "test":
-            self._dataset[Subset.TEST] = LungXRay(image_set=Subset.TEST, predict=True, **self._dataset_kwargs)
+            transforms = None
+            if self.test_da:
+                transforms = [
+                    A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.75),
+                    # A.GaussNoise(var_limit=0.001),
+                    DiffusedNoise(p=0.75, max_shapes=10)
+                    # A.ColorJitter(brightness=0.2, contrast=0.2),
+                    # A.RandomGamma(gamma_limit=(90, 110)),
+
+                ]
+            kwargs = self._dataset_kwargs
+            kwargs.pop('transforms')
+            self._dataset[Subset.TEST] = LungXRay(image_set=Subset.TEST, predict=True, **self._dataset_kwargs,
+                                                  transforms=transforms)
 
     def train_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(
