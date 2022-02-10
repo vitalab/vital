@@ -4,7 +4,7 @@ from typing import List, Literal, Sequence, Union, Optional
 
 from torch import Tensor
 from torch.utils.data import DataLoader
-from vital.data.camus.config import CamusTags, Label, in_channels
+from vital.data.camus.config import CamusTags, Label, in_channels, View
 from vital.data.camus.dataset import Camus
 from vital.data.config import DataParameters, Subset
 from vital.data.data_module import VitalDataModule
@@ -26,6 +26,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         num_neighbors: int = 0,
         neighbor_padding: Literal["edge", "wrap"] = "edge",
         max_patients: Optional[int] = None,
+        views: Sequence[View] = (View.A2C, View.A4C),
         da: Literal["pixel", "spatial"] = None,
         **kwargs,
     ):
@@ -73,7 +74,8 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
             "neighbor_padding": neighbor_padding,
             'transforms': transforms,
             'transform': transform,
-            'target_transform': target_transform
+            'target_transform': target_transform,
+            'views': views
         }
 
     def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102

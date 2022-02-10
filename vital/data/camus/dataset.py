@@ -10,7 +10,7 @@ import torch
 import torchvision
 from torch import Tensor
 from torchvision.datasets import VisionDataset
-from vital.data.camus.config import CamusTags, Label
+from vital.data.camus.config import CamusTags, Label, View
 from vital.data.camus.data_struct import PatientData, ViewData
 from vital.data.camus.utils.measure import EchoMeasure
 from vital.data.camus.utils.register import CamusRegisteringTransformer
@@ -40,6 +40,7 @@ class Camus(VisionDataset):
         transform: Callable[[Tensor], Tensor] = None,
         target_transform: Callable[[Tensor], Tensor] = None,
         max_patients: Optional[int] = None,
+        views: Sequence[View] = (View.A2C, View.A4C),
         data_augmentation: Literal["pixel", "spatial"] = None,
     ):
         """Initializes class instance.
@@ -76,6 +77,7 @@ class Camus(VisionDataset):
         self.neighbors = neighbors
         self.neighbor_padding = neighbor_padding
         self.max_patients = max_patients
+        self.views = views
 
         if transforms is not None:
             self.transforms = A.Compose(transforms)
@@ -162,7 +164,7 @@ class Camus(VisionDataset):
             ]
             groups = groups[:self.max_patients] if self.max_patients is not None else groups
             if level == "view":
-                groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys()]
+                groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys() if view in self.views]
 
         return groups
 
@@ -290,80 +292,81 @@ class Camus(VisionDataset):
         with h5py.File(self.root, "r") as dataset:
             patient_data = PatientData(id=self.item_list[index])
             for view in dataset[self.item_list[index]]:
-                patient_view_key = f"{self.item_list[index]}/{view}"
+                if view in self.views:
+                    patient_view_key = f"{self.item_list[index]}/{view}"
 
-                # Collect and process data
-                proc_imgs, proc_gts, gts = Camus._get_data(
-                    dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc, CamusTags.gt
-                )
-                proc_gts = self._process_target_data(proc_gts)
-                gts = self._process_target_data(gts)
+                    # Collect and process data
+                    proc_imgs, proc_gts, gts = Camus._get_data(
+                        dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc, CamusTags.gt
+                    )
+                    proc_gts = self._process_target_data(proc_gts)
+                    gts = self._process_target_data(gts)
 
-                # Collect metadata
-                info, clinically_important_instants = Camus._get_metadata(
-                    dataset, patient_view_key, CamusTags.info, CamusTags.instants
-                )
-                instants = {
-                    instant: Camus._get_metadata(dataset, patient_view_key, instant)
-                    for instant in clinically_important_instants
-                }
-
-                # If we do not use the whole sequence
-                if self.dataset_with_sequence and not self.use_sequence:
-                    # Only keep clinically important instants
-                    instant_indices = list(instants.values())
-                    proc_imgs = proc_imgs[instant_indices]
-                    proc_gts = proc_gts[instant_indices]
-                    gts = gts[instant_indices]
-
-                    # Update indices of clinically important instants to match the new slicing of the sequences
-                    instants = {instant: idx for idx, instant in enumerate(instants)}
-
-                proc_imgs = proc_imgs / 255
-
-                proc_imgs_tensor = []
-                proc_gts_tensor = []
-                for img, gt in zip(proc_imgs, proc_gts):
-                    if self.transforms:
-                        transformed = self.transforms(image=img, mask=gt)
-                        img = transformed["image"]
-                        gt = transformed["mask"]
-                    proc_imgs_tensor.append(self._base_transform(img))
-                    proc_gts_tensor.append(self._base_target_transform(gt))
-
-                # Transform arrays to tensor
-                proc_imgs_tensor = torch.stack(proc_imgs_tensor)
-                proc_gts_tensor = torch.stack(proc_gts_tensor)
-
-                # Extract metadata concerning the registering applied
-                registering_parameters = None
-                if self.registered_dataset:
-                    registering_parameters = {
-                        reg_step: Camus._get_metadata(dataset, patient_view_key, reg_step)
-                        for reg_step in CamusRegisteringTransformer.registering_steps
+                    # Collect metadata
+                    info, clinically_important_instants = Camus._get_metadata(
+                        dataset, patient_view_key, CamusTags.info, CamusTags.instants
+                    )
+                    instants = {
+                        instant: Camus._get_metadata(dataset, patient_view_key, instant)
+                        for instant in clinically_important_instants
                     }
 
-                # Compute attributes for the sequence
-                attrs = {
-                    CamusTags.frame_pos: torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1),
-                    **get_segmentation_attributes(proc_gts_tensor, self.labels),
-                }
+                    # If we do not use the whole sequence
+                    if self.dataset_with_sequence and not self.use_sequence:
+                        # Only keep clinically important instants
+                        instant_indices = list(instants.values())
+                        proc_imgs = proc_imgs[instant_indices]
+                        proc_gts = proc_gts[instant_indices]
+                        gts = gts[instant_indices]
 
-                if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
-                    proc_gts_tensor[proc_gts_tensor != 0] = 1
+                        # Update indices of clinically important instants to match the new slicing of the sequences
+                        instants = {instant: idx for idx, instant in enumerate(instants)}
 
-                if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
-                    gts[gts != 0] = 1
+                    proc_imgs = proc_imgs / 255
 
-                patient_data.views[view] = ViewData(
-                    img_proc=proc_imgs_tensor,
-                    gt_proc=proc_gts_tensor,
-                    gt=gts,
-                    voxelspacing=info[6:9][::-1],
-                    instants=instants,
-                    attrs=attrs,
-                    registering=registering_parameters,
-                )
+                    proc_imgs_tensor = []
+                    proc_gts_tensor = []
+                    for img, gt in zip(proc_imgs, proc_gts):
+                        if self.transforms:
+                            transformed = self.transforms(image=img, mask=gt)
+                            img = transformed["image"]
+                            gt = transformed["mask"]
+                        proc_imgs_tensor.append(self._base_transform(img))
+                        proc_gts_tensor.append(self._base_target_transform(gt))
+
+                    # Transform arrays to tensor
+                    proc_imgs_tensor = torch.stack(proc_imgs_tensor)
+                    proc_gts_tensor = torch.stack(proc_gts_tensor)
+
+                    # Extract metadata concerning the registering applied
+                    registering_parameters = None
+                    if self.registered_dataset:
+                        registering_parameters = {
+                            reg_step: Camus._get_metadata(dataset, patient_view_key, reg_step)
+                            for reg_step in CamusRegisteringTransformer.registering_steps
+                        }
+
+                    # Compute attributes for the sequence
+                    attrs = {
+                        CamusTags.frame_pos: torch.linspace(0, 1, steps=len(proc_imgs)).unsqueeze(1),
+                        **get_segmentation_attributes(proc_gts_tensor, self.labels),
+                    }
+
+                    if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
+                        proc_gts_tensor[proc_gts_tensor != 0] = 1
+
+                    if len(self.labels) == 2:  # For binary segmentation, make foreground class 1.
+                        gts[gts != 0] = 1
+
+                    patient_data.views[view] = ViewData(
+                        img_proc=proc_imgs_tensor,
+                        gt_proc=proc_gts_tensor,
+                        gt=gts,
+                        voxelspacing=info[6:9][::-1],
+                        instants=instants,
+                        attrs=attrs,
+                        registering=registering_parameters,
+                    )
 
         return patient_data
 
