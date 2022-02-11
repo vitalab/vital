@@ -162,7 +162,10 @@ class VitalRunner(ABC):
             callbacks = []
             for conf_name, conf in cfg.callbacks.items():
                 log.info(f"Instantiating callback <{conf_name}>")
-                callbacks.append(hydra.utils.instantiate(conf))
+                callback: Callback = hydra.utils.instantiate(conf)
+                # Avoid error is callback param is given without callback which results with a dict being instantiated.
+                assert isinstance(callback, Callback), "Instantiated callback is not a PL Callback."
+                callbacks.append(callback)
         else:
             callbacks = None
 
@@ -212,13 +215,14 @@ class VitalRunner(ABC):
         Returns:
             Path where to copy the best model checkpoint after training.
         """
-        data = cfg.data._target_.split(".")[-1]
-        system = cfg.system._target_.split(".")[-1]
-        name = f"{data}_{system}"
-        if cfg.system.module is not None:  # Some systems do not have a module (ex. Auto-encoders)
-            module = cfg.system.module._target_.split(".")[-1]
-            name = f"{name}_{module}"
-        return log_dir / f"{name}.ckpt"
+        if cfg.get("sp", None):
+            return cfg.sp  # Return save path from config if available
+        else:
+            module = cfg.choices['system/module']
+            name = f"{cfg.choices.data}_{cfg.choices.system}"
+            if module is not None:  # Some systems do not have a module (ex. Auto-encoders)
+                name = f"{name}_{module}"
+            return log_dir / f"{name}.ckpt"
 
 
 if __name__ == "__main__":

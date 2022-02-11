@@ -1,7 +1,6 @@
-# This is an example config to show how to use vital and hydra configs is your project.
+# @package _global_
 
 defaults:
-  - vital_default # This references default config from vital.conf
 
   # Set the system, module and data
   - override /system: segmentation.yaml
@@ -9,14 +8,10 @@ defaults:
   - override /data: acdc.yaml
 
   # If you do not want early stopping or you want to add new callbacks:
-  - override callbacks:
+  - override /callbacks:
     - model_checkpoint
 
 # Overwrite arguments from configs here:
 trainer:
   max_epochs: 300
 
-# Set this to get configs from VITAL submodule.
-hydra:
-  searchpath:
-    - pkg://vital.config

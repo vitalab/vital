@@ -1,13 +1,22 @@
-defaults:
-  - trainer: default.yaml
-  - system: system.yaml # Not a usable file but contains common fields
-  - data: data.yaml # Not a usable file but contains common fields
-  - callbacks:
-      - early_stopping
-      - model_checkpoint
-  - logger: comet/online.yaml
 
-seed: None
+#### This must be added to the main config.
+#### This cannot be added here because overides cannot de defined twice which prevents using exp.
+
+#defaults:
+#  - trainer: default
+#  - system: system # Not a usable file but contains common fields
+#  - data: data # Not a usable file but contains common fields
+#  - callbacks:
+#      - early_stopping
+#      - model_checkpoint
+#  - logger: tensorboard
+#
+##  - exp: null
+#
+#  - override hydra/sweeper: config # Same as Hydra's BasicSweeper but allows sweep overrides in config. See hydra_plugins
+
+
+seed: null
 
 resume: False
 
@@ -27,3 +36,8 @@ comet_tags: null # Tags to for comet experiment if CometLogger is used.
 
 # Copy of original working directory before hydra changes it. Useful for paths.
 work_dir: ${hydra:runtime.cwd}
+# Keep track of choices.
+choices: ${hydra:runtime.choices}
+
+# Save path defines where to save the model. If none, hydra working directory is used.
+sp: null
