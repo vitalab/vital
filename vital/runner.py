@@ -116,6 +116,7 @@ class VitalRunner(ABC):
             if not cfg.trainer.get("fast_dev_run", False):
                 # Copy best model checkpoint to a predictable path + online tracker (if used)
                 best_model_path = VitalRunner._best_model_path(log_dir, cfg)
+                best_model_path.parent.mkdir(exist_ok=True)
                 if trainer.checkpoint_callback is not None:
                     copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
                     # Ensure we use the best weights (and not the latest ones) by loading back the best model
@@ -216,7 +217,7 @@ class VitalRunner(ABC):
             Path where to copy the best model checkpoint after training.
         """
         if cfg.get("sp", None):
-            return cfg.sp  # Return save path from config if available
+            return Path(cfg.sp)  # Return save path from config if available
         else:
             module = cfg.choices['system/module']
             name = f"{cfg.choices.data}_{cfg.choices.system}"
