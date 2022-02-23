@@ -29,7 +29,8 @@ class LungXRay(VisionDataset):
             transform: Callable[[Tensor], Tensor] = None,
             target_transform: Callable[[Tensor], Tensor] = None,
             max_patients: Optional[int] = None,
-            data_augmentation: Literal["pixel", "spatial"] = None,
+            data_augmentation: bool = False,
+            test_all: bool = False
     ):
         """Initializes class instance.
 
@@ -60,26 +61,16 @@ class LungXRay(VisionDataset):
         self.image_set = image_set
         self.predict = predict
         self.max_patients = max_patients
-
+        self.test_all = test_all
         if transforms is not None:
             self.transforms = A.Compose(transforms)
         elif data_augmentation:
-            if data_augmentation == "pixel":
-                self.transforms = A.Compose(
-                    [
-                        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2),
-                        A.RandomGamma(gamma_limit=(80, 120)),
-                    ]
-                )
-            elif data_augmentation == "spatial":
-                self.transforms = A.ShiftScaleRotate(
-                    shift_limit=0.0625, scale_limit=0.1, rotate_limit=10, border_mode=cv2.BORDER_CONSTANT, value=0
-                )
-            else:
-                raise ValueError(
-                    f"Unexpected value for parameter `data_augmentation`: {data_augmentation}. "
-                    f"Please change it to one of the supported values: ['pixel', 'spatial']."
-                )
+            self.transforms = A.Compose(
+                [
+                    A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1),
+                ]
+            )
+
         else:
             self.transforms = None
 
@@ -116,9 +107,13 @@ class LungXRay(VisionDataset):
         Returns:
             IDs of the different levels of groups/clusters data samples in ``self.image_set`` can belong to.
         """
+        image_sets = [self.image_set.value] if not self.test_all else [set.value for set in Subset]
         with h5py.File(self.root, "r") as dataset:
             # List the patients
-            items = [f"{self.image_set.value}/{x}" for x in dataset[self.image_set.value].keys()]
+            items = []
+            for set in image_sets:
+                items.extend([f"{set}/{x}" for x in dataset[set].keys()])
+
             items = items[:self.max_patients] if self.max_patients is not None else items
 
         return items
@@ -219,22 +214,28 @@ if __name__ == "__main__":
     args.add_argument("--predict", action="store_true")
     params = args.parse_args()
 
+    ds = LungXRay(Path(params.path), image_set=Subset.TEST, predict=params.predict, test_all=True)
 
+    samples = []
+    for sample in ds:
+        samples.append(sample[Tags.gt].squeeze().numpy())
 
-    ds = LungXRay(Path(params.path), image_set=Subset.TRAIN, predict=params.predict, transforms=[DiffusedNoise()])
+    samples = np.array(samples)
 
-    # samples = []
-    # for sample in ds:
-    #     samples.append(sample[Tags.img].squeeze().numpy())
-    #
-    # samples = np.array(samples)
-    #
-    # print(samples.shape)
-    #
-    # print(samples.min())
-    # print(samples.max())
-    # print(samples.mean())
-    # print(samples.std())
+    print(samples.shape)
+
+    print(samples.min())
+    print(samples.max())
+    print(samples.mean())
+    print(samples.std())
+
+    mean = np.mean(samples, axis=0)
+
+    plt.imshow(mean)
+    plt.savefig('jstr.png')
+    plt.show()
+
+    exit(0)
 
     if params.predict:
         patient = ds[random.randint(0, len(ds) - 1)]
@@ -247,7 +248,7 @@ if __name__ == "__main__":
 
         img = img.squeeze()
     else:
-        sample = ds[0] #random.randint(0, len(ds) - 1)]
+        sample = ds[0]  # random.randint(0, len(ds) - 1)]
         img = sample[Tags.img].squeeze()
         gt = sample[Tags.gt]
         print("Image shape: {}".format(img.shape))
