@@ -4,6 +4,6 @@ defaults:
 _target_: vital.data.lung_xray.data_module.LungXRayDataModule
 
 dataset_path: ${oc.env:LUNG_DATA_PATH}
-da: null
+da: false
 max_patients: null
 test_da: False
