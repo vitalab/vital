@@ -21,8 +21,9 @@ class LungXRayDataModule(VitalDataModule):
             transform: Callable[[Tensor], Tensor] = None,
             target_transform: Callable[[Tensor], Tensor] = None,
             max_patients: Optional[int] = None,
-            da: Literal["pixel", "spatial"] = None,
-            test_da: bool = True,
+            da: bool = False,
+            test_da: bool = False,
+            test_all: bool = False,
             **kwargs,
     ):
         """Initializes class instance.
@@ -35,6 +36,7 @@ class LungXRayDataModule(VitalDataModule):
         self.max_patients = max_patients
         self.data_augmentation = da
         self.test_da = test_da
+        self.test_all = test_all
 
         image_shape = (256, 256)
         in_channels = 1
@@ -73,7 +75,7 @@ class LungXRayDataModule(VitalDataModule):
             kwargs = self._dataset_kwargs
             kwargs.pop('transforms')
             self._dataset[Subset.TEST] = LungXRay(image_set=Subset.TEST, predict=True, **self._dataset_kwargs,
-                                                  transforms=transforms)
+                                                  transforms=transforms, test_all=self.test_all)
 
     def train_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(
