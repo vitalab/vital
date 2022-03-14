@@ -1,3 +1,6 @@
+defaults:
+  - module
+
 _target_: vital.modules.segmentation.unet.UNet
 
 init_channels: 32

@@ -1,3 +1,6 @@
+defaults:
+  - module
+
 _target_: vital.modules.classification.mlp.MLP
 hidden:
     - 128

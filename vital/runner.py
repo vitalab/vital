@@ -93,8 +93,8 @@ class VitalRunner(ABC):
         # Instantiate module with respect to datamodule's data params.
         module: nn.Module = hydra.utils.instantiate(
             cfg.system.module,
-            input_shape=datamodule.data_params.in_shape,
-            output_shape=datamodule.data_params.out_shape,
+            input_shape=cfg.system.module.input_shape or datamodule.data_params.in_shape,
+            output_shape=cfg.system.module.output_shape or datamodule.data_params.out_shape,
         )
 
         # Instantiate model with the created module.

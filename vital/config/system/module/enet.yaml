@@ -1,3 +1,6 @@
+defaults:
+  - module
+
 _target_: vital.modules.segmentation.enet.Enet
 
 init_channels: 16
