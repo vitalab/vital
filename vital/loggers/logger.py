@@ -20,7 +20,7 @@ class Logger:
     desc: str  #: Description of the logger. Used in e.g. progress bar, logs file name, etc.
 
     def __init__(
-        self, output_name: str = None, progress_bar: bool = True, multiprocessing: bool = True, **iterable_result_params
+        self, output_name: str = None, progress_bar: bool = True, multiprocessing: bool = True, **iterable_result_kwargs
     ):
         """Initializes class instance.
 
@@ -28,7 +28,8 @@ class Logger:
             output_name: Name for the aggregated log, if the logger produces an aggregated log.
             progress_bar: If ``True``, enables progress bars detailing the progress of the computations.
             multiprocessing: If ``True``, enables multiprocessing when collecting logs for each result.
-            iterable_result_params: Parameters to pass along to result iterator's ``__init__``.
+            **iterable_result_kwargs: Parameters to pass along to results iterator's ``__init__``. Be careful to avoid
+                conflicts with kwargs passed along to the results iterator in `__call__`.
 
         Raises:
             ValueError: If logger that returns results to be aggregated is not provided with a name to use as part of
@@ -42,20 +43,21 @@ class Logger:
         self.output_name = output_name
         self.progress_bar = progress_bar
         self.multiprocessing = multiprocessing
-        self.iterable_result_params = iterable_result_params
+        self.iterable_result_kwargs = iterable_result_kwargs
 
-    def __call__(self, results_path: Path, output_folder: Path, output_prefix: str = None) -> None:
+    def __call__(self, output_folder: Path, output_prefix: str = None, **iterable_result_kwargs) -> None:
         """Iterates over a set of results and logs the result of the evaluation to a logger-specifc format.
 
         Args:
-            results_path: Root path of the results to log.
             output_folder: Path where to save the logs.
             output_prefix: Prefix to distinguish the logging info, and aggregated saved output if any.
+            **iterable_result_kwargs: Parameters to pass along to results iterator's ``__init__``. Be careful to avoid
+                conflicts with kwargs passed along to the results iterator in `__init__`.
         """
         self.output_folder = output_folder
         self.output_folder.mkdir(parents=True, exist_ok=True)
 
-        results = self.IterableResultT(results_path=results_path, **self.iterable_result_params)
+        results = self.IterableResultT(**self.iterable_result_kwargs, **iterable_result_kwargs)
         if self.Log is not None:  # If the logger returns data for each result to be aggregated in a single log
             log_desc = f"Collecting {output_prefix} data for {self.desc}"
         else:  # If the logger writes the log as side-effects as it iterates over the results
@@ -119,7 +121,6 @@ class Logger:
            Parser object with support for generic logger and iterable arguments.
         """
         parser = ArgumentParser()
-        parser.add_argument("--results_path", type=Path, required=True, help="Path to a HDF5 file of results to log")
         parser.add_argument(
             "--output_folder",
             type=Path,
@@ -151,7 +152,6 @@ class Logger:
         parser = cls.build_parser()
         kwargs = vars(parser.parse_args())
 
-        results_path = kwargs.pop("results_path")
         output_folder = kwargs.pop("output_folder")
         output_prefix = kwargs.pop("output_prefix")
-        cls(**kwargs)(results_path=results_path, output_folder=output_folder, output_prefix=output_prefix)
+        cls(**kwargs)(output_folder=output_folder, output_prefix=output_prefix)
