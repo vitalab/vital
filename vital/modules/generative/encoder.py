@@ -52,7 +52,7 @@ class Encoder(nn.Module):
         self.input2features = nn.Sequential()
         block_in_channels = in_channels
         for block_idx in range(blocks):
-            block_out_channels = init_channels * 2 ** block_idx
+            block_out_channels = init_channels * 2**block_idx
 
             self.input2features.add_module(
                 f"strided_conv_{activation.lower()}{batchnorm_desc}_{block_idx}",

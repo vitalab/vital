@@ -38,7 +38,7 @@ class Segmentation2DMetrics:
         # Approximate size of small blobs determined through empirical experiments. Those small blobs correspond to
         # small artifacts left behind by some morphological operations on the images, and which can be ignored since
         # they would otherwise skew the metrics' values.
-        self.small_objects_size = segmentation.shape[0] * segmentation.shape[1] / 2 ** 14
+        self.small_objects_size = segmentation.shape[0] * segmentation.shape[1] / 2**14
 
     def count_holes(self, struct_label: SemanticStructureId) -> int:
         """Counts the pixels that form holes in a supposedly contiguous segmented area.
@@ -230,7 +230,7 @@ class Segmentation2DMetrics:
                 return no_structure_flag
 
             # Compute the isoperimetric ratio ( https://en.wikipedia.org/wiki/Isoperimetric_inequality )
-            ratio = (4 * np.pi * area) / (perimeter ** 2) if perimeter != 0 else 0
+            ratio = (4 * np.pi * area) / (perimeter**2) if perimeter != 0 else 0
             return ratio
 
         else:  # If the structure is not in the image
