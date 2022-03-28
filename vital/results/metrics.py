@@ -6,10 +6,8 @@ from typing import Mapping, Sequence
 import pandas as pd
 
 from vital.results.processor import ResultsProcessor
-from vital.utils.delegate import delegate_inheritance
 
 
-@delegate_inheritance()
 class Metrics(ResultsProcessor):
     """Abstract class that computes metrics on the results and saves them to csv."""
 

@@ -9,12 +9,10 @@ import pandas as pd
 import umap
 
 from vital.results.processor import ResultsProcessor
-from vital.utils.delegate import delegate_inheritance
 
 logger = logging.getLogger(__name__)
 
 
-@delegate_inheritance()
 class GroupsEmbeddingPlots(ResultsProcessor):
     """Abstract class that plots the UMAP embedding of groups of results in a 2D space."""
 
