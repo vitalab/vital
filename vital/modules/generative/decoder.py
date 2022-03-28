@@ -65,7 +65,7 @@ class Decoder(nn.Module):
         self.features2output = nn.Sequential()
         block_in_channels = init_channels
         for idx, block_idx in enumerate(reversed(range(blocks))):
-            block_out_channels = init_channels * 2 ** block_idx
+            block_out_channels = init_channels * 2**block_idx
             self.features2output.add_module(
                 f"conv_transpose_{activation.lower()}{batchnorm_desc}_{idx}",
                 conv_transpose_block(
