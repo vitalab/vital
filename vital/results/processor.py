@@ -74,8 +74,8 @@ class ResultsProcessor:
         else:
             logger.info(log_msg)
 
-        # If the logger outputs data for each result to be aggregated to a single output
         if self.ProcessingOutput:
+            # If the processor outputs data for each result to be aggregated to a single output
             outputs = dict(result_processing_jobs)
             output_name = (output_prefix + "_" if output_prefix else "") + self.output_name
             output_path = output_folder / output_name

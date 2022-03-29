@@ -33,7 +33,7 @@ class GroupsEmbeddingPlots(ResultsProcessor):
         self.interactive = interactive
 
     def aggregate_outputs(self, outputs: Mapping[str, ProcessingOutput], output_path: Path) -> None:
-        """Embeds the high-dimensional gathered from the results using UMAP and plots the generated embedding.
+        """Embeds the gathered high-dimensional results using UMAP and plots the generated embedding.
 
         Args:
             outputs: Mapping between each result in the iterable results and its data to embed.
@@ -86,7 +86,7 @@ class GroupsEmbeddingPlots(ResultsProcessor):
         raise NotImplementedError
 
     def save_points_plots(self, mapper: umap.UMAP, labels: np.ndarray, values: np.ndarray, output_folder: Path) -> None:
-        """Saves plots of the UMAP embedding (using possibly many different coloring schemes) as images.
+        """Saves plots of the UMAP embedding (using possibly different coloring schemes) as images.
 
         Args:
             mapper: Trained UMAP object that has a 2D embedding.
@@ -100,14 +100,14 @@ class GroupsEmbeddingPlots(ResultsProcessor):
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
-        """Creates parser with support for generic groups embedding and iterable logger arguments.
+        """Creates parser with support for generic groups embedding and iterable results arguments.
 
         Returns:
-            Parser object with support for generic groups embedding and iterable logger arguments.
+            Parser object with support for generic groups embedding and iterable results arguments.
         """
         parser = super().build_parser()
         parser.add_argument(
             "--interactive", action="store_true", help="Enable UMAP interactive plot, instead of saving scatter plots"
         )
-        # TODO Add CL arguments for UMAP init
+        # TODO Add command line arguments for UMAP init
         return parser
