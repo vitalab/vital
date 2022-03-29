@@ -22,14 +22,14 @@ To help you follow along with the organization of the repository, here is a summ
 - [data](vital/data): utilities to process and interface with common medical image datasets, from processing raw image
 files (e.g. `.mhd` or `nii.gz`) to implementations of torchvision's `VisionDataset`.
 
-- [loggers](vital/loggers): generic utilities for logging results during the evaluation phase.
-
 - [metrics](vital/metrics): common metrics that are not part of the traditional libraries, whether those metrics are
 losses for training (see [train](vital/metrics/train)) or scores to evaluate the systems' performance (see
 [evaluate](vital/metrics/evaluate)).
 
 - [modules](vital/modules): generic models, organized by task (e.g. [classification](vital/modules/segmentation),
 [generative](vital/modules/generative), etc.).
+
+- [results](vital/results): generic utilities for processing results during the evaluation phase.
 
 - [systems](vital/systems): common boilerplate Lightning module code (split across mixins), from which concrete
 projects' systems should inherit.

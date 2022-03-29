@@ -8,18 +8,18 @@ import numpy as np
 import pandas as pd
 import umap
 
-from vital.loggers.logger import Logger
+from vital.results.processor import ResultsProcessor
 from vital.utils.delegate import delegate_inheritance
 
 logger = logging.getLogger(__name__)
 
 
 @delegate_inheritance()
-class GroupsEmbeddingLogger(Logger):
-    """Abstract class that allows to visualize the UMAP embedding of groups of results in a 2D space."""
+class GroupsEmbeddingPlots(ResultsProcessor):
+    """Abstract class that plots the UMAP embedding of groups of results in a 2D space."""
 
     desc = "groups_embedding"
-    Log = np.ndarray
+    ProcessingOutput = np.ndarray
 
     def __init__(self, embedding_params: Mapping[str, Any] = None, interactive: bool = False, **kwargs):
         """Initializes class instance.
@@ -34,17 +34,17 @@ class GroupsEmbeddingLogger(Logger):
         self.umap = umap.UMAP(**embedding_params)
         self.interactive = interactive
 
-    def aggregate_logs(self, logs: Mapping[str, Log], output_path: Path) -> None:
+    def aggregate_outputs(self, outputs: Mapping[str, ProcessingOutput], output_path: Path) -> None:
         """Embeds the high-dimensional gathered from the results using UMAP and plots the generated embedding.
 
         Args:
-            logs: Mapping between each result in the iterable results and its data to embed.
+            outputs: Mapping between each result in the iterable results and its data to embed.
             output_path: Folder in which to save the plotted embeddings (if not in interactive mode).
         """
         #  Formats data required to plot the groups' distribution in high dimensional latent space.
         labels, values, encodings = [], [], []
         indices_in_groups = []
-        for group_id, encoding in logs.items():
+        for group_id, encoding in outputs.items():
             labels.append([group_id] * len(encoding))  # Uniform label for all samples in the group
             values.append(np.linspace(0, 1, num=len(encoding)))  # Normalized index of each sample in the group
             encodings.append(encoding)  # High dimensional samples to embed
