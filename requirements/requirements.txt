@@ -10,12 +10,12 @@ h5py
 PyYAML
 tqdm
 SimpleITK
-torch>=1.7
-torchvision>=0.8
-pytorch-lightning>=1.2
+torch~=1.11.0
+torchvision~=0.12.0
+pytorch-lightning~=1.6.0
 torchmetrics
 torchinfo
-comet-ml>=3.3
+comet-ml
 Keras-Preprocessing
 medpy
 natsort

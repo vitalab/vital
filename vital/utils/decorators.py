@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, Mapping, Sequence, Union
 
 import numpy as np
 import torch
+from pytorch_lightning.utilities import move_data_to_device
 from torch import Tensor
 
 from vital.utils.format.native import Item
@@ -170,7 +171,7 @@ def auto_move_data(fn: Callable) -> Callable:
         if not isinstance(self, LightningModule):
             return fn(self, *args, **kwargs)
 
-        args, kwargs = self.transfer_batch_to_device((args, kwargs))
+        args, kwargs = move_data_to_device((args, kwargs), self.device)
         return fn(self, *args, **kwargs)
 
     return auto_transfer_args
