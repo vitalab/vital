@@ -29,6 +29,8 @@ losses for training (see [train](vital/metrics/train)) or scores to evaluate the
 - [modules](vital/modules): generic models, organized by task (e.g. [classification](vital/modules/segmentation),
 [generative](vital/modules/generative), etc.).
 
+- [results](vital/results): generic utilities for processing results during the evaluation phase.
+
 - [systems](vital/systems): common boilerplate Lightning module code (split across mixins), from which concrete
 projects' systems should inherit.
 
