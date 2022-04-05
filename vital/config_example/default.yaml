@@ -18,7 +18,3 @@ defaults:
 # trainer:
 #   max_epochs: 100
 
-# Set this to get configs from VITAL submodule.
-hydra:
-  searchpath:
-    - pkg://vital.config

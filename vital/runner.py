@@ -156,8 +156,11 @@ class VitalRunner(ABC):
         if "callbacks" in cfg:
             callbacks = []
             for conf_name, conf in cfg.callbacks.items():
-                log.info(f"Instantiating callback <{conf_name}>")
-                callbacks.append(hydra.utils.instantiate(conf))
+                if "_target_" in conf:
+                    log.info(f"Instantiating callback <{conf_name}>")
+                    callbacks.append(hydra.utils.instantiate(conf))
+                else:
+                    log.warning(f"No _target_ in callback config. Cannot instantiate {conf_name}")
         else:
             callbacks = None
 
@@ -175,12 +178,15 @@ class VitalRunner(ABC):
         """
         logger = True  # Default to True (Tensorboard)
         if isinstance(cfg.logger, DictConfig):
-            if "comet" in cfg.logger._target_ and not cfg.trainer.get("fast_dev_run", False):
-                logger = hydra.utils.instantiate(cfg.logger)
-            elif "tensorboard" in cfg.logger._target_:
-                # If no save_dir is passed, use default logger and let Trainer set save_dir.
-                if cfg.logger.get("save_dir", None):
+            if "_target_" in cfg.logger:
+                if "comet" in cfg.logger._target_ and not cfg.trainer.get("fast_dev_run", False):
                     logger = hydra.utils.instantiate(cfg.logger)
+                elif "tensorboard" in cfg.logger._target_:
+                    # If no save_dir is passed, use default logger and let Trainer set save_dir.
+                    if cfg.logger.get("save_dir", None):
+                        logger = hydra.utils.instantiate(cfg.logger)
+            else:
+                log.warning("No _target_ in logger config. Cannot instantiate Logger")
         return logger
 
     @classmethod

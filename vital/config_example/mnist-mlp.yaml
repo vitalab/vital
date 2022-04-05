@@ -18,7 +18,3 @@ callbacks:
   early_stopping:
     patience: 10
 
-# Set this to get configs from VITAL submodule
-hydra:
-  searchpath:
-    - pkg://vital.config

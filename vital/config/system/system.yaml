@@ -4,6 +4,8 @@ defaults:
 weight_decay: 0.001
 lr: 0.001
 
+enable_model_summary: True
+
 train_log_kwargs:
   prog_bar: False
   logger: True
