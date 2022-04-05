@@ -2,9 +2,9 @@
 
 defaults:
   - vital_default # This references default config from vital.conf
-  - override /system: classification.yaml
-  - override system/module: mlp.yaml
-  - override /data: mnist.yaml
+  - override system: classification
+  - override system/module: mlp
+  - override data: mnist
 
 # Overwrite arguments from configs here:
 # You can also add arguments that are not defined in the object configs.

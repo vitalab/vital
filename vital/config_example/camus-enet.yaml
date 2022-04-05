@@ -3,9 +3,9 @@
 defaults:
   - vital_default # This references default config from vital.conf
 
-  - override /system: segmentation.yaml
-  - override /system/module: enet.yaml
-  - override /data: camus.yaml
+  - override system: segmentation
+  - override system/module: enet
+  - override data: camus
 
 # Overwrite arguments from configs here:
 trainer:

@@ -1,12 +1,12 @@
 defaults:
-  - trainer: default.yaml
-  - system: system.yaml # Not a usable file but contains common fields
-  - data: data.yaml # Not a usable file but contains common fields
+  - trainer: default
+  - system: system # Placeholder, Not a standalone file
+  - data: data # Placeholder, Not a standalone
   - callbacks:
       - model_checkpoint
-  - logger: comet/online.yaml
+  - logger: comet/online
 
-seed: None
+seed: null
 
 resume: False
 
@@ -22,6 +22,12 @@ train: True
 test: True
 
 comet_tags: null # Tags to for comet experiment if CometLogger is used.
+
+# Keep track of choices.
+choices: ${hydra:runtime.choices}
+
+# Save path defines where to save the model. If none, hydra working directory is used.
+save_path: null
 
 # Copy of original working directory before hydra changes it. Useful for paths.
 work_dir: ${hydra:runtime.cwd}
