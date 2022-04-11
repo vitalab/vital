@@ -1,11 +1,10 @@
 import sys
 from abc import ABC
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning.core.memory import ModelSummary
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
 from torchinfo import summary
@@ -39,25 +38,13 @@ class VitalSystem(pl.LightningModule, ABC):
         # By default, assumes the provided data shape is in channel-first format
         self.example_input_array = torch.randn((2, *self.hparams.data_params.in_shape))
 
-    def on_pretrain_routine_start(self) -> None:  # noqa: D102
+    def setup(self, stage: Optional[str] = None) -> None:  # noqa: D102
         self.log_dir.mkdir(parents=True, exist_ok=True)  # Ensure output directory exists
 
-    @property
-    def log_dir(self) -> Path:
-        """Returns the root directory where test logs get saved."""
-        return Path(self.trainer.log_dir) if self.trainer.log_dir else Path.cwd()
-
-    def summarize(self, mode: str = ModelSummary.MODE_DEFAULT) -> ModelSummary:
-        """Adds saving a Keras-style summary of the model to the base PL summary routine.
-
-        The Keras-style summary is saved to a ``summary.txt`` file, inside the output directory.
-
-        Notes:
-            - Requires the ``example_input_array`` property to be set for the module.
-            - Will not be printed if PL weights' summary was disabled (``mode == None``). This is done to avoid possible
-              device incompatibilities in clusters.
-        """
-        if mode is not None:
+        # Save Keras-style summary to a ``summary.txt`` file, inside the output directory
+        # Option to disable the summary if PL model's summary is disabled to avoid possible device incompatibilities
+        # (e.g. in clusters).
+        if self.hparams.enable_model_summary and self.global_rank == 0:
             model_summary = summary(
                 self,
                 input_data=self.example_input_array,
@@ -67,7 +54,11 @@ class VitalSystem(pl.LightningModule, ABC):
                 verbose=0,
             )
             (self.log_dir / "summary.txt").write_text(str(model_summary), encoding="utf-8")
-        return super().summarize(mode)
+
+    @property
+    def log_dir(self) -> Path:
+        """Returns the root directory where test logs get saved."""
+        return Path(self.trainer.log_dir) if self.trainer.log_dir else Path.cwd()
 
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
         # Todo move lr and weight decay to optim config.

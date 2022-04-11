@@ -52,7 +52,7 @@ class Encoder(nn.Module):
         self.input2features = nn.Sequential()
         block_in_channels = in_channels
         for block_idx in range(blocks):
-            block_out_channels = init_channels * 2 ** block_idx
+            block_out_channels = init_channels * 2**block_idx
 
             self.input2features.add_module(
                 f"strided_conv_{activation.lower()}{batchnorm_desc}_{block_idx}",
@@ -87,11 +87,11 @@ class Encoder(nn.Module):
         if self.output_distribution:
             self.logvar_head = nn.Linear(reduce(mul, feature_shape), latent_dim)
 
-    def forward(self, y: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+    def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         """Defines the computation performed at every call.
 
         Args:
-            y: (N, ``channels``, H, W), Input to reconstruct.
+            x: (N, ``channels``, H, W), Input to reconstruct.
 
         Returns:
             if not ``output_distribution``:
@@ -100,7 +100,7 @@ class Encoder(nn.Module):
                 - (N, ``latent_dim``), Mean of the predicted distribution of the input in the latent space.
                 - (N, ``latent_dim``), Log variance of the predicted distribution of the input in the latent space.
         """
-        features = self.input2features(y)
+        features = self.input2features(x)
         features = torch.flatten(features, 1)
         out = self.mu_head(features)
         if self.output_distribution:

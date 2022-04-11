@@ -156,8 +156,11 @@ class VitalRunner(ABC):
         if "callbacks" in cfg:
             callbacks = []
             for conf_name, conf in cfg.callbacks.items():
-                log.info(f"Instantiating callback <{conf_name}>")
-                callbacks.append(hydra.utils.instantiate(conf))
+                if "_target_" in conf:
+                    log.info(f"Instantiating callback <{conf_name}>")
+                    callbacks.append(hydra.utils.instantiate(conf))
+                else:
+                    log.warning(f"No _target_ in callback config. Cannot instantiate {conf_name}")
         else:
             callbacks = None
 
@@ -175,12 +178,15 @@ class VitalRunner(ABC):
         """
         logger = True  # Default to True (Tensorboard)
         if isinstance(cfg.logger, DictConfig):
-            if "comet" in cfg.logger._target_ and not cfg.trainer.get("fast_dev_run", False):
-                logger = hydra.utils.instantiate(cfg.logger)
-            elif "tensorboard" in cfg.logger._target_:
-                # If no save_dir is passed, use default logger and let Trainer set save_dir.
-                if cfg.logger.get("save_dir", None):
+            if "_target_" in cfg.logger:
+                if "comet" in cfg.logger._target_ and not cfg.trainer.get("fast_dev_run", False):
                     logger = hydra.utils.instantiate(cfg.logger)
+                elif "tensorboard" in cfg.logger._target_:
+                    # If no save_dir is passed, use default logger and let Trainer set save_dir.
+                    if cfg.logger.get("save_dir", None):
+                        logger = hydra.utils.instantiate(cfg.logger)
+            else:
+                log.warning("No _target_ in logger config. Cannot instantiate Logger")
         return logger
 
     @classmethod
@@ -207,13 +213,14 @@ class VitalRunner(ABC):
         Returns:
             Path where to copy the best model checkpoint after training.
         """
-        data = cfg.data._target_.split(".")[-1]
-        system = cfg.system._target_.split(".")[-1]
-        name = f"{data}_{system}"
-        if cfg.system.module is not None:  # Some systems do not have a module (ex. Auto-encoders)
-            module = cfg.system.module._target_.split(".")[-1]
-            name = f"{name}_{module}"
-        return log_dir / f"{name}.ckpt"
+        if cfg.get("save_path", None):
+            return Path(cfg.save_path)  # Return save path from config if available
+        else:
+            module = cfg.choices['system/module']
+            name = f"{cfg.choices.data}_{cfg.choices.system}"
+            if module is not None:  # Some systems do not have a module (ex. Auto-encoders)
+                name = f"{name}_{module}"
+            return log_dir / f"{name}.ckpt"
 
 
 if __name__ == "__main__":

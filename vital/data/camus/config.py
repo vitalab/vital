@@ -90,7 +90,9 @@ class CamusTags(Tags):
         gt_proc: Tag referring to resized groundtruths used as reference when training models.
         info: Tag referring to images' metadata.
         voxelspacing: Tag referring to voxels' size along each (time, height, width) dimension (in mm).
-        proc_instants: Tag referring to metadata indicating which image where affected by the postprocessing.
+        raw: Tag referring to data before it was processed by some algorithm (e.g. groundtruths before resizing,
+            predicted segmentations before post-processing, etc.)
+        rec: Tag referring to data that was reconstructed by an autoencoder model.
         frame_pos: Tag referring to the frame normalized index in the sequence (normalized so that ED=0 and ES=1).
         lv_area: Tag referring to the number of pixels, in the groundtruths, associated to the left ventricle (LV).
         lv_base_width: Tag referring to the width of the LV's base, in the groundtruths.
@@ -111,7 +113,9 @@ class CamusTags(Tags):
     gt_proc: str = "gt_proc"
     info: str = "info"
     voxelspacing: str = "voxelspacing"
-    proc_instants: str = "processed_instants"
+
+    raw: str = "raw"
+    rec: str = "rec"
 
     frame_pos: str = "frame_pos"
     lv_area: str = "lv_area"
