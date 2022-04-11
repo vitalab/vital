@@ -3,8 +3,10 @@ from abc import ABC
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
 
+import hydra
 import pytorch_lightning as pl
 import torch
+from omegaconf import DictConfig
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
 from torchinfo import summary
@@ -22,13 +24,12 @@ class VitalSystem(pl.LightningModule, ABC):
         - CLI for generic arguments
     """
 
-    def __init__(self, data_params: DataParameters, lr: float, weight_decay: float, **kwargs):
+    def __init__(self, optim: DictConfig, data_params: DataParameters, **kwargs):
         """Saves the parameters from all the model's childs and mixins in `hparams`.
 
         Args:
+            optim: hydra configuration for the optimizer.
             data_params: Parameters related to the data necessary to initialize the model.
-            lr: Learning rate for the Adam optimizer
-            weight_decay: Weight decay for the Adam optimizer
             **kwargs: Dictionary of arguments to save as the model's `hparams`.
         """
         super().__init__()
@@ -61,8 +62,7 @@ class VitalSystem(pl.LightningModule, ABC):
         return Path(self.trainer.log_dir) if self.trainer.log_dir else Path.cwd()
 
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
-        # Todo move lr and weight decay to optim config.
-        return torch.optim.Adam(self.parameters(), lr=self.hparams.lr, weight_decay=self.hparams.weight_decay)
+        return hydra.utils.instantiate(self.hparams.optim, params=self.parameters())
 
 
 class SystemComputationMixin(VitalSystem, ABC):

@@ -159,4 +159,3 @@ class _Up(nn.Module):
         x = torch.cat([connected_encoder_features, x], dim=1)
 
         return self.conv(x)
-

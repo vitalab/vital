@@ -8,8 +8,8 @@ from hydra.core.config_search_path import ConfigSearchPath
 from hydra.plugins.search_path_plugin import SearchPathPlugin
 
 
-class VitalSearchPathPlugin(SearchPathPlugin):
-    def manipulate_search_path(self, search_path: ConfigSearchPath) -> None:
+class VitalSearchPathPlugin(SearchPathPlugin):  # noqa: D101
+    def manipulate_search_path(self, search_path: ConfigSearchPath) -> None:  # noqa: D102
         # Appends the search path for this plugin to the end of the search path
         # Note that foobar/conf is outside of the example plugin module.
         # There is no requirement for it to be packaged with the plugin, it just needs

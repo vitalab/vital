@@ -1,7 +1,7 @@
 defaults:
   - trainer: default
-  - system: system # Placeholder, Not a standalone file
-  - data: data # Placeholder, Not a standalone
+  - system: system  # Incomplete config, but sets some common options
+  - data: data  # Incomplete config, but sets some common options
   - callbacks:
       - model_checkpoint
   - logger: comet/online
@@ -26,8 +26,8 @@ comet_tags: null # Tags to for comet experiment if CometLogger is used.
 # Keep track of choices.
 choices: ${hydra:runtime.choices}
 
-# Save path defines where to save the model. If none, hydra working directory is used.
-save_path: null
+# Best model save path defines where to save the model. If none, hydra working directory is used.
+best_model_save_path: null
 
 # Copy of original working directory before hydra changes it. Useful for paths.
 work_dir: ${hydra:runtime.cwd}

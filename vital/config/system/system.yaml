@@ -1,8 +1,6 @@
 defaults:
   - module: null
-
-weight_decay: 0.001
-lr: 0.001
+  - optim: adam
 
 enable_model_summary: True
 

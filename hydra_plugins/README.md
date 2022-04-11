@@ -1,20 +1,17 @@
 # Hydra Plugins
 
-Hydra allows the use of external plugins. This directory contains useful plugings for projects using vital.
+Hydra allows the use of [external plugins](https://hydra.cc/docs/advanced/plugins/develop). This directory contains useful plugins for projects using `vital`.
 
-[Hydra plugin development documentation](https://hydra.cc/docs/advanced/plugins/develop)
+## [SearchPath](https://hydra.cc/docs/advanced/search_path)
 
-# SearchPath
+The [`vital` module](searchpath/vita.py) for `searchpath` allows other projects to access `vital` configs without specifying the search path in each primary config.
 
-## Vital
-This file allows other projects to access vital configs without specifying the search path in each primary config.
-
-This replaces these lines in the primary configs:
+It replaces the following lines in primary configs:
  ```yaml
 hydra:
   searchpath:
     - pkg://vital.config
 ```
-[Hydra SearchPath documentation](https://hydra.cc/docs/advanced/search_path/)
 
-[Hydra SearchPath example](https://github.com/facebookresearch/hydra/tree/main/examples/plugins/example_searchpath_plugin)
+### Additional resources
+- [Hydra SearchPath example](https://github.com/facebookresearch/hydra/tree/main/examples/plugins/example_searchpath_plugin)
