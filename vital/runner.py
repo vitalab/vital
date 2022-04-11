@@ -95,8 +95,9 @@ class VitalRunner(ABC):
         )
 
         # Instantiate model with the created module.
-        model: VitalSystem = hydra.utils.instantiate(cfg.system, module=module, data_params=datamodule.data_params,
-                                                     _recursive_=False)
+        model: VitalSystem = hydra.utils.instantiate(
+            cfg.system, module=module, data_params=datamodule.data_params, _recursive_=False
+        )
 
         if cfg.ckpt:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
@@ -217,7 +218,7 @@ class VitalRunner(ABC):
         if cfg.get("best_model_save_path", None):
             return Path(cfg.best_model_save_path)  # Return save path from config if available
         else:
-            module = cfg.choices['system/module']
+            module = cfg.choices["system/module"]
             name = f"{cfg.choices.data}_{cfg.choices.system}"
             if module is not None:  # Some systems do not have a module (ex. Auto-encoders)
                 name = f"{name}_{module}"
