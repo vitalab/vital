@@ -18,7 +18,7 @@ class AcdcDataModule(VitalDataModule):
         Args:
             dataset_path: Path to the HDF5 dataset.
             use_da: Enable use of data augmentation.
-            predict_on_test: If True, add predict=True to dataset for test set to get full patients at each batch.
+            predict_on_test: If `True`, get full patients at each batch during the test stage.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
         super().__init__(

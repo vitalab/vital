@@ -23,7 +23,7 @@ class MnistDataModule(VitalDataModule):
         """Initializes class instance.
 
         Args:
-            dataset_path: Path to the HDF5 dataset.
+            dataset_path: Path where to download the dataset.
             transform: Transform to apply to the input image
             target_transform: Transform to apply to the target.
             download: If True, download the dataset if it is not already in the dataset_path.

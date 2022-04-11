@@ -32,7 +32,7 @@ class UNet(nn.Module):
             use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
                 convolutional blocks.
             bilinear: Whether to use bilinear interpolation or transposed convolutions for upsampling.
-            dropout: probability from dropout layers.
+            dropout: Probability of an element to be zeroed (e.g. 0 means no dropout).
         """
         super().__init__()
         in_channels = input_shape[0]
@@ -160,13 +160,3 @@ class _Up(nn.Module):
 
         return self.conv(x)
 
-
-"""
-This script can be run to visualize the network layers.
-"""
-if __name__ == "__main__":
-    from torchsummary import summary
-
-    model = UNet(input_shape=(1, 256, 256), output_shape=(4, 256, 256))
-
-    summary(model, (1, 256, 256), device="cpu")

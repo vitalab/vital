@@ -14,13 +14,9 @@ class SegmentationComputationMixin(TrainValComputationMixin):
 
     Implements generic segmentation train/val step and inference, assuming the following conditions:
         - the ``nn.Module`` used returns as single output the raw, unnormalized scores for each class in the predicted
-          segmentation.
-    The loss used is a weighted combination of Dice and cross-entropy.
+          segmentation;
+        - The loss used is a weighted combination of Dice and cross-entropy.
     """
-
-    # Fields to initialize in implementation of ``VitalSystem``
-    #: Network called by ``SegmentationComputationMixin`` for test-time inference
-    module: nn.Module
 
     def __init__(self, module: nn.Module, cross_entropy_weight: float = 0.1, dice_weight: float = 1, *args, **kwargs):
         """Initializes the metric objects used repeatedly in the train/eval loop.

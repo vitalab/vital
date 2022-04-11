@@ -15,10 +15,6 @@ class ClassificationComputationMixin(TrainValComputationMixin):
         - the ``nn.Module`` used returns as single output the raw, unnormalized scores for each class.
     """
 
-    # Fields to initialize in implementation of ``VitalSystem``
-    #: Network called by ``ClassificationComputationMixin`` for test-time inference
-    module: nn.Module
-
     def __init__(self, module: nn.Module, *args, **kwargs):
         """Initializes the metric objects used repeatedly in the train/eval loop.
 
