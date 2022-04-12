@@ -11,4 +11,8 @@ def get_vital_home() -> Path:
     Returns:
         Path to the home directory for the `vital` library.
     """
-    return Path(os.getenv(ENV_VITAL_HOME, os.getenv("XDG_CACHE_HOME", DEFAULT_CACHE_DIR))).expanduser() / "vital"
+    vital_home = os.getenv(ENV_VITAL_HOME)
+    if vital_home is None:
+        user_cache_dir = os.getenv("XDG_CACHE_HOME", DEFAULT_CACHE_DIR)
+        vital_home = os.path.join(user_cache_dir, "vital")
+    return Path(vital_home).expanduser()
