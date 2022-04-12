@@ -10,5 +10,4 @@ class MNIST(torchvision.datasets.MNIST):
 
     def __getitem__(self, index: int) -> Dict[str, Any]:  # noqa: D105
         img, target = super().__getitem__(index)
-        d = {Tags.img: img, Tags.gt: target}
-        return d
+        return {Tags.img: img, Tags.gt: target}
