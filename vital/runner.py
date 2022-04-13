@@ -17,7 +17,6 @@ from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
-from vital.utils.logging import configure_logging
 from vital.utils.serialization import resolve_model_checkpoint_path
 
 logger = logging.getLogger(__name__)
@@ -77,13 +76,6 @@ class VitalRunner(ABC):
             if cfg.get("comet_tags", None):
                 experiment_logger.experiment.add_tags(list(cfg.comet_tags))
 
-        # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
-        log_dir = Path(trainer.log_dir) if trainer.log_dir else Path(cfg.trainer.default_root_dir)
-
-        if not cfg.trainer.get("fast_dev_run", False):
-            # Configure Python logging right after instantiating the trainer (which determines the logs' path)
-            VitalRunner._configure_logging(log_dir, cfg)
-
         # Instantiate datamodule
         datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data)
 
@@ -114,7 +106,7 @@ class VitalRunner(ABC):
 
             if not cfg.trainer.get("fast_dev_run", False):
                 # Copy best model checkpoint to a predictable path + online tracker (if used)
-                best_model_path = VitalRunner._best_model_path(log_dir, cfg)
+                best_model_path = VitalRunner._best_model_path(model.log_dir, cfg)
                 if trainer.checkpoint_callback is not None:
                     copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
                     # Ensure we use the best weights (and not the latest ones) by loading back the best model
@@ -190,19 +182,6 @@ class VitalRunner(ABC):
             else:
                 logger.warning("No _target_ in logger config. Cannot instantiate Logger")
         return experiment_logger
-
-    @classmethod
-    def _configure_logging(cls, log_dir: Path, cfg: DictConfig) -> None:
-        """Callback that defines the default logging behavior.
-
-        It can be overridden to customize the logging behavior, e.g. to adjust to some CLI arguments defined by the
-        user.
-
-        Args:
-            log_dir: Lightning's directory for the current run.
-            cfg: Full configuration for the experiment.
-        """
-        configure_logging(log_to_console=True, log_file=log_dir / "run.log")
 
     @classmethod
     def _best_model_path(cls, log_dir: Path, cfg: DictConfig) -> Path:
