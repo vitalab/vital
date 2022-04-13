@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Callable, Optional, Union
+from typing import Callable, List, Optional, Union
 
-from torch.utils.data import DataLoader
-from torchvision.transforms import ToTensor
+import torch
+from torch.utils.data import DataLoader, Dataset, random_split
+from torchvision import transforms as transform_lib
 
 from vital import get_vital_home
 from vital.data.config import DataParameters, Subset
@@ -16,8 +17,10 @@ class MnistDataModule(VitalDataModule):
     def __init__(
         self,
         dataset_path: Union[str, Path] = None,
-        transform: Optional[Callable] = None,
-        target_transform: Optional[Callable] = None,
+        val_split: Union[int, float] = 0.2,
+        normalize: bool = False,
+        seed: int = 0,
+        transforms: Optional[Callable] = None,
         download: bool = False,
         **kwargs,
     ):
@@ -25,57 +28,97 @@ class MnistDataModule(VitalDataModule):
 
         Args:
             dataset_path: Path where to download the dataset. If `None`, defaults to using `vital`'s home directory.
-            transform: Transform to apply to the input image
-            target_transform: Transform to apply to the target.
+            val_split: Percent (float) or number (int) of samples to use for the validation split.
+            normalize: If `True` applies image normalization.
+            seed: Random seed to be used for train/val/test splits.
+            transforms: Transforms to apply to the input image
             download: If `True`, download the dataset if it is not already in `dataset_path`.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
         super().__init__(data_params=DataParameters(in_shape=(1, 28, 28), out_shape=(10,)), **kwargs)
-
-        dataset_path = dataset_path or get_vital_home()
-        transform = transform or ToTensor()
-
+        self._root = str(dataset_path or get_vital_home())
+        self._transforms = transforms
+        self._val_split = val_split
+        self._normalize = normalize
+        self._seed = seed
         self._download = download
-        self._dataset_kwargs = {
-            "root": Path(dataset_path),
-            "transform": transform,
-            "target_transform": target_transform,
-        }
 
     def prepare_data(self):  # noqa: D102
         # If `self.download` is `True`, this will download the dataset on each node
         # Otherwise, it does nothing
-        MNIST(**self._dataset_kwargs, train=True, download=self._download)
-        MNIST(**self._dataset_kwargs, train=False, download=self._download)
+        MNIST(root=self._root, train=True, download=self._download)
+        MNIST(root=self._root, train=False, download=self._download)
 
     def setup(self, stage: Optional[str] = None) -> None:  # noqa: D102
         if stage == "fit":
-            self._dataset[Subset.TRAIN] = MNIST(**self._dataset_kwargs, train=True)
-            self._dataset[Subset.VAL] = MNIST(**self._dataset_kwargs, train=False)
+            # Initialize one dataset for train/val split
+            transforms = self.default_transforms() if self._transforms is None else self._transforms
+            dataset_train = MNIST(root=self._root, transform=transforms, train=True)
+            # Split
+            self._dataset[Subset.TRAIN] = self._split_dataset(dataset_train)
+            self._dataset[Subset.VAL] = self._split_dataset(dataset_train, train=False)
         if stage == "test":
-            self._dataset[Subset.TEST] = MNIST(**self._dataset_kwargs, train=False)
+            self._dataset[Subset.TEST] = MNIST(root=self._root, train=False)
+
+    def _split_dataset(self, dataset: Dataset, train: bool = True) -> Dataset:
+        """Splits the dataset into train and validation set.
+
+        Notes:
+            - Adapted from the method with the same name in the generic VisionDataModule from Lightning Bolts:
+              https://github.com/PyTorchLightning/lightning-bolts/blob/2415b49a2b405693cd499e09162c89f807abbdc4/pl_bolts/datamodules/vision_datamodule.py#L83-L91
+        """
+        len_dataset = len(dataset)
+        splits = self._get_splits(len_dataset)
+        dataset_train, dataset_val = random_split(dataset, splits, generator=torch.Generator().manual_seed(self._seed))
+
+        if train:
+            return dataset_train
+        return dataset_val
+
+    def _get_splits(self, len_dataset: int) -> List[int]:
+        """Computes split lengths for train and validation set.
+
+        Notes:
+            - Adapted from the method with the same name in the generic VisionDataModule from Lightning Bolts:
+              https://github.com/PyTorchLightning/lightning-bolts/blob/2415b49a2b405693cd499e09162c89f807abbdc4/pl_bolts/datamodules/vision_datamodule.py#L93-L105
+        """
+        if isinstance(self._val_split, int):
+            train_len = len_dataset - self._val_split
+            splits = [train_len, self._val_split]
+        elif isinstance(self._val_split, float):
+            val_len = int(self._val_split * len_dataset)
+            train_len = len_dataset - val_len
+            splits = [train_len, val_len]
+        else:
+            raise ValueError(f"Unsupported type {type(self._val_split)}")
+
+        return splits
+
+    def default_transforms(self) -> Callable:
+        """Configures the default normalization to apply to the dataset.
+
+        Notes:
+            - Adapted from the method with the same name in the MNISTDataModule from Lightning Bolts:
+              https://github.com/PyTorchLightning/lightning-bolts/blob/2415b49a2b405693cd499e09162c89f807abbdc4/pl_bolts/datamodules/mnist_datamodule.py#L100-L108
+        """
+        if self._normalize:
+            mnist_transforms = transform_lib.Compose(
+                [transform_lib.ToTensor(), transform_lib.Normalize(mean=(0.5,), std=(0.5,))]
+            )
+        else:
+            mnist_transforms = transform_lib.Compose([transform_lib.ToTensor()])
+        return mnist_transforms
+
+    def _data_loader(self, dataset: Dataset, shuffle: bool = False) -> DataLoader:
+        return DataLoader(
+            dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=self.num_workers, pin_memory=True
+        )
 
     def train_dataloader(self) -> DataLoader:  # noqa: D102
-        return DataLoader(
-            self.dataset(subset=Subset.TRAIN),
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
+        return self._data_loader(self.dataset(subset=Subset.TRAIN), shuffle=True)
 
     def val_dataloader(self) -> DataLoader:  # noqa: D102
-        return DataLoader(
-            self.dataset(subset=Subset.VAL),
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
+        return self._data_loader(self.dataset(subset=Subset.VAL))
 
     def test_dataloader(self) -> DataLoader:  # noqa: D102
-        return DataLoader(
-            self.dataset(subset=Subset.TEST),
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
+        return self._data_loader(self.dataset(subset=Subset.TEST))
