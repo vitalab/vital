@@ -3,7 +3,7 @@ defaults:
 
 _target_: vital.data.mnist.data_module.MnistDataModule
 
-dataset_path: /tmp
+dataset_path: null
 use_da: True
 transform: null
 target_transform: null

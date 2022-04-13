@@ -59,7 +59,7 @@ class VitalSystem(pl.LightningModule, ABC):
     @property
     def log_dir(self) -> Path:
         """Returns the root directory where test logs get saved."""
-        return Path(self.trainer.log_dir) if self.trainer.log_dir else Path.cwd()
+        return Path(self.trainer.log_dir) if self.trainer.log_dir else self.hparams.trainer.default_root_dir
 
     def configure_optimizers(self) -> Optimizer:  # noqa: D102
         return hydra.utils.instantiate(self.hparams.optim, params=self.parameters())

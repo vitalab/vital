@@ -20,7 +20,7 @@ from vital.systems.system import VitalSystem
 from vital.utils.logging import configure_logging
 from vital.utils.serialization import resolve_model_checkpoint_path
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class VitalRunner(ABC):
@@ -63,19 +63,19 @@ class VitalRunner(ABC):
         cfg.seed = seed_everything(cfg.seed, workers=True)
 
         callbacks = VitalRunner.configure_callbacks(cfg)
-        logger = VitalRunner.configure_logger(cfg)
+        experiment_logger = VitalRunner.configure_logger(cfg)
 
         if cfg.resume:
-            trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=logger, callbacks=callbacks)
+            trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=experiment_logger, callbacks=callbacks)
         else:
-            trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=logger, callbacks=callbacks)
+            trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=experiment_logger, callbacks=callbacks)
 
             trainer.logger.log_hyperparams(Namespace(**cfg))  # Save config to logger.
 
         if isinstance(trainer.logger, CometLogger):
-            logger.experiment.log_asset_folder(".hydra", log_file_name=True)
+            experiment_logger.experiment.log_asset_folder(".hydra", log_file_name=True)
             if cfg.get("comet_tags", None):
-                logger.experiment.add_tags(list(cfg.comet_tags))
+                experiment_logger.experiment.add_tags(list(cfg.comet_tags))
 
         # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
         log_dir = Path(trainer.log_dir) if trainer.log_dir else Path(cfg.trainer.default_root_dir)
@@ -101,10 +101,10 @@ class VitalRunner(ABC):
 
         if cfg.ckpt:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
-                log.info(f"Loading weights from {ckpt_path}")
+                logger.info(f"Loading weights from {ckpt_path}")
                 model.load_state_dict(torch.load(ckpt_path, map_location=model.device)["state_dict"], strict=cfg.strict)
             else:
-                log.info(f"Loading model from {ckpt_path}")
+                logger.info(f"Loading model from {ckpt_path}")
                 model = model.load_from_checkpoint(
                     ckpt_path, module=module, data_params=datamodule.data_params, strict=cfg.strict
                 )
@@ -159,10 +159,10 @@ class VitalRunner(ABC):
             callbacks = []
             for conf_name, conf in cfg.callbacks.items():
                 if "_target_" in conf:
-                    log.info(f"Instantiating callback <{conf_name}>")
+                    logger.info(f"Instantiating callback <{conf_name}>")
                     callbacks.append(hydra.utils.instantiate(conf))
                 else:
-                    log.warning(f"No _target_ in callback config. Cannot instantiate {conf_name}")
+                    logger.warning(f"No _target_ in callback config. Cannot instantiate {conf_name}")
         else:
             callbacks = None
 
@@ -178,18 +178,18 @@ class VitalRunner(ABC):
         Returns:
             logger for the Lightning Trainer
         """
-        logger = True  # Default to True (Tensorboard)
+        experiment_logger = True  # Default to True (Tensorboard)
         if isinstance(cfg.logger, DictConfig):
             if "_target_" in cfg.logger:
                 if "comet" in cfg.logger._target_ and not cfg.trainer.get("fast_dev_run", False):
-                    logger = hydra.utils.instantiate(cfg.logger)
+                    experiment_logger = hydra.utils.instantiate(cfg.logger)
                 elif "tensorboard" in cfg.logger._target_:
                     # If no save_dir is passed, use default logger and let Trainer set save_dir.
                     if cfg.logger.get("save_dir", None):
-                        logger = hydra.utils.instantiate(cfg.logger)
+                        experiment_logger = hydra.utils.instantiate(cfg.logger)
             else:
-                log.warning("No _target_ in logger config. Cannot instantiate Logger")
-        return logger
+                logger.warning("No _target_ in logger config. Cannot instantiate Logger")
+        return experiment_logger
 
     @classmethod
     def _configure_logging(cls, log_dir: Path, cfg: DictConfig) -> None:
