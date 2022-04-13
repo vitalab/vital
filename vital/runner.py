@@ -171,16 +171,25 @@ class VitalRunner(ABC):
             logger for the Lightning Trainer
         """
         experiment_logger = True  # Default to True (Tensorboard)
+        skip_logger = False
+        # Configure custom logger only if user specified custom config
         if isinstance(cfg.logger, DictConfig):
-            if "_target_" in cfg.logger:
-                if "comet" in cfg.logger._target_ and not cfg.trainer.get("fast_dev_run", False):
+            if "_target_" not in cfg.logger:
+                logger.warning("No _target_ in logger config. Cannot instantiate custom logger")
+                skip_logger = True
+            if cfg.trainer.get("fast_dev_run", False):
+                logger.warning(
+                    "Not instantiating custom logger because having `fast_dev_run=True` makes Lightning skip logging."
+                    "To test the logger, launch a full run."
+                )
+                skip_logger = True
+            if not skip_logger and "_target_" in cfg.logger:
+                if "comet" in cfg.logger._target_:
                     experiment_logger = hydra.utils.instantiate(cfg.logger)
                 elif "tensorboard" in cfg.logger._target_:
                     # If no save_dir is passed, use default logger and let Trainer set save_dir.
                     if cfg.logger.get("save_dir", None):
                         experiment_logger = hydra.utils.instantiate(cfg.logger)
-            else:
-                logger.warning("No _target_ in logger config. Cannot instantiate Logger")
         return experiment_logger
 
     @classmethod
