@@ -1,2 +1,3 @@
 early_stopping:
-  _target_: "pytorch_lightning.callbacks.EarlyStopping"
+  _target_: pytorch_lightning.callbacks.EarlyStopping
+  monitor: "val_loss"
