@@ -201,5 +201,10 @@ class VitalRunner(ABC):
             return log_dir / f"{name}.ckpt"
 
 
-if __name__ == "__main__":
+def main():
+    """Run the script."""
     VitalRunner.main()
+
+
+if __name__ == "__main__":
+    main()
