@@ -7,9 +7,9 @@ from shutil import copy2
 from typing import List, Optional, Union
 
 import comet_ml  # noqa
-import dotenv
 import hydra
 import torch
+from dotenv import load_dotenv
 from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
@@ -38,7 +38,7 @@ class VitalRunner(ABC):
         """Sets-up the environment before running the training/testing."""
         # Load environment variables from `.env` file if it exists
         # Load before hydra main to allow for setting environment variables with ${oc.env:ENV_NAME}
-        dotenv.load_dotenv(override=True)
+        load_dotenv(override=True)
 
         OmegaConf.register_new_resolver("sys.gpus", lambda x=None: int(torch.cuda.is_available()))
         OmegaConf.register_new_resolver("sys.num_workers", lambda x=None: os.cpu_count() - 1)
