@@ -28,7 +28,7 @@ class TrainValComputationMixin(SystemComputationMixin, ABC):
 
     def training_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
         result = prefix(self.trainval_step(*args, **kwargs), "train_")
-        self.log_dict(result, **self.train_log_kwargs)
+        self.log_dict(result, **self.hparams.train_log_kwargs)
         # Add reference to 'train_loss' under 'loss' keyword, requested by PL to know which metric to optimize
         result["loss"] = result["train_loss"]
         return result
@@ -36,5 +36,5 @@ class TrainValComputationMixin(SystemComputationMixin, ABC):
     def validation_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
         result = prefix(self.trainval_step(*args, **kwargs), "val_")
         result.update({"early_stop_on": result["val_loss"]})
-        self.log_dict(result, **self.val_log_kwargs)
+        self.log_dict(result, **self.hparams.val_log_kwargs)
         return result

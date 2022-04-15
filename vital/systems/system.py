@@ -80,11 +80,6 @@ class SystemComputationMixin(VitalSystem, ABC):
     def __init__(self, train_log_kwargs: dict, val_log_kwargs: dict, **kwargs):
         super().__init__(**kwargs)
 
-        self.save_hyperparameters()
-
-        self.train_log_kwargs = train_log_kwargs
-        self.val_log_kwargs = val_log_kwargs
-
     def training_step(self, *args, **kwargs) -> Union[Tensor, Dict[Union[Literal["loss"], Any], Any]]:  # noqa: D102
         raise NotImplementedError
 
