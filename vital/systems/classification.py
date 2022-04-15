@@ -1,6 +1,6 @@
 from typing import Dict
 
-from torch import Tensor, nn
+from torch import Tensor
 from torch.nn import functional as F
 from torchmetrics.functional import accuracy
 
@@ -15,17 +15,15 @@ class ClassificationComputationMixin(TrainValComputationMixin):
         - the ``nn.Module`` used returns as single output the raw, unnormalized scores for each class.
     """
 
-    def __init__(self, module: nn.Module, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Initializes the metric objects used repeatedly in the train/eval loop.
 
         Args:
-            module: Network to train.
             *args: Positional arguments to pass to the parent's constructor.
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
         super().__init__(*args, **kwargs)
-
-        self.module = module
+        self.module = self.configure_module()
 
     def forward(self, *args, **kwargs):  # noqa: D102
         return self.module(*args, **kwargs)

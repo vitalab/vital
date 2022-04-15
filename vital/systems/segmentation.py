@@ -1,6 +1,6 @@
 from typing import Dict
 
-from torch import Tensor, nn
+from torch import Tensor
 from torch.nn import functional as F
 
 from vital.data.config import Tags
@@ -18,11 +18,10 @@ class SegmentationComputationMixin(TrainValComputationMixin):
         - The loss used is a weighted combination of Dice and cross-entropy.
     """
 
-    def __init__(self, module: nn.Module, cross_entropy_weight: float = 0.1, dice_weight: float = 1, *args, **kwargs):
+    def __init__(self, cross_entropy_weight: float = 0.1, dice_weight: float = 1, *args, **kwargs):
         """Initializes the metric objects used repeatedly in the train/eval loop.
 
         Args:
-            module: Module to train.
             cross_entropy_weight: Weight to give to the cross-entropy factor of the segmentation loss
             dice_weight: Weight to give to the cross-entropy factor of the segmentation loss
             *args: Positional arguments to pass to the parent's constructor.
@@ -30,7 +29,7 @@ class SegmentationComputationMixin(TrainValComputationMixin):
         """
         super().__init__(*args, **kwargs)
         self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none")
-        self.module = module
+        self.module = self.configure_module()
         self.dice_weight = dice_weight
         self.cross_entropy_weight = cross_entropy_weight
 

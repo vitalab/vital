@@ -10,7 +10,6 @@ import comet_ml  # noqa
 import dotenv
 import hydra
 import torch
-import torch.nn as nn
 from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
@@ -79,17 +78,8 @@ class VitalRunner(ABC):
         # Instantiate datamodule
         datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data)
 
-        # Instantiate module with respect to datamodule's data params.
-        module: nn.Module = hydra.utils.instantiate(
-            cfg.system.module,
-            input_shape=datamodule.data_params.in_shape,
-            output_shape=datamodule.data_params.out_shape,
-        )
-
-        # Instantiate model with the created module.
-        model: VitalSystem = hydra.utils.instantiate(
-            cfg.system, module=module, data_params=datamodule.data_params, _recursive_=False
-        )
+        # Instantiate system (which will handle instantiating the model and optimizer).
+        model: VitalSystem = hydra.utils.instantiate(cfg.system, data_params=datamodule.data_params, _recursive_=False)
 
         if cfg.ckpt:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
@@ -97,9 +87,7 @@ class VitalRunner(ABC):
                 model.load_state_dict(torch.load(ckpt_path, map_location=model.device)["state_dict"], strict=cfg.strict)
             else:
                 logger.info(f"Loading model from {ckpt_path}")
-                model = model.load_from_checkpoint(
-                    ckpt_path, module=module, data_params=datamodule.data_params, strict=cfg.strict
-                )
+                model = model.load_from_checkpoint(ckpt_path, data_params=datamodule.data_params, strict=cfg.strict)
 
         if cfg.train:
             trainer.fit(model, datamodule=datamodule)
@@ -110,7 +98,7 @@ class VitalRunner(ABC):
                 if trainer.checkpoint_callback is not None:
                     copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
                     # Ensure we use the best weights (and not the latest ones) by loading back the best model
-                    model = model.load_from_checkpoint(str(best_model_path), module=module)
+                    model = model.load_from_checkpoint(str(best_model_path))
                 else:  # If checkpoint callback is not used, save current model.
                     trainer.save_checkpoint(best_model_path)
 

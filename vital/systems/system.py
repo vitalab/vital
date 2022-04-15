@@ -7,7 +7,7 @@ import hydra
 import pytorch_lightning as pl
 import torch
 from omegaconf import DictConfig
-from torch import Tensor
+from torch import Tensor, nn
 from torch.optim.optimizer import Optimizer
 from torchinfo import summary
 
@@ -24,11 +24,12 @@ class VitalSystem(pl.LightningModule, ABC):
         - CLI for generic arguments
     """
 
-    def __init__(self, optim: DictConfig, data_params: DataParameters, **kwargs):
+    def __init__(self, module: DictConfig, optim: DictConfig, data_params: DataParameters, **kwargs):
         """Saves the parameters from all the model's childs and mixins in `hparams`.
 
         Args:
-            optim: hydra configuration for the optimizer.
+            module: Hydra configuration for the model architecture.
+            optim: Hydra configuration for the optimizer.
             data_params: Parameters related to the data necessary to initialize the model.
             **kwargs: Dictionary of arguments to save as the model's `hparams`.
         """
@@ -38,6 +39,17 @@ class VitalSystem(pl.LightningModule, ABC):
 
         # By default, assumes the provided data shape is in channel-first format
         self.example_input_array = torch.randn((2, *self.hparams.data_params.in_shape))
+
+    def configure_module(self) -> nn.Module:
+        """Configure the network architecture used by the system."""
+        return hydra.utils.instantiate(
+            self.hparams.module,
+            input_shape=self.hparams.data_params.in_shape,
+            output_shape=self.hparams.data_params.out_shape,
+        )
+
+    def configure_optimizers(self) -> Optimizer:  # noqa: D102
+        return hydra.utils.instantiate(self.hparams.optim, params=self.parameters())
 
     def setup(self, stage: Optional[str] = None) -> None:  # noqa: D102
         self.log_dir.mkdir(parents=True, exist_ok=True)  # Ensure output directory exists
@@ -60,9 +72,6 @@ class VitalSystem(pl.LightningModule, ABC):
     def log_dir(self) -> Path:
         """Returns the root directory where test logs get saved."""
         return Path(self.trainer.log_dir) if self.trainer.log_dir else Path(self.hparams.trainer.default_root_dir)
-
-    def configure_optimizers(self) -> Optimizer:  # noqa: D102
-        return hydra.utils.instantiate(self.hparams.optim, params=self.parameters())
 
 
 class SystemComputationMixin(VitalSystem, ABC):
