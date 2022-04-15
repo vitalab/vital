@@ -14,8 +14,8 @@ Sherbrooke University, headed by Professor [Pierre-Marc Jodoin](http://info.ushe
 </div>
 
 ## Description
-This repository was not designed to be used as a standalone project, but was rather meant to be used as a third-party
-library for more applied projects.
+This repository was not designed to be used as a standalone project or a template for full-fledged projects, but is
+rather meant to be used as a third-party library for more applied projects.
 
 To help you follow along with the organization of the repository, here is a summary of each major package's purpose:
 
@@ -37,7 +37,7 @@ projects' systems should inherit.
 - [utils](vital/utils): a wide range of common utilities that may be used in multiple other packages (e.g.
 [logging](vital/utils/logging.py), [image processing](vital/utils/image), etc.).
 
-- [VitalRunner](vital/runner.py): common boilerplate code surrounding the use of Lightning's `Trainer` that
+- [`VitalRunner`](vital/runner.py): common boilerplate code surrounding the use of Lightning's `Trainer` that
 handles a generic train and eval run of a model.
 
 ## How to use
@@ -47,33 +47,51 @@ To install the project, run the following command from the project's root direct
 ```shell script
 pip install .
 ```
-> NOTE: This instruction applies when you only want to use the project. If you want to play around with the code and
-> contribute to the project, see [the section on how to contribute](#how-to-contribute).
+> NOTE: This instruction applies when you only want to use the project. If you want to edit the code and contribute to
+> the project, refer to [the section on how to contribute](#how-to-contribute).
+
+### Configuring a run
+This project uses Hydra to handle the configuration of the [`VitalRunner`](vital/runner.py) entry point. To understand
+how to use Hydra's CLI, refer to its [documentation](https://hydra.cc/docs/intro/). For this particular project,
+presets of configuration options for various parts of the `VitalRunner` pipeline are available in the
+[config package](vital/config). These files are meant to be composed together by Hydra to produce a complete
+configuration for a run.
+
+For a concrete example of how to launch a run using the Hydra CLI, let's say we wanted to train an MLP for
+classification on the MNIST dataset using the preset configuration [`mnist-mlp`](vital/config_example/mnist-mlp.yaml),
+but with otherwise default options. Assuming we were working from the repo's root directory, then the command would
+simply be:
+```bash
+# Run the training
+python vital/runner.py --config-name mnist-mlp
+
+# Output the config that would have been used, without actually running the code (useful for debugging)
+python vital/runner.py --config-name mnist-mlp --config job
+```
 
 ### Tracking experiments
 By default, Lightning logs runs locally in a format interpretable by
 [Tensorboard](https://www.tensorflow.org/tensorboard/).
 
 Another option is to use [Comet](https://www.comet.ml/) to log experiments, either online or offline. To enable the
-tracking of experiments using Comet, simply pass a path to a `.comet.config` file to your implementation of
-[VitalRunner](vital/runner.py), like below:
+tracking of experiments using Comet, simply use one of the pre-built Hydra configuration for Comet. The default
+configuration is for Comet in `online` mode, but you can use it in `offline` mode by selecting the corresponding config
+file when launching the [VitalRunner](vital/runner.py):
 ```bash
-python <your_runner_script.py> --comet_config {path to Comet config} ...
+python <your_runner_script.py> logger=comet/offline ...
 ```
-The content of the file should follow the
-[configuration format supported by Comet](https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables)
-and contain only the information necessary to initialize a `CometLogger` instance,
-[as described here](https://pytorch-lightning.readthedocs.io/en/latest/api/pytorch_lightning.loggers.comet.html), with
-the exception of the experiment name. The name of the experiment is generated dynamically from the class name of the
-Lightning module being run.
+To configure the Comet API and experiment's metadata, Comet relies on either i) environment variables (which you can set
+in a `.env` that will automatically be loaded using `python-dotenv`) or ii) a `.comet.config`](.comet.config)` file. For
+more information on how to configure Comet using environment variables or the config file, refer to
+[Comet's configuration variables documentation](https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables).
 
 An example of a `.comet.config` file, with the appropriate fields to track experiments online, can be found
-[here](vital/.comet.config). You can simply copy the file to the directory of your choice within your project (be sure
+[here](.comet.config). You can simply copy the file to the directory of your choice within your project (be sure
 not to commit your Comet API key!!!) and fill the values with your own Comet credentials and workspace setup.
 
 > NOTE: No change to the code is necessary to change how the `CometLogger` handles the configuration from the
 > `.comet.config` file. The code simply reads the content of the `[comet]` section of the file and uses it to create a
-> `CometLogger` instance. That way, you can simply ensure that the fields present in your configuration match the
+> `CometLogger` instance. That way, you simply have to ensure that the fields present in your configuration match the
 > behavior you want from the `CometLogger` integration in Lighting, and you're good to go!
 
 ## How to Contribute
@@ -96,7 +114,7 @@ pre-commit install
 ```
 
 > NOTE: In case you want to copy the pre-commit hooks configuration to your own project, you're welcome to :)
-> The configuration file for each hook is located in the following files:
+> The configuration for each hook is located in the following files:
 > - [isort](https://github.com/timothycrosley/isort): [`pyproject.toml`](./pyproject.toml), `[tool.isort]` section
 > - [black](https://github.com/psf/black): [`pyproject.toml`](./pyproject.toml), `[tool.black]` section
 > - [flake8](https://gitlab.com/pycqa/flake8): [`setup.cfg`](./setup.cfg), `[flake8]` section
