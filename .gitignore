@@ -119,3 +119,8 @@ venv.bak/
 
 # IDEs
 .idea
+
+# Hydra
+.hydra
+outputs/
+multirun/

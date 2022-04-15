@@ -1,0 +1,17 @@
+defaults:
+  - module: null
+  - optim: adam
+
+enable_model_summary: True
+
+train_log_kwargs:
+  prog_bar: False
+  logger: True
+  on_step: True
+  on_epoch: null
+
+val_log_kwargs:
+  prog_bar: False
+  logger: True
+  on_step: null
+  on_epoch: True

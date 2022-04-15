@@ -1,0 +1,33 @@
+defaults:
+  - trainer: default
+  - system: system  # Incomplete config, but sets some common options
+  - data: data  # Incomplete config, but sets some common options
+  - callbacks:
+      - model_checkpoint
+  - logger: comet/online
+
+seed: null
+
+resume: False
+
+# IMPORTANT NOTE: When using a local checkpoint with a relative path add the working_dir to the checkpoint path because
+# hydra will change the current working directory. For example:
+# If defined in the config:  `ckpt: ${work_dir}/path/to/checkpoint.ckpt`
+# If defined in the command line: `ckpt=\${work_dir}/path/to/checkpoint.ckpt`
+ckpt: null
+weights_only: False
+strict: True
+
+train: True
+test: True
+
+comet_tags: null # Tags to for comet experiment if CometLogger is used.
+
+# Keep track of choices.
+choices: ${hydra:runtime.choices}
+
+# Best model save path defines where to save the model. If none, hydra working directory is used.
+best_model_save_path: null
+
+# Copy of original working directory before hydra changes it. Useful for paths.
+work_dir: ${hydra:runtime.cwd}

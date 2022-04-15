@@ -1,18 +1,24 @@
+import logging
+import os
 from abc import ABC
-from argparse import ArgumentParser, Namespace
+from argparse import Namespace
 from pathlib import Path
 from shutil import copy2
-from typing import Type
+from typing import List, Optional, Union
 
+import comet_ml  # noqa
+import dotenv
+import hydra
 import torch
-from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.loggers import CometLogger
+from omegaconf import DictConfig, OmegaConf, open_dict
+from pytorch_lightning import Callback, Trainer, seed_everything
+from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
 from vital.systems.system import VitalSystem
-from vital.utils.config import read_ini_config
-from vital.utils.logging import configure_logging
 from vital.utils.serialization import resolve_model_checkpoint_path
+
+logger = logging.getLogger(__name__)
 
 
 class VitalRunner(ABC):
@@ -20,254 +26,180 @@ class VitalRunner(ABC):
 
     @classmethod
     def main(cls) -> None:
-        """Sets-up the CLI for the ``LightningModule``s runnable through this trainer and runs the requested system."""
-        # Initialize the parser with our own generic arguments, Lightning trainer arguments,
-        # and subparsers for all systems available through the trainer
-        parser = cls._add_system_args(
-            cls._override_trainer_default(cls._add_generic_args(Trainer.add_argparse_args(ArgumentParser())))
-        )
+        """Runs the requested experiment."""
+        # Set up the environment
+        cls.pre_run_routine()
 
-        # Run target system
-        cls.run_system(cls._parse_and_check_args(parser))
+        # Run the system with config loaded by @hydra.main
+        cls.run_system()
 
     @classmethod
-    def run_system(cls, hparams: Namespace) -> None:
+    def pre_run_routine(cls) -> None:
+        """Sets-up the environment before running the training/testing."""
+        # Load environment variables from `.env` file if it exists
+        # Load before hydra main to allow for setting environment variables with ${oc.env:ENV_NAME}
+        dotenv.load_dotenv(override=True)
+
+        OmegaConf.register_new_resolver("sys.gpus", lambda x=None: int(torch.cuda.is_available()))
+        OmegaConf.register_new_resolver("sys.num_workers", lambda x=None: os.cpu_count() - 1)
+
+    @staticmethod
+    @hydra.main(config_path="config_example", config_name="default.yaml")
+    def run_system(cfg: DictConfig) -> None:
         """Handles the training and evaluation of a model.
 
+        Note: Must be static because of the hydra.main decorator and config pass-through.
+
         Args:
-            hparams: Arguments parsed from the CLI.
+            cfg: Configuration to run the experiment.
         """
-        seed_everything(hparams.seed, workers=True)
+        cfg = VitalRunner._check_cfg(cfg)
 
-        # Ensure the checkpoint is accessible on the local machine
-        if hparams.ckpt:
-            ckpt_path = resolve_model_checkpoint_path(hparams.ckpt)
+        if cfg.ckpt:
+            ckpt_path = resolve_model_checkpoint_path(cfg.ckpt)
 
-        # Use Comet for logging if a path to a Comet config file is provided
-        # and logging is enabled in Lightning (i.e. `fast_dev_run=False`)
-        logger = True
-        if hparams.comet_config and not hparams.fast_dev_run:
-            logger = cls._configure_comet_logger(hparams)
+        cfg.seed = seed_everything(cfg.seed, workers=True)
 
-        if hparams.resume:
-            trainer = Trainer(resume_from_checkpoint=ckpt_path, logger=logger)
+        callbacks = VitalRunner.configure_callbacks(cfg)
+        experiment_logger = VitalRunner.configure_logger(cfg)
+
+        if cfg.resume:
+            trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=experiment_logger, callbacks=callbacks)
         else:
-            trainer = Trainer.from_argparse_args(hparams, logger=logger)
+            trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=experiment_logger, callbacks=callbacks)
 
-        # If logger as a logger directory, use it. Otherwise, default to using `default_root_dir`
-        log_dir = Path(trainer.log_dir) if trainer.log_dir else hparams.default_root_dir
+            trainer.logger.log_hyperparams(Namespace(**cfg))  # Save config to logger.
 
-        if not hparams.fast_dev_run:
-            # Configure Python logging right after instantiating the trainer (which determines the logs' path)
-            cls._configure_logging(log_dir, hparams)
+        if isinstance(trainer.logger, CometLogger):
+            experiment_logger.experiment.log_asset_folder(".hydra", log_file_name=True)
+            if cfg.get("comet_tags", None):
+                experiment_logger.experiment.add_tags(list(cfg.comet_tags))
 
-        datamodule = cls._get_selected_data_module(hparams)(**vars(hparams))
-        system_cls = cls._get_selected_system(hparams)
-        if hparams.ckpt and not hparams.weights_only:  # Load pretrained model if checkpoint is provided
-            model = system_cls.load_from_checkpoint(str(ckpt_path), **vars(hparams), strict=hparams.strict_load)
-        else:
-            model = system_cls(**vars(hparams), data_params=datamodule.data_params)
-            if hparams.ckpt and hparams.weights_only:
-                checkpoint = torch.load(ckpt_path, map_location=model.device)
-                model.load_state_dict(checkpoint["state_dict"], strict=hparams.strict_load)
+        # Instantiate datamodule
+        datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data)
 
-        if hparams.train:
+        # Instantiate system (which will handle instantiating the model and optimizer).
+        model: VitalSystem = hydra.utils.instantiate(cfg.system, data_params=datamodule.data_params, _recursive_=False)
+
+        if cfg.ckpt:  # Load pretrained model if checkpoint is provided
+            if cfg.weights_only:
+                logger.info(f"Loading weights from {ckpt_path}")
+                model.load_state_dict(torch.load(ckpt_path, map_location=model.device)["state_dict"], strict=cfg.strict)
+            else:
+                logger.info(f"Loading model from {ckpt_path}")
+                model = model.load_from_checkpoint(ckpt_path, data_params=datamodule.data_params, strict=cfg.strict)
+
+        if cfg.train:
             trainer.fit(model, datamodule=datamodule)
 
-            if not hparams.fast_dev_run:
+            if not cfg.trainer.get("fast_dev_run", False):
                 # Copy best model checkpoint to a predictable path + online tracker (if used)
-                best_model_path = cls._best_model_path(log_dir, hparams)
-                copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
-                if hparams.comet_config:
+                best_model_path = VitalRunner._best_model_path(model.log_dir, cfg)
+                if trainer.checkpoint_callback is not None:
+                    copy2(trainer.checkpoint_callback.best_model_path, str(best_model_path))
+                    # Ensure we use the best weights (and not the latest ones) by loading back the best model
+                    model = model.load_from_checkpoint(str(best_model_path))
+                else:  # If checkpoint callback is not used, save current model.
+                    trainer.save_checkpoint(best_model_path)
+
+                if isinstance(trainer.logger, CometLogger):
                     trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
 
-                # Ensure we use the best weights (and not the latest ones) by loading back the best model
-                model = system_cls.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
-
-        if hparams.test:
+        if cfg.test:
             trainer.test(model, datamodule=datamodule)
 
     @classmethod
-    def _configure_logging(cls, log_dir: Path, hparams: Namespace) -> None:
-        """Callback that defines the default logging behavior.
-
-        It can be overridden to customize the logging behavior, e.g. to adjust to some CLI arguments defined by the
-        user.
+    def _check_cfg(cls, cfg: DictConfig) -> DictConfig:
+        """Parse args, making custom checks on the values of the parameters in the process.
 
         Args:
-            log_dir: Lightning's directory for the current run.
-            hparams: Arguments parsed from the CLI.
-        """
-        configure_logging(log_to_console=True, log_file=log_dir / "run.log")
-
-    @classmethod
-    def _configure_comet_logger(cls, hparams: Namespace) -> CometLogger:
-        """Builds a ``CometLogger`` instance using the content of the Comet configuration file.
-
-        Notes:
-            - The Comet configuration file should follow the `.comet.config` format. See Comet's documentation for more
-              details: https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables
-
-        Args:
-            hparams: Arguments parsed from the CLI.
+            cfg: Full configuration for the experiment.
 
         Returns:
-            Instance of ``CometLogger`` built using the content of the Comet configuration file.
+             Validated config for a system run.
         """
-        comet_config = read_ini_config(hparams.comet_config)["comet"]
-        offline_kwargs = {"offline": comet_config.getboolean("offline", fallback=False)}
-        if "offline" in comet_config:
-            del comet_config["offline"]
-            offline_kwargs["save_dir"] = str(hparams.default_root_dir)
-        return CometLogger(**dict(comet_config), **offline_kwargs)
+        # If no output dir is specified, default to the working directory
+        if not cfg.trainer.get("default_root_dir", None):
+            with open_dict(cfg):
+                cfg.trainer.default_root_dir = os.getcwd()
+
+        return cfg
+
+    @staticmethod
+    def configure_callbacks(cfg: DictConfig) -> Optional[List[Callback]]:
+        """Initializes Lightning callbacks.
+
+        Args:
+            cfg: Full configuration for the experiment.
+
+        Returns:
+            callbacks for the Lightning Trainer
+        """
+        if "callbacks" in cfg:
+            callbacks = []
+            for conf_name, conf in cfg.callbacks.items():
+                if "_target_" in conf:
+                    logger.info(f"Instantiating callback <{conf_name}>")
+                    callbacks.append(hydra.utils.instantiate(conf))
+                else:
+                    logger.warning(f"No _target_ in callback config. Cannot instantiate {conf_name}")
+        else:
+            callbacks = None
+
+        return callbacks
+
+    @staticmethod
+    def configure_logger(cfg: DictConfig) -> Union[bool, LightningLoggerBase]:
+        """Initializes Lightning logger.
+
+        Args:
+            cfg: Full configuration for the experiment.
+
+        Returns:
+            logger for the Lightning Trainer
+        """
+        experiment_logger = True  # Default to True (Tensorboard)
+        skip_logger = False
+        # Configure custom logger only if user specified custom config
+        if isinstance(cfg.logger, DictConfig):
+            if "_target_" not in cfg.logger:
+                logger.warning("No _target_ in logger config. Cannot instantiate custom logger")
+                skip_logger = True
+            if cfg.trainer.get("fast_dev_run", False):
+                logger.warning(
+                    "Not instantiating custom logger because having `fast_dev_run=True` makes Lightning skip logging."
+                    "To test the logger, launch a full run."
+                )
+                skip_logger = True
+            if not skip_logger and "_target_" in cfg.logger:
+                if "comet" in cfg.logger._target_:
+                    experiment_logger = hydra.utils.instantiate(cfg.logger)
+                elif "tensorboard" in cfg.logger._target_:
+                    # If no save_dir is passed, use default logger and let Trainer set save_dir.
+                    if cfg.logger.get("save_dir", None):
+                        experiment_logger = hydra.utils.instantiate(cfg.logger)
+        return experiment_logger
 
     @classmethod
-    def _best_model_path(cls, log_dir: Path, hparams: Namespace) -> Path:
+    def _best_model_path(cls, log_dir: Path, cfg: DictConfig) -> Path:
         """Defines the path where to copy the best model checkpoint after training.
 
         Args:
             log_dir: Lightning's directory for the current run.
-            hparams: Arguments parsed from the CLI.
+            cfg: Full configuration for the experiment.
 
         Returns:
             Path where to copy the best model checkpoint after training.
         """
-        return log_dir / f"{cls._get_selected_system(hparams).__name__}.ckpt"
-
-    @classmethod
-    def _add_system_args(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Adds system-specific subparsers/arguments to a parser object.
-
-        The hierarchy of the added arguments can be arbitrarily complex, as long as ``_get_selected_system`` can
-        pinpoint a single ``VitalSystem`` to run.
-
-        Args:
-            parser: Parser object to which system-specific arguments will be added.
-
-        Returns:
-            Parser object to which system-specific arguments have been added.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def _override_trainer_default(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Allows for overriding Lightning trainer default attributes with runner-specific defaults.
-
-        Args:
-            parser: Parser object that already possesses trainer attributes.
-
-        Returns:
-            Parser object with overridden trainer attributes.
-        """
-        return parser
-
-    @classmethod
-    def _get_selected_data_module(cls, hparams: Namespace) -> Type[VitalDataModule]:
-        """Identify, through the parameters specified in the CLI, the type of data module chosen by the user.
-
-        Args:
-            hparams: Arguments parsed from the CLI.
-
-        Returns:
-            Type of the data module selected by the user to be provided to the Lightning module.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def _get_selected_system(cls, hparams: Namespace) -> Type[VitalSystem]:
-        """Identify, through the parameters specified in the CLI, the type of the Lightning module chosen by the user.
-
-        Args:
-            hparams: Arguments parsed from the CLI.
-
-        Returns:
-            Type of the Lightning module selected by the user to be run.
-        """
-        raise NotImplementedError
-
-    @classmethod
-    def _add_generic_args(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Adds to the parser object some generic arguments useful for running a system.
-
-        Args:
-            parser: Parser object to which generic custom arguments will be added.
-
-        Returns:
-            Parser object to which generic custom arguments have been added.
-        """
-        # logging parameters
-        parser.add_argument(
-            "--comet_config",
-            type=Path,
-            help="Path to Comet configuration file, if you want to track the experiment using Comet",
-        )
-
-        # save/load parameters
-        parser.add_argument(
-            "--ckpt",
-            type=Path,
-            help="Local path or Comet model registry identifiers of checkpoint to use to restore Lightning module",
-        )
-        parser.add_argument("--weights_only", action="store_true", help="Load only weights from checkpoint")
-        parser.add_argument(
-            "--no_strict_load",
-            dest="strict_load",
-            action="store_false",
-            help="Disable strict enforcing of keys when loading state dict",
-        )
-        parser.add_argument(
-            "--resume",
-            action="store_true",
-            help="Disregard any other CLI configuration and restore exact state from the checkpoint",
-        )
-
-        # run parameters
-        parser.add_argument(
-            "--skip_train", dest="train", action="store_false", help="Skip training and do test/evaluation phase"
-        )
-        parser.add_argument("--skip_test", dest="test", action="store_false", help="Skip test/evaluation phase")
-
-        # seed parameter
-        parser.add_argument("--seed", type=int, help="Seed for reproducibility. If None, seed will be set randomly")
-
-        return parser
-
-    @classmethod
-    def _parse_and_check_args(cls, parser: ArgumentParser) -> Namespace:
-        """Parse args, making custom checks on the values of the parameters in the process.
-
-        Args:
-            parser: Complete parser object for which to make custom checks on the values of the parameters.
-
-        Returns:
-            Parsed and validated arguments for a system run.
-
-        Raises:
-            ValueError: If invalid combinations of arguments are specified by the user.
-                - ``--skip_train`` flag is active without a ``--ckpt`` being provided.
-                - ``--resume`` flag is active without a ``--ckpt`` being provided.
-        """
-        args = parser.parse_args()
-
-        if not args.ckpt:
-            if not args.train:
-                raise ValueError(
-                    "Trainer set to skip training (`--skip_train` flag) without a checkpoint provided. \n"
-                    "Either allow model to train (remove `--skip_train` flag) or "
-                    "provide a pretrained model (through `--ckpt` parameter)."
-                )
-            if args.resume:
-                raise ValueError(
-                    "Cannot use flag `--resume` without a checkpoint from which to resume. \n"
-                    "Either allow the model to start over (remove `--resume` flag) or "
-                    "provide a saved checkpoint (through `--ckpt` flag)"
-                )
-
-        if args.default_root_dir is None:
-            # If no output dir is specified, default to the working directory
-            args.default_root_dir = Path.cwd()
+        if cfg.get("best_model_save_path", None):
+            return Path(cfg.best_model_save_path)  # Return save path from config if available
         else:
-            # If output dir is specified, cast it os Path
-            args.default_root_dir = Path(args.default_root_dir)
+            module = cfg.choices["system/module"]
+            name = f"{cfg.choices.data}_{cfg.choices.system}"
+            if module is not None:  # Some systems do not have a module (ex. Auto-encoders)
+                name = f"{name}_{module}"
+            return log_dir / f"{name}.ckpt"
 
-        return args
+
+if __name__ == "__main__":
+    VitalRunner.main()

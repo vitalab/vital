@@ -1,0 +1,9 @@
+defaults:
+  - data
+
+_target_: vital.data.mnist.data_module.MnistDataModule
+
+dataset_path: null
+transforms: null
+download: True
+seed: ${seed}
