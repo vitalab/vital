@@ -1,5 +1,5 @@
 defaults:
-  - data
+  - default
 
 _target_: vital.data.acdc.data_module.AcdcDataModule
 
