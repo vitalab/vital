@@ -1,0 +1,4 @@
+_target_: vital.models.classification.mlp.MLP
+hidden:
+    - 128
+dropout: 0.25

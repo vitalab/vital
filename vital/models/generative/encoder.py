@@ -5,7 +5,7 @@ from typing import Tuple, Union
 import torch
 from torch import Tensor, nn
 
-from vital.modules.layers import conv2d_activation, conv2d_activation_bn
+from vital.models.layers import conv2d_activation, conv2d_activation_bn
 
 
 class Encoder(nn.Module):

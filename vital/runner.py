@@ -15,7 +15,7 @@ from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
-from vital.systems.system import VitalSystem
+from vital.system import VitalSystem
 from vital.utils.serialization import resolve_model_checkpoint_path
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class VitalRunner(ABC):
         datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data)
 
         # Instantiate system (which will handle instantiating the model and optimizer).
-        model: VitalSystem = hydra.utils.instantiate(cfg.system, data_params=datamodule.data_params, _recursive_=False)
+        model: VitalSystem = hydra.utils.instantiate(cfg.task, data_params=datamodule.data_params, _recursive_=False)
 
         if cfg.ckpt:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
@@ -194,10 +194,10 @@ class VitalRunner(ABC):
         if cfg.get("best_model_save_path", None):
             return Path(cfg.best_model_save_path)  # Return save path from config if available
         else:
-            module = cfg.choices["system/module"]
-            name = f"{cfg.choices.data}_{cfg.choices.system}"
-            if module is not None:  # Some systems do not have a module (ex. Auto-encoders)
-                name = f"{name}_{module}"
+            model = cfg.choices["task/model"]
+            name = f"{cfg.choices.data}_{cfg.choices.task}"
+            if model is not None:  # Some systems do not have a model (ex. Auto-encoders)
+                name = f"{name}_{model}"
             return log_dir / f"{name}.ckpt"
 
 

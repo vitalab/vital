@@ -1,0 +1,4 @@
+defaults:
+  - default
+
+_target_: vital.tasks.classification.ClassificationTask

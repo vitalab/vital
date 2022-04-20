@@ -1,4 +1,4 @@
-_target_: vital.modules.segmentation.enet.Enet
+_target_: vital.models.segmentation.enet.Enet
 
 init_channels: 16
 dropout: 0.1

@@ -4,7 +4,7 @@ from typing import Tuple
 import torch
 from torch import Tensor, nn
 
-from vital.modules.layers import conv2d_activation, conv2d_activation_bn
+from vital.models.layers import conv2d_activation, conv2d_activation_bn
 
 
 class CamusUnet(nn.Module):
