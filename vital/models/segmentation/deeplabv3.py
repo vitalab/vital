@@ -33,8 +33,8 @@ class DeepLabv3(nn.Module):
         self._convert_grayscale_to_rgb = convert_grayscale_to_rgb
         if self._convert_grayscale_to_rgb:
             self._grayscale_trans = GrayscaleToRGB()
-        module_cls = torchvision.models.segmentation.__dict__[f"deeplabv3_{backbone}"]
-        self._network = module_cls(
+        model_cls = torchvision.models.segmentation.__dict__[f"deeplabv3_{backbone}"]
+        self._network = model_cls(
             pretrained=pretrained, pretrained_backbone=pretrained_backbone, aux_loss=False, num_classes=num_classes
         )
 

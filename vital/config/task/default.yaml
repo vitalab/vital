@@ -1,5 +1,5 @@
 defaults:
-  - module: null
+  - model: null
   - optim: adam
 
 enable_model_summary: True

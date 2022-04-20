@@ -1,0 +1,6 @@
+defaults:
+  - default
+
+_target_: vital.tasks.segmentation.SegmentationTask
+dice_weight: 1
+cross_entropy_weight: 0.1

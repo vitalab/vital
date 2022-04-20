@@ -5,7 +5,7 @@ from typing import Tuple
 
 from torch import Tensor, nn
 
-from vital.modules.layers import (
+from vital.models.layers import (
     conv2d_activation,
     conv2d_activation_bn,
     conv_transpose2d_activation,

@@ -44,7 +44,7 @@ class LocalizationNet(nn.Module):
         """Initializes class instance.
 
         Args:
-            segmentation_cls: Class of the module to use as a base segmentation model for the LocalizationNet.
+            segmentation_cls: Class of the model to use as a base segmentation model for the LocalizationNet.
             in_shape: Shape of the input data.
             out_shape: Shape of the target data.
             cropped_shape: (H, W), Shape at which to resize RoI crops.
@@ -55,26 +55,26 @@ class LocalizationNet(nn.Module):
         self.in_shape = in_shape
         self.out_shape = out_shape
         self.cropped_shape = cropped_shape
-        self.global_segmentation_module = segmentation_cls(
+        self.global_segmentation_model = segmentation_cls(
             in_channels=in_shape[0], out_channels=out_shape[0], **segmentation_cls_kwargs
         )
-        self.localized_segmentation_module = segmentation_cls(
+        self.localized_segmentation_model = segmentation_cls(
             in_channels=in_shape[0], out_channels=out_shape[0], **segmentation_cls_kwargs
         )
-        segmentation_module = segmentation_cls(
+        segmentation_model = segmentation_cls(
             in_channels=out_shape[0], out_channels=out_shape[0], **segmentation_cls_kwargs
         )
-        self.segmentation_encoder = segmentation_module.encoder
-        self.segmentation_bottleneck = segmentation_module.bottleneck
+        self.segmentation_encoder = segmentation_model.encoder
+        self.segmentation_bottleneck = segmentation_model.bottleneck
 
-        # Compute forward pass with dummy data to compute the output shape of the feature extractor module
-        # used by the RoI bbox module (batch_size of 2 for batchnorm)
+        # Compute forward pass with dummy data to compute the output shape of the feature extractor model
+        # used by the RoI bbox model (batch_size of 2 for batchnorm)
         x = torch.rand(2, *out_shape, dtype=torch.float)
         features = self.segmentation_encoder(x)
         if isinstance(features, Tuple):  # In case of multiple tensors returned by the encoder
             features = features[0]  # Extract expected bottleneck input
         features = self.segmentation_bottleneck(features)
-        self.roi_bbox_module = nn.Sequential(
+        self.roi_bbox_model = nn.Sequential(
             OrderedDict(
                 [
                     ("linear1", nn.Linear(reduce(mul, features.shape[1:]), 1024)),
@@ -100,33 +100,33 @@ class LocalizationNet(nn.Module):
             - (N, ``out_channels``, H, W), Raw, unnormalized scores for each class in the second segmentation, localized
               in the cropped RoI.
         """
-        # First segmentation module: Segment input image
-        # Segmentation module trained to take as input the complete image, and to predict a rough segmentation from
+        # First segmentation model: Segment input image
+        # Segmentation model trained to take as input the complete image, and to predict a rough segmentation from
         # which the groundtruth segmentation's RoI can be inferred
-        global_y_hat = self.global_segmentation_module(x)
+        global_y_hat = self.global_segmentation_model(x)
 
-        # Feature extraction and bbox module: Regress the bbox coordinates around the RoI
-        # Downsampling half of segmentation module trained, in association with the following fully-connected layers,
+        # Feature extraction and bbox model: Regress the bbox coordinates around the RoI
+        # Downsampling half of segmentation model trained, in association with the following fully-connected layers,
         # to predict through regression the coordinates of the bbox around the groundtruth segmentation
         features = self.segmentation_encoder(F.softmax(global_y_hat, dim=1))
         if isinstance(features, Tuple):  # In case of multiple tensors returned by the encoder
             features = features[0]  # Extract expected bottleneck input
         features = self.segmentation_bottleneck(features)
-        features = torch.flatten(features, 1)  # Format bottleneck output to match expected bbox module input
-        roi_bbox_hat = self.roi_bbox_module(features)
+        features = torch.flatten(features, 1)  # Format bottleneck output to match expected bbox model input
+        roi_bbox_hat = self.roi_bbox_model(features)
 
         # Denormalize bbox while allowing gradients to flow through
         boxes = roi_bbox_hat.clone()
         boxes[:, (1, 3)] *= self.in_shape[1]
         boxes[:, (0, 2)] *= self.in_shape[2]
 
-        # Crop and resize ``x`` based on ``roi_bbox_hat`` predicted by the previous modules
+        # Crop and resize ``x`` based on ``roi_bbox_hat`` predicted by the previous models
         cropped_x = roi_align(x, torch.split(boxes, 1), self.cropped_shape, aligned=True)
 
-        # Second segmentation module: Segment cropped RoI
-        # Segmentation module trained to take as input the image cropped around the predicted segmentation's RoI, and
+        # Second segmentation model: Segment cropped RoI
+        # Segmentation model trained to take as input the image cropped around the predicted segmentation's RoI, and
         # to predict a highly accurate segmentation from the localised input
-        localized_y_hat = self.localized_segmentation_module(cropped_x)
+        localized_y_hat = self.localized_segmentation_model(cropped_x)
 
         return global_y_hat, roi_bbox_hat, localized_y_hat
 

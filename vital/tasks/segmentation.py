@@ -5,16 +5,16 @@ from torch.nn import functional as F
 
 from vital.data.config import Tags
 from vital.metrics.train.metric import DifferentiableDiceCoefficient
-from vital.systems.computation import TrainValComputationMixin
+from vital.tasks.generic import SharedTrainEvalTask
 from vital.utils.decorators import auto_move_data
 
 
-class SegmentationComputationMixin(TrainValComputationMixin):
-    """Mixin for segmentation train/val step.
+class SegmentationTask(SharedTrainEvalTask):
+    """Generic segmentation training and inference steps.
 
     Implements generic segmentation train/val step and inference, assuming the following conditions:
-        - the ``nn.Module`` used returns as single output the raw, unnormalized scores for each class in the predicted
-          segmentation;
+        - the model from ``self.configure_model()`` returns as lone output the raw, unnormalized scores for each class
+          in the predicted segmentation;
         - The loss used is a weighted combination of Dice and cross-entropy.
     """
 
@@ -29,19 +29,19 @@ class SegmentationComputationMixin(TrainValComputationMixin):
         """
         super().__init__(*args, **kwargs)
         self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none")
-        self.module = self.configure_module()
+        self.model = self.configure_model()
         self.dice_weight = dice_weight
         self.cross_entropy_weight = cross_entropy_weight
 
     @auto_move_data
     def forward(self, *args, **kwargs):  # noqa: D102
-        return self.module(*args, **kwargs)
+        return self.model(*args, **kwargs)
 
-    def trainval_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:  # noqa: D102
+    def _shared_train_val_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:  # noqa: D102
         x, y = batch[Tags.img], batch[Tags.gt]
 
         # Forward
-        y_hat = self.module(x)
+        y_hat = self.model(x)
 
         # Segmentation accuracy metrics
         ce = F.cross_entropy(y_hat, y)

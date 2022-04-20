@@ -1,6 +1,6 @@
 defaults:
   - trainer: default
-  - system: system  # Incomplete config, but sets some common options
+  - task: default  # Incomplete config, but sets some common options
   - data: data  # Incomplete config, but sets some common options
   - callbacks:
       - model_checkpoint

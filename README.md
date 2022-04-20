@@ -26,13 +26,13 @@ files (e.g. `.mhd` or `nii.gz`) to implementations of torchvision's `VisionDatas
 losses for training (see [train](vital/metrics/train)) or scores to evaluate the systems' performance (see
 [evaluate](vital/metrics/evaluate)).
 
-- [modules](vital/modules): generic models, organized by task (e.g. [classification](vital/modules/segmentation),
-[generative](vital/modules/generative), etc.).
+- [models](vital/models): generic models, organized by task (e.g. [classification](vital/models/segmentation),
+[generative](vital/models/generative), etc.).
 
 - [results](vital/results): generic utilities for processing results during the evaluation phase.
 
-- [systems](vital/systems): common boilerplate Lightning module code (split across mixins), from which concrete
-projects' systems should inherit.
+- [tasks](vital/tasks): common boilerplate Lightning module code to train architectures for specific tasks (e.g.
+[classfication](vital/tasks/classification.py), [segmentation](vital/tasks/segmentation.py), etc.).
 
 - [utils](vital/utils): a wide range of common utilities that may be used in multiple other packages (e.g.
 [logging](vital/utils/logging.py), [image processing](vital/utils/image), etc.).
