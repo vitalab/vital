@@ -9,6 +9,7 @@ import pandas as pd
 import umap
 
 from vital.results.processor import ResultsProcessor
+from vital.utils.parsing import StoreDictKeyPair
 
 logger = logging.getLogger(__name__)
 
@@ -19,17 +20,17 @@ class GroupsEmbeddingPlots(ResultsProcessor):
     desc = "groups_embedding"
     ProcessingOutput = np.ndarray
 
-    def __init__(self, embedding_params: Mapping[str, Any] = None, interactive: bool = False, **kwargs):
+    def __init__(self, embedding_kwargs: Mapping[str, Any] = None, interactive: bool = False, **kwargs):
         """Initializes class instance.
 
         Args:
-            embedding_params: Parameters to initialize the UMAP object.
+            embedding_kwargs: Parameters to pass to the UMAP estimator.
             interactive: If ``True``, use the interactive plot; otherwise, save a custom set of figures for later
                 viewing.
         """
         super().__init__(output_name=self.desc, **kwargs)
-        embedding_params = embedding_params if embedding_params else {}
-        self.umap = umap.UMAP(**embedding_params)
+        embedding_kwargs = embedding_kwargs if embedding_kwargs else {}
+        self.umap = umap.UMAP(**embedding_kwargs)
         self.interactive = interactive
 
     def aggregate_outputs(self, outputs: Mapping[str, ProcessingOutput], output_path: Path) -> None:
@@ -109,5 +110,10 @@ class GroupsEmbeddingPlots(ResultsProcessor):
         parser.add_argument(
             "--interactive", action="store_true", help="Enable UMAP interactive plot, instead of saving scatter plots"
         )
-        # TODO Add command line arguments for UMAP init
+        parser.add_argument(
+            "--embedding_kwargs",
+            action=StoreDictKeyPair,
+            default=dict(),
+            help="Parameters to pass to the UMAP estimator",
+        )
         return parser
