@@ -1,0 +1,7 @@
+defaults:
+  - autoencoder
+
+_target_: vital.tasks.autoencoder.SegmentationBetaVaeTask
+beta: 1e-4
+capacity: 0
+capacity_schedule: 0
