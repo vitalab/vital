@@ -1,6 +1,7 @@
 defaults:
   - default
   - predict: camus
+  - /processors: camus/image
 
 _target_: vital.data.camus.data_module.CamusDataModule
 
