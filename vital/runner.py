@@ -4,7 +4,7 @@ from abc import ABC
 from argparse import Namespace
 from pathlib import Path
 from shutil import copy2
-from typing import List, Optional, Union
+from typing import List, Union
 
 import comet_ml  # noqa
 import hydra
@@ -61,6 +61,9 @@ class VitalRunner(ABC):
         cfg.seed = seed_everything(cfg.seed, workers=True)
 
         callbacks = VitalRunner.configure_callbacks(cfg)
+        if isinstance(cfg.data.predict, DictConfig):
+            # If prediction writer callback is specified, add it to the list of callbacks
+            callbacks.append(hydra.utils.instantiate(cfg.data.predict))
         experiment_logger = VitalRunner.configure_logger(cfg)
 
         if cfg.resume:
@@ -76,7 +79,7 @@ class VitalRunner(ABC):
                 experiment_logger.experiment.add_tags(list(cfg.comet_tags))
 
         # Instantiate datamodule
-        datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data)
+        datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data, _recursive_=False)
 
         # Instantiate system (which will handle instantiating the model and optimizer).
         model: VitalSystem = hydra.utils.instantiate(cfg.task, data_params=datamodule.data_params, _recursive_=False)
@@ -108,6 +111,9 @@ class VitalRunner(ABC):
         if cfg.test:
             trainer.test(model, datamodule=datamodule)
 
+        if cfg.predict:
+            trainer.predict(model, datamodule=datamodule)
+
     @classmethod
     def _check_cfg(cls, cfg: DictConfig) -> DictConfig:
         """Parse args, making custom checks on the values of the parameters in the process.
@@ -126,26 +132,23 @@ class VitalRunner(ABC):
         return cfg
 
     @staticmethod
-    def configure_callbacks(cfg: DictConfig) -> Optional[List[Callback]]:
+    def configure_callbacks(cfg: DictConfig) -> List[Callback]:
         """Initializes Lightning callbacks.
 
         Args:
             cfg: Full configuration for the experiment.
 
         Returns:
-            callbacks for the Lightning Trainer
+            Callbacks for the Lightning Trainer.
         """
-        if "callbacks" in cfg:
-            callbacks = []
+        callbacks = []
+        if "callbacks" in cfg and cfg.callbacks is not None:
             for conf_name, conf in cfg.callbacks.items():
                 if "_target_" in conf:
                     logger.info(f"Instantiating callback <{conf_name}>")
                     callbacks.append(hydra.utils.instantiate(conf))
                 else:
                     logger.warning(f"No _target_ in callback config. Cannot instantiate {conf_name}")
-        else:
-            callbacks = None
-
         return callbacks
 
     @staticmethod

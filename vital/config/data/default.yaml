@@ -2,3 +2,5 @@ _target_: ???
 dataset_path: ???
 batch_size: 32
 num_workers: ${sys.num_workers:}
+
+predict: null

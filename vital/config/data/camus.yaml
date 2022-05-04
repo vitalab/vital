@@ -1,5 +1,6 @@
 defaults:
   - default
+  - predict: camus
 
 _target_: vital.data.camus.data_module.CamusDataModule
 

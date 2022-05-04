@@ -19,7 +19,8 @@ weights_only: False
 strict: True
 
 train: True
-test: True
+test: False
+predict: True
 
 comet_tags: null # Tags to for comet experiment if CometLogger is used.
 
