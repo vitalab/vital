@@ -15,6 +15,7 @@ from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
+from vital.results.processor import ResultsProcessorCallback
 from vital.system import VitalSystem
 from vital.utils.serialization import resolve_model_checkpoint_path
 
@@ -64,6 +65,7 @@ class VitalRunner(ABC):
         if isinstance(cfg.data.predict, DictConfig):
             # If prediction writer callback is specified, add it to the list of callbacks
             callbacks.append(hydra.utils.instantiate(cfg.data.predict))
+        callbacks.extend(VitalRunner.configure_results_processors(cfg))
         experiment_logger = VitalRunner.configure_logger(cfg)
 
         if cfg.resume:
@@ -152,6 +154,29 @@ class VitalRunner(ABC):
         return callbacks
 
     @staticmethod
+    def configure_results_processors(cfg: DictConfig) -> List[Callback]:
+        """Initializes `ResultsProcessor`s wrapped as Lightning callbacks.
+
+        Args:
+            cfg: Full configuration for the experiment.
+
+        Returns:
+            `ResultsProcessor`s wrapped as callbacks for the Lightning Trainer.
+        """
+        processor_callbacks = []
+        if "processors" in cfg and cfg.processors is not None:
+            for conf_name, conf in cfg.processors.items():
+                if "_target_" in conf:
+                    logger.info(f"Instantiating results processor <{conf_name}>")
+                    # Instantiate the `ResultsProcessor` and wrap it inside a Lightning `Callback`,
+                    # so that it can be called automatically by Lightning
+                    processor = hydra.utils.instantiate(conf)
+                    processor_callbacks.append(ResultsProcessorCallback(processor))
+                else:
+                    logger.warning(f"No _target_ in results processor config. Cannot instantiate {conf_name}")
+        return processor_callbacks
+
+    @staticmethod
     def configure_logger(cfg: DictConfig) -> Union[bool, LightningLoggerBase]:
         """Initializes Lightning logger.
 
@@ -159,7 +184,7 @@ class VitalRunner(ABC):
             cfg: Full configuration for the experiment.
 
         Returns:
-            logger for the Lightning Trainer
+            Logger for the Lightning Trainer.
         """
         experiment_logger = True  # Default to True (Tensorboard)
         skip_logger = False
