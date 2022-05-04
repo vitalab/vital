@@ -1,0 +1,7 @@
+defaults:
+  - beta-vae
+
+_target_: vital.tasks.autoencoder.SegmentationArVaeTask
+attrs: []
+gamma: 10
+delta: 1

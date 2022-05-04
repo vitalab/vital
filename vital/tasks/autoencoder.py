@@ -1,4 +1,4 @@
-from typing import Dict, Literal, Mapping, Tuple, Union
+from typing import Dict, Literal, Mapping, Sequence, Tuple, Union
 
 import hydra
 import numpy as np
@@ -248,4 +248,86 @@ class SegmentationBetaVaeTask(SegmentationAutoencoderTask):
             else 1
         )
         loss += (metrics["kl_div"] - capacity) * self.hparams.beta
+        return loss
+
+
+class SegmentationArVaeTask(SegmentationBetaVaeTask):
+    """Generic segmentation AR-VAE (Attribute Regularization VAE) training and inference steps.
+
+    Builds on top of the generic variational autoencoder train/eval loop with the AR-VAE adjustments:
+        - adds an attribute regularization term computed on the latent space encodings
+
+    References:
+        - AR-VAE paper: https://arxiv.org/pdf/2004.05485.pdf
+    """
+
+    def __init__(self, attrs: Sequence[str], gamma: float = 10, delta: float = 1, **kwargs):
+        """Initializes class instance.
+
+        Args:
+            attrs: Labels identifying each attribute the AR-VAE should regularize for.
+                This label should correspond to the key identifying the attribute's data in a batch dict, i.e.
+                `batch[attrs[i]]`, where `batch` is a batch from the dataloader should return a (N, 1) tensor of the
+                attribute's target values.
+            gamma: Weight to give to the attribute regularization loss when computing the VAE's loss.
+            delta: Attribute regularization hyperparameter that decides the spread of the posterior distribution.
+            **kwargs: Additional parameters to pass along to ``super().__init__()``.
+        """
+        super().__init__(**kwargs)
+
+    def _compute_latent_space_metrics(self, out: Dict[str, Tensor], batch: Dict[str, Tensor]) -> Dict[str, Tensor]:
+        """Computes metrics on the input's encoding in the latent space.
+
+        Adds the attribute regularization term to the loss already computed by the parent's implementation.
+
+        Args:
+            out: Output of a forward pass with the autoencoder network.
+            batch: Content of the batch of data returned by the dataloader.
+
+        References:
+            - Computation of the attribute regularization term inspired by the original paper's implementation:
+              https://github.com/ashispati/ar-vae/blob/master/utils/trainer.py#L378-L403
+
+        Returns:
+            Metrics useful for computing the loss and tracking the system's training progress:
+                - metrics computed by ``super()._compute_latent_space_metrics``
+                - attribute regularization term for each attribute (under the "{attr}_attr_reg" label format)
+        """
+        metrics = super()._compute_latent_space_metrics(out, batch)
+
+        for attr_idx, attr in enumerate(self.hparams.attrs):
+            # Extract dimension to regularize and target for the current attribute
+            latent_code = out[self.model.encoding_tag][:, attr_idx].unsqueeze(1)
+            attribute = batch[attr]
+
+            # Compute latent distance matrix
+            latent_code = latent_code.repeat(1, latent_code.shape[0])
+            lc_dist_mat = latent_code - latent_code.transpose(1, 0)
+
+            # Compute attribute distance matrix
+            attribute = attribute.repeat(1, attribute.shape[0])
+            attribute_dist_mat = attribute - attribute.transpose(1, 0)
+
+            # Compute regularization loss
+            lc_tanh = torch.tanh(lc_dist_mat * self.hparams.delta)
+            attribute_sign = torch.sign(attribute_dist_mat)
+            metrics[f"attr_reg/{attr}"] = F.l1_loss(lc_tanh, attribute_sign)
+
+        return metrics
+
+    def _compute_loss(self, metrics: Mapping[str, Tensor]) -> Tensor:
+        """Computes loss for a train/val step based on various metrics computed on the system's predictions.
+
+        Adds the attribute regularization term to the loss already computed by the parent's implementation.
+
+        Args:
+            metrics: Metrics useful for computing the loss (usually a combination of metrics from
+                ``self._compute_reconstruction_metrics`` and ``self._compute_latent_space_metrics``).
+
+        Returns:
+            Loss for a train/val step.
+        """
+        loss = super()._compute_loss(metrics)
+        attr_reg_sum = sum(metrics[f"attr_reg/{attr}"] for attr in self.hparams.attrs)
+        loss += attr_reg_sum * self.hparams.gamma
         return loss
