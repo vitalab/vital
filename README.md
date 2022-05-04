@@ -86,7 +86,7 @@ file when launching the [VitalRunner](vital/runner.py):
 python <your_runner_script.py> logger=comet/offline ...
 ```
 To configure the Comet API and experiment's metadata, Comet relies on either i) environment variables (which you can set
-in a `.env` that will automatically be loaded using `python-dotenv`) or ii) a `.comet.config`](.comet.config)` file. For
+in a `.env` that will automatically be loaded using `python-dotenv`) or ii) a [`.comet.config`](.comet.config)` file. For
 more information on how to configure Comet using environment variables or the config file, refer to
 [Comet's configuration variables documentation](https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables).
 
