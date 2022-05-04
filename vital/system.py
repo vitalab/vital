@@ -69,4 +69,4 @@ class VitalSystem(pl.LightningModule, ABC):
     @property
     def log_dir(self) -> Path:
         """Returns the root directory where test logs get saved."""
-        return Path(self.trainer.log_dir) if self.trainer.log_dir else Path(self.hparams.trainer.default_root_dir)
+        return Path(self.trainer.log_dir) if self.trainer.log_dir else Path(self.trainer.default_root_dir)
