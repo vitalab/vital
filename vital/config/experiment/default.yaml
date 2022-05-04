@@ -1,0 +1,21 @@
+# This is an experiment config example to show how to use vital and hydra configs in your project.
+# This config will result in the exact same config as vital_default.
+
+# Use the next line to indicate that changes specified in this config should be interpreted as relative to the _global_ package.
+# @package _global_
+
+# Start by "importing" pre-defined config groups from the vital config directory.
+defaults:
+  - vital_default # This references default config from vital.config.vital_default
+
+  # Override defaults for data, module, system here
+  # Ex:
+  #  - override /system: <system>
+  #  - override /system/module: <module>
+  #  - override /data: <data>
+
+
+# Overwrite specific config parameters here. They will be merged with the rest of the config by Hydra.
+# Ex:
+# trainer:
+#   max_epochs: 100

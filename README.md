@@ -63,15 +63,15 @@ presets of configuration options for various parts of the `VitalRunner` pipeline
 configuration for a run.
 
 For a concrete example of how to launch a run using the Hydra CLI, let's say we wanted to train an MLP for
-classification on the MNIST dataset using the preset configuration [`mnist-mlp`](vital/config_example/mnist-mlp.yaml),
+classification on the MNIST dataset using the preset configuration [`mnist-mlp`](vital/config/experiment/mnist-mlp.yaml),
 but with otherwise default options. Assuming we were working from the repo's root directory, then the command would
 simply be:
 ```bash
 # Run the training
-python vital/runner.py --config-name mnist-mlp
+python vital/runner.py +experiment=mnist-mlp
 
 # Output the config that would have been used, without actually running the code (useful for debugging)
-python vital/runner.py --config-name mnist-mlp --config job
+python vital/runner.py +experiment=mnist-mlp --config job
 ```
 
 ### Tracking experiments

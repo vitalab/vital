@@ -44,7 +44,7 @@ class VitalRunner(ABC):
         OmegaConf.register_new_resolver("sys.num_workers", lambda x=None: os.cpu_count() - 1)
 
     @staticmethod
-    @hydra.main(config_path="config_example", config_name="default.yaml")
+    @hydra.main(config_path="config/experiment", config_name="default")
     def run_system(cfg: DictConfig) -> None:
         """Handles the training and evaluation of a model.
 
