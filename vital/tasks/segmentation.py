@@ -18,11 +18,11 @@ class SegmentationTask(SharedTrainEvalTask):
         - The loss used is a weighted combination of Dice and cross-entropy.
     """
 
-    def __init__(self, cross_entropy_weight: float = 0.1, dice_weight: float = 1, *args, **kwargs):
+    def __init__(self, ce_weight: float = 0.1, dice_weight: float = 1, *args, **kwargs):
         """Initializes the metric objects used repeatedly in the train/eval loop.
 
         Args:
-            cross_entropy_weight: Weight to give to the cross-entropy factor of the segmentation loss
+            ce_weight: Weight to give to the cross-entropy factor of the segmentation loss
             dice_weight: Weight to give to the cross-entropy factor of the segmentation loss
             *args: Positional arguments to pass to the parent's constructor.
             **kwargs: Keyword arguments to pass to the parent's constructor.
@@ -30,8 +30,6 @@ class SegmentationTask(SharedTrainEvalTask):
         super().__init__(*args, **kwargs)
         self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none")
         self.model = self.configure_model()
-        self.dice_weight = dice_weight
-        self.cross_entropy_weight = cross_entropy_weight
 
     @auto_move_data
     def forward(self, *args, **kwargs):  # noqa: D102
@@ -49,7 +47,7 @@ class SegmentationTask(SharedTrainEvalTask):
         dices = {f"dice_{label}": dice for label, dice in zip(self.hparams.data_params.labels[1:], dice_values)}
         mean_dice = dice_values.mean()
 
-        loss = (self.cross_entropy_weight * ce) + (self.dice_weight * (1 - mean_dice))
+        loss = (self.hparams.ce_weight * ce) + (self.hparams.dice_weight * (1 - mean_dice))
 
         # Format output
         return {"loss": loss, "ce": ce, "dice": mean_dice, **dices}
