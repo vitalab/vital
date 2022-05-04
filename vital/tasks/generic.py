@@ -27,13 +27,13 @@ class SharedTrainEvalTask(VitalSystem, ABC):
         raise NotImplementedError
 
     def training_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
-        result = prefix(self._shared_train_val_step(*args, **kwargs), "train_")
+        result = prefix(self._shared_train_val_step(*args, **kwargs), "train/")
         self.log_dict(result, **self.hparams.train_log_kwargs)
         # Add reference to 'train_loss' under 'loss' keyword, requested by PL to know which metric to optimize
-        result["loss"] = result["train_loss"]
+        result["loss"] = result["train/loss"]
         return result
 
     def validation_step(self, *args, **kwargs) -> Dict[str, Tensor]:  # noqa: D102
-        result = prefix(self._shared_train_val_step(*args, **kwargs), "val_")
+        result = prefix(self._shared_train_val_step(*args, **kwargs), "val/")
         self.log_dict(result, **self.hparams.val_log_kwargs)
         return result

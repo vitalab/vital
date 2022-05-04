@@ -44,7 +44,7 @@ class SegmentationTask(SharedTrainEvalTask):
         # Segmentation accuracy metrics
         ce = F.cross_entropy(y_hat, y)
         dice_values = self._dice(y_hat, y)
-        dices = {f"dice_{label}": dice for label, dice in zip(self.hparams.data_params.labels[1:], dice_values)}
+        dices = {f"dice/{label}": dice for label, dice in zip(self.hparams.data_params.labels[1:], dice_values)}
         mean_dice = dice_values.mean()
 
         loss = (self.hparams.ce_weight * ce) + (self.hparams.dice_weight * (1 - mean_dice))
