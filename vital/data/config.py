@@ -48,6 +48,7 @@ class Subset(DataTag):
     TRAIN = "train"
     VAL = "val"
     TEST = "test"
+    PREDICT = "predict"
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,7 @@
 from pathlib import Path
-from typing import List, Literal, Sequence, Union
+from typing import List, Literal, Optional, Sequence, Union
 
+from pytorch_lightning.trainer.states import TrainerFn
 from torch.utils.data import DataLoader
 
 from vital.data.camus.config import CamusTags, Label, in_channels
@@ -64,12 +65,15 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
             "neighbor_padding": neighbor_padding,
         }
 
-    def setup(self, stage: Literal["fit", "test"]) -> None:  # noqa: D102
-        if stage == "fit":
+    def setup(self, stage: Optional[str] = None) -> None:  # noqa: D102
+        if stage == TrainerFn.FITTING:
             self._dataset[Subset.TRAIN] = Camus(image_set=Subset.TRAIN, **self._dataset_kwargs)
+        if stage in [TrainerFn.FITTING, TrainerFn.VALIDATING]:
             self._dataset[Subset.VAL] = Camus(image_set=Subset.VAL, **self._dataset_kwargs)
-        if stage == "test":
-            self._dataset[Subset.TEST] = Camus(image_set=Subset.TEST, predict=True, **self._dataset_kwargs)
+        if stage == TrainerFn.TESTING:
+            self._dataset[Subset.TEST] = Camus(image_set=Subset.TEST, **self._dataset_kwargs)
+        if stage == TrainerFn.PREDICTING:
+            self._dataset[Subset.PREDICT] = Camus(image_set=Subset.TEST, predict=True, **self._dataset_kwargs)
 
     def group_ids(self, subset: Subset, level: Literal["patient", "view"] = "view") -> List[str]:
         """Lists the IDs of the different levels of groups/clusters samples in the data can belong to.
@@ -104,5 +108,10 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
 
     def test_dataloader(self) -> DataLoader:  # noqa: D102
         return DataLoader(
-            self.dataset(subset=Subset.TEST), batch_size=None, num_workers=self.num_workers, pin_memory=True
+            self.dataset(subset=Subset.TEST), batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=True
+        )
+
+    def predict_dataloader(self) -> DataLoader:  # noqa: D102
+        return DataLoader(
+            self.dataset(subset=Subset.PREDICT), batch_size=None, num_workers=self.num_workers, pin_memory=True
         )
