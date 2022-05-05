@@ -115,7 +115,7 @@ class CamusTags(Tags):
     voxelspacing: str = "voxelspacing"
 
     raw: str = "raw"
-    rec: str = "rec"
+    post: str = "post"
 
     frame_pos: str = "frame_pos"
     lv_area: str = "lv_area"
