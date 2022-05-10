@@ -12,7 +12,7 @@ class ClassificationTask(SharedTrainEvalTask):
     """Generic classification training and inference steps.
 
     Implements generic classification train/val step and inference, assuming the following conditions:
-        - the model from ``self.configure_model()`` returns as lone output the raw, unnormalized scores for each class.
+        - the model from ``self.configure_model()`` returns one output: the raw, unnormalized scores for each class.
     """
 
     def __init__(self, *args, **kwargs):

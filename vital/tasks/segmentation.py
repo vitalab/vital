@@ -13,7 +13,7 @@ class SegmentationTask(SharedTrainEvalTask):
     """Generic segmentation training and inference steps.
 
     Implements generic segmentation train/val step and inference, assuming the following conditions:
-        - the model from ``self.configure_model()`` returns as lone output the raw, unnormalized scores for each class
+        - the model from ``self.configure_model()`` returns one output: the raw, unnormalized scores for each class
           in the predicted segmentation;
         - The loss used is a weighted combination of Dice and cross-entropy.
     """
