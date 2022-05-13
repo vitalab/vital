@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Tuple
 
 import torchvision
 from torch import Tensor, nn
@@ -11,8 +11,9 @@ class DeepLabv3(nn.Module):
 
     def __init__(
         self,
-        backbone: Literal["resnet50", "resnet101"],
-        num_classes: int,
+        input_shape: Tuple[int, ...],
+        output_shape: Tuple[int, ...],
+        backbone: Literal["resnet50", "resnet101", "deeplabv3_mobilenet_v3_large"] = "resnet50",
         convert_grayscale_to_rgb: bool = False,
         pretrained: bool = False,
         pretrained_backbone: bool = False,
@@ -20,8 +21,9 @@ class DeepLabv3(nn.Module):
         """Initializes class instance.
 
         Args:
+            input_shape: (in_channels, H, W), Shape of the input images.
+            output_shape: (num_classes, H, W), Shape of the output segmentation map.
             backbone: The network used by the DeepLabv3 architecture to compute the features for the model.
-            num_classes: Number of output classes to segment.
             convert_grayscale_to_rgb: If ``True``, the forward pass will automatically convert single channel grayscale
                 inputs to 3-channel RGB, where r == g == b, to fit with DeepLabv3's hardcoded 3 channel input layer.
                 If ``False``, the input is assumed to already be 3 channel and is not transformed in any way.
@@ -35,7 +37,7 @@ class DeepLabv3(nn.Module):
             self._grayscale_trans = GrayscaleToRGB()
         model_cls = torchvision.models.segmentation.__dict__[f"deeplabv3_{backbone}"]
         self._network = model_cls(
-            pretrained=pretrained, pretrained_backbone=pretrained_backbone, aux_loss=False, num_classes=num_classes
+            pretrained=pretrained, pretrained_backbone=pretrained_backbone, aux_loss=False, num_classes=output_shape[0]
         )
 
     def forward(self, x: Tensor) -> Tensor:

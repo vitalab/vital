@@ -1,0 +1,6 @@
+_target_: vital.models.segmentation.deeplabv3.DeepLabv3
+
+backbone: resnet50
+convert_grayscale_to_rgb: False
+pretrained: False
+pretrained_backbone: False
