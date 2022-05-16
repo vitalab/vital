@@ -167,7 +167,7 @@ class VitalRunner(ABC):
                 skip_logger = True
             if cfg.trainer.get("fast_dev_run", False):
                 logger.warning(
-                    "Not instantiating custom logger because having `fast_dev_run=True` makes Lightning skip logging."
+                    "Not instantiating custom logger because having `fast_dev_run=True` makes Lightning skip logging. "
                     "To test the logger, launch a full run."
                 )
                 skip_logger = True
