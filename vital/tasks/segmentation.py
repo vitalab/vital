@@ -1,12 +1,15 @@
 from typing import Dict
 
+import torch
 from torch import Tensor
 from torch.nn import functional as F
+from torchvision.ops import roi_pool
 
 from vital.data.config import Tags
 from vital.metrics.train.metric import DifferentiableDiceCoefficient
 from vital.tasks.generic import SharedTrainEvalTask
 from vital.utils.decorators import auto_move_data
+from vital.utils.image.measure import Measure
 
 
 class SegmentationTask(SharedTrainEvalTask):
@@ -51,3 +54,92 @@ class SegmentationTask(SharedTrainEvalTask):
 
         # Format output
         return {"loss": loss, "ce": ce, "dice": mean_dice, **dices}
+
+
+class RoiSegmentationTask(SegmentationTask):
+    """Generic segmentation training steps for methods who perform multi-task ROI localization and segmentation.
+
+    Implements generic segmentation train/val step, assuming the following conditions:
+        - the model from ``self.configure_model()`` returns three outputs when specifying `predict=False`, namely i) a
+          first rough segmentation from the whole image, ii) the bbox coordinates around the RoI, and iii) a refined
+          segmentation of only the RoI.
+        - The loss used is a weighted combination of Dice and cross-entropy + MAE on the regressed bbox coordinates.
+    """
+
+    def __init__(self, bbox_loss_weight: float = 20, *args, **kwargs):
+        """Initializes the metric objects used repeatedly in the train/eval loop.
+
+        Args:
+            bbox_loss_weight: Weight applied to the bbox prediction's MAE in the computation of the global loss.
+            *args: Positional arguments to pass to the parent's constructor.
+            **kwargs: Keyword arguments to pass to the parent's constructor.
+        """
+        super().__init__(*args, **kwargs)
+        self._roi_dice = DifferentiableDiceCoefficient(include_background=True, reduction="none")
+
+    def _compute_normalized_bbox(self, y: Tensor) -> Tensor:
+        """Computes the normalized coordinates of the bbox around the RoI in the segmentation.
+
+        A normalized coordinate is mapped to the [0, 1] interval (to be able to be used in differentiable regression),
+        rather than mapped to the [0, dim_size - 1] integer interval.
+
+        Args:
+            y: (N, H, W), Segmentation in categorical format.
+
+        Returns:
+            (N, 4), Normalized coordinates of the bbox around the RoI, in (x1, y1, x2, y2) format.
+        """
+        boxes = []
+        for y_item in y:
+            item_box = Measure.bbox(y_item, range(1, len(self.hparams.data_params.labels)), normalize=True)
+            # Convert between the (y1, x1, y2, x2) format from the `Measure` API and
+            # the (x1, y1, x2, y2) format used by torchvision's RoI
+            item_box = item_box[[1, 0, 3, 2]]
+            boxes.append(item_box)
+        return torch.stack(boxes).to(y.device)
+
+    def _shared_train_val_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:
+        x, y = batch[Tags.img], batch[Tags.gt]
+        roi_bbox = self._compute_normalized_bbox(y)  # Compute the target RoI bbox from the groundtruth
+
+        # Forward
+        y_hat, roi_bbox_hat, roi_y_hat = self.model(x, predict=False)
+
+        # Crop and resize ``y`` based on ``roi_bbox_hat`` predicted by the model
+        boxes = torch.split(Measure.denormalize_bbox(roi_bbox_hat, self.hparams.data_params.out_shape[1:][::-1]), 1)
+        roi_y = roi_pool(y.unsqueeze(1).to(boxes[0].dtype), boxes, roi_y_hat.shape[2:]).squeeze().long()
+
+        # Global segmentation accuracy metrics
+        ce = F.cross_entropy(y_hat, y)
+        dice_values = self._dice(y_hat, y)
+        dices = {f"global/dice/{label}": dice for label, dice in zip(self.hparams.data_params.labels[1:], dice_values)}
+        mean_dice = dice_values.mean()
+
+        # Localized segmentation accuracy metrics (includes the background since it is no longer dominant)
+        roi_ce = F.cross_entropy(roi_y_hat, roi_y)
+        roi_dice_values = self._roi_dice(roi_y_hat, roi_y)
+        roi_dices = {f"dice/{label}": dice for label, dice in zip(self.hparams.data_params.labels, roi_dice_values)}
+        roi_mean_dice = roi_dice_values.mean()
+
+        # Regression metrics
+        roi_bbox_mae = F.l1_loss(roi_bbox_hat, roi_bbox)
+
+        loss = (
+            (self.hparams.ce_weight * ce)
+            + (self.hparams.dice_weight * (1 - mean_dice))
+            + (self.hparams.ce_weight * roi_ce)
+            + (self.hparams.dice_weight * (1 - roi_mean_dice))
+            + (self.hparams.bbox_loss_weight * roi_bbox_mae)
+        )
+
+        # Format output
+        return {
+            "global/dice": mean_dice,
+            **dices,
+            "global/ce": ce,
+            "dice": roi_mean_dice,
+            **roi_dices,
+            "ce": roi_ce,
+            "roi_bbox_mae": roi_bbox_mae,
+            "loss": loss,
+        }
