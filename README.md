@@ -6,9 +6,14 @@ Welcome to the repo of the
 [Videos & Images Theory and Analytics Laboratory (VITAL)](http://vital.dinf.usherbrooke.ca/ "VITAL home page") of
 Sherbrooke University, headed by Professor [Pierre-Marc Jodoin](http://info.usherbrooke.ca/pmjodoin/)
 
+<a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white"></a>
+<a href="https://pytorchlightning.ai/"><img alt="Lightning" src="https://img.shields.io/badge/-Lightning-792ee5?logo=pytorchlightning&logoColor=white"></a>
+<a href="https://hydra.cc/"><img alt="Config: Hydra" src="https://img.shields.io/badge/Config-Hydra-89b8cd"></a>
+
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![CI: Code Format](https://github.com/nathanpainchaud/vital/actions/workflows/code-format.yml/badge.svg?branch=dev)](https://github.com/nathanpainchaud/vital/actions/workflows/code-format.yml?query=branch%3Adev)
+
 [![license](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/nathanpainchaud/vital/blob/dev/LICENSE)
 
 </div>
@@ -26,13 +31,13 @@ files (e.g. `.mhd` or `nii.gz`) to implementations of torchvision's `VisionDatas
 losses for training (see [train](vital/metrics/train)) or scores to evaluate the systems' performance (see
 [evaluate](vital/metrics/evaluate)).
 
-- [modules](vital/modules): generic models, organized by task (e.g. [classification](vital/modules/segmentation),
-[generative](vital/modules/generative), etc.).
+- [models](vital/models): generic models, organized by task (e.g. [classification](vital/models/segmentation),
+[generative](vital/models/generative), etc.).
 
 - [results](vital/results): generic utilities for processing results during the evaluation phase.
 
-- [systems](vital/systems): common boilerplate Lightning module code (split across mixins), from which concrete
-projects' systems should inherit.
+- [tasks](vital/tasks): common boilerplate Lightning module code to train architectures for specific tasks (e.g.
+[classfication](vital/tasks/classification.py), [segmentation](vital/tasks/segmentation.py), etc.).
 
 - [utils](vital/utils): a wide range of common utilities that may be used in multiple other packages (e.g.
 [logging](vital/utils/logging.py), [image processing](vital/utils/image), etc.).
@@ -58,15 +63,15 @@ presets of configuration options for various parts of the `VitalRunner` pipeline
 configuration for a run.
 
 For a concrete example of how to launch a run using the Hydra CLI, let's say we wanted to train an MLP for
-classification on the MNIST dataset using the preset configuration [`mnist-mlp`](vital/config_example/mnist-mlp.yaml),
+classification on the MNIST dataset using the preset configuration [`mnist-mlp`](vital/config/experiment/mnist-mlp.yaml),
 but with otherwise default options. Assuming we were working from the repo's root directory, then the command would
 simply be:
 ```bash
 # Run the training
-python vital/runner.py --config-name mnist-mlp
+python vital/runner.py +experiment=mnist-mlp
 
 # Output the config that would have been used, without actually running the code (useful for debugging)
-python vital/runner.py --config-name mnist-mlp --config job
+python vital/runner.py +experiment=mnist-mlp --config job
 ```
 
 ### Tracking experiments
@@ -81,7 +86,7 @@ file when launching the [VitalRunner](vital/runner.py):
 python <your_runner_script.py> logger=comet/offline ...
 ```
 To configure the Comet API and experiment's metadata, Comet relies on either i) environment variables (which you can set
-in a `.env` that will automatically be loaded using `python-dotenv`) or ii) a `.comet.config`](.comet.config)` file. For
+in a `.env` that will automatically be loaded using `python-dotenv`) or ii) a [`.comet.config`](.comet.config)` file. For
 more information on how to configure Comet using environment variables or the config file, refer to
 [Comet's configuration variables documentation](https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables).
 

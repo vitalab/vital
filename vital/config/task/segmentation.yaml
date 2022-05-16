@@ -1,0 +1,6 @@
+defaults:
+  - default
+
+_target_: vital.tasks.segmentation.SegmentationTask
+ce_weight: 0.1
+dice_weight: 1

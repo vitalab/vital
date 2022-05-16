@@ -7,15 +7,15 @@ from shutil import copy2
 from typing import List, Optional, Union
 
 import comet_ml  # noqa
-import dotenv
 import hydra
 import torch
+from dotenv import load_dotenv
 from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
-from vital.systems.system import VitalSystem
+from vital.system import VitalSystem
 from vital.utils.serialization import resolve_model_checkpoint_path
 
 logger = logging.getLogger(__name__)
@@ -38,13 +38,13 @@ class VitalRunner(ABC):
         """Sets-up the environment before running the training/testing."""
         # Load environment variables from `.env` file if it exists
         # Load before hydra main to allow for setting environment variables with ${oc.env:ENV_NAME}
-        dotenv.load_dotenv(override=True)
+        load_dotenv(override=True)
 
         OmegaConf.register_new_resolver("sys.gpus", lambda x=None: int(torch.cuda.is_available()))
         OmegaConf.register_new_resolver("sys.num_workers", lambda x=None: os.cpu_count() - 1)
 
     @staticmethod
-    @hydra.main(config_path="config_example", config_name="default.yaml")
+    @hydra.main(config_path="config", config_name="vital_default")
     def run_system(cfg: DictConfig) -> None:
         """Handles the training and evaluation of a model.
 
@@ -79,7 +79,7 @@ class VitalRunner(ABC):
         datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data)
 
         # Instantiate system (which will handle instantiating the model and optimizer).
-        model: VitalSystem = hydra.utils.instantiate(cfg.system, data_params=datamodule.data_params, _recursive_=False)
+        model: VitalSystem = hydra.utils.instantiate(cfg.task, data_params=datamodule.data_params, _recursive_=False)
 
         if cfg.ckpt:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
@@ -194,12 +194,17 @@ class VitalRunner(ABC):
         if cfg.get("best_model_save_path", None):
             return Path(cfg.best_model_save_path)  # Return save path from config if available
         else:
-            module = cfg.choices["system/module"]
-            name = f"{cfg.choices.data}_{cfg.choices.system}"
-            if module is not None:  # Some systems do not have a module (ex. Auto-encoders)
-                name = f"{name}_{module}"
+            model = cfg.choices["task/model"]
+            name = f"{cfg.choices.data}_{cfg.choices.task}"
+            if model is not None:  # Some systems do not have a model (ex. Auto-encoders)
+                name = f"{name}_{model}"
             return log_dir / f"{name}.ckpt"
 
 
-if __name__ == "__main__":
+def main():
+    """Run the script."""
     VitalRunner.main()
+
+
+if __name__ == "__main__":
+    main()

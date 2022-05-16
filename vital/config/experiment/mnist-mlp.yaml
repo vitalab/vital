@@ -1,0 +1,26 @@
+# @package _global_
+# The line above indicates that changes specified in this config should be interpreted as relative to the _global_ package.
+
+# This is an experiment config example to show how to use vital and hydra configs in your project.
+
+# The remainder of the config is implicitly "imported" from the default config specified in the hydra.main method
+defaults:
+  # If you modify an existing config (instead of overriding it), do it before the overrides
+  - /callbacks:
+      - early_stopping
+
+  # Override defaults for data, module, system here
+  - override /task: classification
+  - override /task/model: mlp
+  - override /data: mnist
+
+# Overwrite specific config parameters here. They will be merged with the rest of the config by Hydra.
+trainer:
+  max_epochs: 300
+
+data:
+  batch_size: 128
+
+callbacks:
+  early_stopping:
+    patience: 5

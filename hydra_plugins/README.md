@@ -4,7 +4,7 @@ Hydra allows the use of [external plugins](https://hydra.cc/docs/advanced/plugin
 
 ## [SearchPath](https://hydra.cc/docs/advanced/search_path)
 
-The [`vital` module](searchpath/vita.py) for `searchpath` allows other projects to access `vital` configs without specifying the search path in each primary config.
+The [`vital` module](searchpath/vital.py) for `searchpath` allows other projects to access `vital` configs without specifying the search path in each primary config.
 
 It replaces the following lines in primary configs:
  ```yaml

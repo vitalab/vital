@@ -58,7 +58,7 @@ setup(
     packages=find_packages(),
     long_description=load_long_description(),
     long_description_content_type="text/markdown",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     setup_requires=[],
     install_requires=load_requirements(),
     extras_require=extras,
@@ -71,6 +71,6 @@ setup(
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
 )

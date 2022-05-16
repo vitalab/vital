@@ -3,9 +3,9 @@ from typing import Dict, Sequence, Tuple
 import torch
 from torch import Tensor, nn
 
-from vital.modules.generative.decoder import Decoder
-from vital.modules.generative.encoder import Encoder
-from vital.modules.layers import reparameterize
+from vital.models.generative.decoder import Decoder
+from vital.models.generative.encoder import Encoder
+from vital.models.layers import reparameterize
 
 
 class Autoencoder(nn.Module):

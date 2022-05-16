@@ -1,13 +1,13 @@
 import sys
 from abc import ABC
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Optional
 
 import hydra
 import pytorch_lightning as pl
 import torch
 from omegaconf import DictConfig
-from torch import Tensor, nn
+from torch import nn
 from torch.optim.optimizer import Optimizer
 from torchinfo import summary
 
@@ -15,21 +15,19 @@ from vital.data.config import DataParameters
 
 
 class VitalSystem(pl.LightningModule, ABC):
-    """Top-level abstract system from which to inherit.
+    """Top-level abstract system from which to inherit, implementing some generic utilities and boilerplate code.
 
-    Implementations of behaviors related to each phase of training (e.g. data preparation, training, evaluation) are
-    made through mixins for this class.
-
-    Implements useful generic utilities and boilerplate Lighting code:
-        - CLI for generic arguments
+    Implementations of behaviors related to each phase of training (e.g. data preparation, training, evaluation) should
+    be made in specific packages (e.g. `data` for data handling, `tasks` for computation pipeline) or in callbacks
+    (e.g. evaluation).
     """
 
-    def __init__(self, module: DictConfig, optim: DictConfig, data_params: DataParameters, **kwargs):
-        """Saves the parameters from all the model's childs and mixins in `hparams`.
+    def __init__(self, model: DictConfig, optim: DictConfig, data_params: DataParameters, **kwargs):
+        """Saves the system's configuration in `hparams`.
 
         Args:
-            module: Hydra configuration for the model architecture.
-            optim: Hydra configuration for the optimizer.
+            model: Nested Omegaconf object containing the model architecture's configuration.
+            optim: Nested Omegaconf object containing the optimizers' configuration.
             data_params: Parameters related to the data necessary to initialize the model.
             **kwargs: Dictionary of arguments to save as the model's `hparams`.
         """
@@ -40,10 +38,10 @@ class VitalSystem(pl.LightningModule, ABC):
         # By default, assumes the provided data shape is in channel-first format
         self.example_input_array = torch.randn((2, *self.hparams.data_params.in_shape))
 
-    def configure_module(self) -> nn.Module:
+    def configure_model(self) -> nn.Module:
         """Configure the network architecture used by the system."""
         return hydra.utils.instantiate(
-            self.hparams.module,
+            self.hparams.model,
             input_shape=self.hparams.data_params.in_shape,
             output_shape=self.hparams.data_params.out_shape,
         )
@@ -71,32 +69,4 @@ class VitalSystem(pl.LightningModule, ABC):
     @property
     def log_dir(self) -> Path:
         """Returns the root directory where test logs get saved."""
-        return Path(self.trainer.log_dir) if self.trainer.log_dir else Path(self.hparams.trainer.default_root_dir)
-
-
-class SystemComputationMixin(VitalSystem, ABC):
-    """``VitalSystem`` mixin for handling the training/validation/testing phases."""
-
-    def __init__(self, train_log_kwargs: dict, val_log_kwargs: dict, **kwargs):
-        super().__init__(**kwargs)
-
-    def training_step(self, *args, **kwargs) -> Union[Tensor, Dict[Union[Literal["loss"], Any], Any]]:  # noqa: D102
-        raise NotImplementedError
-
-    def validation_step(self, *args, **kwargs):  # noqa: D102
-        pass
-
-
-class SystemEvaluationMixin(VitalSystem, ABC):
-    """``VitalSystem`` mixin for handling the evaluation phase."""
-
-    def test_step(self, *args, **kwargs):  # noqa: D102
-        pass
-
-    def test_epoch_end(self, outputs: List[Any]) -> None:
-        """Runs at the end of a test epoch with the output of all test steps.
-
-        It can be used to export results using custom loggers, while not returning any metrics to display in the
-        progress bar (as Lightning usually expects).
-        """
-        pass
+        return Path(self.trainer.log_dir) if self.trainer.log_dir else Path(self.trainer.default_root_dir)
