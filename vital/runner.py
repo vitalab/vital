@@ -43,6 +43,7 @@ class VitalRunner(ABC):
 
         OmegaConf.register_new_resolver("sys.gpus", lambda x=None: int(torch.cuda.is_available()))
         OmegaConf.register_new_resolver("sys.num_workers", lambda x=None: os.cpu_count() - 1)
+        OmegaConf.register_new_resolver("sys.getcwd", lambda x=None: os.getcwd())
 
     @staticmethod
     @hydra.main(config_path="config", config_name="vital_default")

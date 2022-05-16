@@ -1,0 +1,13 @@
+mhd_images:
+  _target_: vital.results.camus.mhd_images.MhdImages
+
+  # Base ResultsProcessor options
+  progress_bar: ${trainer.enable_progress_bar}
+  multiprocessing: True
+
+  # Options specific to ResultsProcessor using CAMUS results iterators
+  results_path: ${sys.getcwd:}/test.h5
+  use_sequence: ${data.use_sequence}
+
+  # Options specific to MhdImages
+  inputs: ["pred/raw"]
