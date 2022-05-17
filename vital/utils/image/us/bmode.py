@@ -236,7 +236,8 @@ class CartesianBMode(_BMode):
         return cart_bmode
 
 
-if __name__ == "__main__":
+def main():
+    """Run the script."""
     configure_logging(log_to_console=True, console_level=logging.INFO)
 
     parser = ArgumentParser(
@@ -290,3 +291,7 @@ if __name__ == "__main__":
         else:
             # Otherwise, save the 2D image as PNG file directly in the root output directory
             _save_img(cart_img, args.output_dir / f"{h5_file.stem}.png")
+
+
+if __name__ == "__main__":
+    main()
