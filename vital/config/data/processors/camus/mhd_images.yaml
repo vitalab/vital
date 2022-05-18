@@ -9,5 +9,5 @@ mhd_images:
   results_path: ${sys.getcwd:}/test.h5
   use_sequence: ${data.use_sequence}
 
-  # Options specific to MhdImages
+  # Options specific to `MhdImages`
   inputs: ["pred/raw"]
