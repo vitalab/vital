@@ -2,6 +2,7 @@ defaults:
   - model: ???
   - optim: adam
 
+_target_: ???
 enable_model_summary: True
 
 train_log_kwargs:
