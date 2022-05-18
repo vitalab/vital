@@ -2,6 +2,9 @@ defaults:
   - default
   - results_processors@_global_.results_processors:
     - camus/mhd_images
+    - camus/segmentation_metrics
+    - camus/clinical_metrics
+    - camus/anatomical_metrics
   - override predict: camus
 
 _target_: vital.data.camus.data_module.CamusDataModule
