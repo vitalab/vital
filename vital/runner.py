@@ -164,17 +164,42 @@ class VitalRunner(ABC):
         Returns:
             `ResultsProcessor`s wrapped as callbacks for the Lightning Trainer.
         """
+
+        def ascend_config_node(cfg: DictConfig, node: str) -> DictConfig:
+            """Ascends unwanted node introduced in config hierarchy by directories meant to keep config files organised.
+
+            If `cfg` is None or `node` does not exist, simply return `cfg` without modifying it.
+
+            Args:
+                cfg: Config node with an unwanted child node to bring to the top-level.
+                node: Name of the node to bring back to the top level of `cfg`.
+
+            Returns:
+                `cfg` with the content of `node` merged at its top-level.
+            """
+            if isinstance(cfg, DictConfig) and node in cfg:
+                cfg_dict = OmegaConf.to_container(cfg, resolve=True)
+                cfg_dict.update(cfg_dict.pop(node))
+                cfg = OmegaConf.create(cfg_dict)
+            return cfg
+
+        data_processor_cfgs, task_processor_cfgs = {}, {}
+        if "processors" in cfg.data:
+            data_processor_cfgs = ascend_config_node(cfg.data.processors, cfg.choices.data)
+        if "processors" in cfg.task:
+            task_processor_cfgs = ascend_config_node(cfg.task.processors, cfg.choices.task)
+        processor_cfgs = {**data_processor_cfgs, **task_processor_cfgs}
+
         processor_callbacks = []
-        if "processors" in cfg and cfg.processors is not None:
-            for conf_name, conf in cfg.processors.items():
-                if "_target_" in conf:
-                    logger.info(f"Instantiating results processor <{conf_name}>")
-                    # Instantiate the `ResultsProcessor` and wrap it inside a Lightning `Callback`,
-                    # so that it can be called automatically by Lightning
-                    processor = hydra.utils.instantiate(conf)
-                    processor_callbacks.append(ResultsProcessorCallback(processor))
-                else:
-                    logger.warning(f"No _target_ in results processor config. Cannot instantiate {conf_name}")
+        for processor_name, processor_cfg in processor_cfgs.items():
+            if "_target_" in processor_cfg:
+                logger.info(f"Instantiating results processor <{processor_name}>")
+                # Instantiate the `ResultsProcessor` and wrap it inside a Lightning `Callback`,
+                # so that it can be called automatically by Lightning
+                processor = hydra.utils.instantiate(processor_cfg)
+                processor_callbacks.append(ResultsProcessorCallback(processor))
+            else:
+                logger.warning(f"No _target_ in results processor config. Cannot instantiate {processor_name}")
         return processor_callbacks
 
     @staticmethod

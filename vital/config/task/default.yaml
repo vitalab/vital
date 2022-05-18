@@ -1,6 +1,7 @@
 defaults:
   - model: ???
   - optim: adam
+  - processors: null
 
 _target_: ???
 enable_model_summary: True

@@ -6,8 +6,6 @@ defaults:
       - model_checkpoint
   - logger: comet/online
 
-processors: ${data.processors}
-
 seed: null
 
 resume: False
