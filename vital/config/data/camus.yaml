@@ -7,10 +7,6 @@ defaults:
 _target_: vital.data.camus.data_module.CamusDataModule
 
 dataset_path: ${oc.env:CAMUS_DATA_PATH}
-labels:
-  - BG
-  - LV
-  - MYO
-  - ATRIUM
+labels: [bg, lv, myo, atrium]
 fold: 5
 use_sequence: False
