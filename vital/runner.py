@@ -145,7 +145,7 @@ class VitalRunner(ABC):
             Callbacks for the Lightning Trainer.
         """
         callbacks = []
-        if "callbacks" in cfg and cfg.callbacks is not None:
+        if "callbacks" in cfg and isinstance(cfg.callbacks, DictConfig):
             for conf_name, conf in cfg.callbacks.items():
                 if "_target_" in conf:
                     logger.info(f"Instantiating callback <{conf_name}>")
@@ -190,7 +190,7 @@ class VitalRunner(ABC):
         experiment_logger = True  # Default to True (Tensorboard)
         skip_logger = False
         # Configure custom logger only if user specified custom config
-        if isinstance(cfg.logger, DictConfig):
+        if "logger" in cfg and isinstance(cfg.logger, DictConfig):
             if "_target_" not in cfg.logger:
                 logger.warning("No _target_ in logger config. Cannot instantiate custom logger")
                 skip_logger = True
