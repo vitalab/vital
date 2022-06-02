@@ -16,7 +16,7 @@ from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
 from vital.system import VitalSystem
-from vital.utils.serialization import resolve_model_checkpoint_path
+from vital.utils.saving import resolve_model_checkpoint_path
 
 logger = logging.getLogger(__name__)
 
