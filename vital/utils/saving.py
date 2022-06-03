@@ -1,12 +1,16 @@
+import importlib
 import logging
 import shutil
 from pathlib import Path
 from typing import Union
 
 import comet_ml
+import torch
 from packaging.version import InvalidVersion, Version
+from pytorch_lightning.core.saving import ModelIO
 
 from vital import get_vital_home
+from vital.system import VitalSystem
 
 logger = logging.getLogger(__name__)
 
@@ -89,3 +93,40 @@ def resolve_model_checkpoint_path(checkpoint: Union[str, Path]) -> Path:
         local_ckpt_path = ckpt_files[0]
 
     return local_ckpt_path
+
+
+def load_from_checkpoint(
+    checkpoint: Union[str, Path], train_mode: bool = False, device_type: str = None
+) -> VitalSystem:
+    """Loads a Lightning module checkpoint, casting it to the appropriate type.
+
+    The module's class is automatically determined based on the hyperparameters saved in the checkpoint.
+
+    Args:
+        checkpoint: Location of the checkpoint. This can be either a local path, or the fields of a query to a Comet
+            model registry. Examples of different queries:
+                - For the latest version of the model: 'my_workspace/my_model'
+                - Using a specific version/stage: 'my_workspace/my_model/0.1.0' or 'my_workspace/my_model/prod'
+        train_mode: Whether the model should be in 'train' mode (`True`) or 'eval' mode (`False`).
+        device_type: Device on which to move the Lightning module after it's been loaded. Defaults to using 'cuda' if
+            it is available, and 'cpu' otherwise.
+
+    Returns:
+        Lightning module loaded from the checkpoint, casted to its original type.
+    """
+    # Resolve the local path of the checkpoint
+    ckpt_path = resolve_model_checkpoint_path(checkpoint)
+
+    # Extract which class to load from the hyperparameters saved in the checkpoint
+    ckpt_hparams = torch.load(ckpt_path)[ModelIO.CHECKPOINT_HYPER_PARAMS_KEY]
+    model_mod, model_cls_name = ckpt_hparams["task"]["_target_"].rsplit(".", 1)
+    model_cls = getattr(importlib.import_module(model_mod), model_cls_name)
+
+    # Restore the model from the checkpoint
+    model = model_cls.load_from_checkpoint(str(ckpt_path), ckpt=checkpoint)
+
+    # Set the mode of the model according to the caller's requirements
+    model.train(mode=train_mode)
+    if not device_type:
+        device_type = "cuda" if torch.cuda.is_available() else "cpu"
+    return model.to(device=torch.device(device_type))

@@ -35,6 +35,9 @@ class VitalSystem(pl.LightningModule, ABC):
         # Collection of hyperparameters configuring the system
         self.save_hyperparameters()
 
+        # Also save the classpath of the system to be able to load a checkpoint w/o knowing it's type beforehand
+        self.save_hyperparameters({"task": {"_target_": f"{self.__class__.__module__}.{self.__class__.__name__}"}})
+
         # By default, assumes the provided data shape is in channel-first format
         self.example_input_array = torch.randn((2, *self.hparams.data_params.in_shape))
 
