@@ -79,7 +79,9 @@ class VitalRunner(ABC):
         datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data)
 
         # Instantiate system (which will handle instantiating the model and optimizer).
-        model: VitalSystem = hydra.utils.instantiate(cfg.task, data_params=datamodule.data_params, _recursive_=False)
+        model: VitalSystem = hydra.utils.instantiate(
+            cfg.task, choices=cfg.choices, data_params=datamodule.data_params, _recursive_=False
+        )
 
         if cfg.ckpt:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:
