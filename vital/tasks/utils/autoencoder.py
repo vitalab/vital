@@ -1,12 +1,32 @@
 import itertools
+from pathlib import Path
+from typing import Literal
 
 import numpy as np
+import pandas as pd
 import torch
 from pytorch_lightning import LightningDataModule
 from tqdm.auto import tqdm
 
 from vital.data.config import Tags
 from vital.tasks.autoencoder import SegmentationAutoencoderTask
+
+
+def rename_significant_dims(encodings: pd.DataFrame, autoencoder: SegmentationAutoencoderTask) -> pd.DataFrame:
+    """Renames columns in the `encodings` dataframe to explain their significance, if the AE model provides any.
+
+    Args:
+        encodings: Latent space encodings, each column matching to a latent space dimension.
+        autoencoder: Autoencoder model that produced the latent space encodings.
+
+    Returns:
+        Latent space encodings dataframe, where column names match the explainable names of the latent dimensions.
+    """
+    # For AE models w/ explicitly named dimensions, used these names instead of generic index label
+    if attrs := autoencoder.hparams.get("attrs"):
+        cur_columns = encodings.columns
+        encodings = encodings.rename({cur_columns[i]: attr for i, attr in enumerate(attrs)}, axis="columns")
+    return encodings
 
 
 def encode_dataset(
@@ -56,3 +76,61 @@ def decode(autoencoder: SegmentationAutoencoderTask, encoding: np.ndarray) -> np
     encoding_tensor = torch.from_numpy(encoding)
     decoded_sample = autoencoder(encoding_tensor, task="decode").argmax(dim=1).squeeze()
     return decoded_sample.cpu().detach().numpy()
+
+
+def load_encodings(dataset: Literal["camus"], results: Path, progress_bar: bool = False, **kwargs) -> pd.DataFrame:
+    """Loads the latent space encodings predicted by a model as a pandas `DataFrame`.
+
+    Args:
+        dataset: Name of the dataset for which to load the save latent space data.
+            Acts as a switch to know how to read the provided file, assuming predictions are saved in a consistent
+            way across a dataset.
+        results: Path to the file of saved predictions from which to load the latent space encodings.
+        progress_bar: Whether to display a progress bar for the loading of the encodings.
+        **kwargs: Dataset specific keyword arguments to pass along to the loading function.
+
+    Returns:
+        Latent space encodings predicted by a model.
+    """
+    if dataset == "camus":
+        encodings = _load_camus_encodings(results, progress_bar=progress_bar, **kwargs)
+    else:
+        raise ValueError(
+            f"Loading latent space data from dataset '{dataset}' is not supported. \n"
+            f"Please provide saved results from one of the following datasets: ['camus']."
+        )
+    return encodings
+
+
+def _load_camus_encodings(
+    results: Path, progress_bar: bool = False, include_voxelspacing: bool = False
+) -> pd.DataFrame:
+    """Loads the latent space encodings predicted by a model as a pandas `DataFrame`.
+
+    Args:
+        results: Path to the HDF5 of saved predictions from which to load the latent space encodings.
+        progress_bar: Whether to display a progress bar for the loading of the encodings.
+        include_voxelspacing: Whether to add voxelspacing associated with each sample as the following additional
+            columns in the dataframe:
+            - `'vsize_time'`
+            - `'vsize_height'`
+            - `'vsize_width'`
+
+    Returns:
+        Latent space encodings predicted by a model, along with any additional requested metadata.
+    """
+    from vital.data.camus.config import CamusTags
+    from vital.results.camus.utils.itertools import PatientViews
+
+    view_results = PatientViews(results_path=results, use_sequence=True)
+    if progress_bar:
+        view_results = tqdm(view_results, unit=view_results.desc, desc=f"Loading encodings from '{results}'")
+    encodings = {}
+    for view_result in view_results:
+        view_encodings = view_result[f"{CamusTags.pred}/{CamusTags.encoding}"].data
+        view_dict = {f"z_{dim}": view_encodings[:, dim] for dim in range(view_encodings.shape[1])}
+        if include_voxelspacing:
+            view_dict.update(zip(("vsize_time", "vsize_height", "vsize_width"), view_result.voxelspacing))
+        encodings[view_result.id] = pd.DataFrame.from_dict(view_dict)
+
+    return pd.concat(encodings).rename_axis(["group", "sample"])
