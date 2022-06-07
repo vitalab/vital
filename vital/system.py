@@ -22,12 +22,15 @@ class VitalSystem(pl.LightningModule, ABC):
     (e.g. evaluation).
     """
 
-    def __init__(self, model: DictConfig, optim: DictConfig, data_params: DataParameters, **kwargs):
+    def __init__(
+        self, model: DictConfig, optim: DictConfig, choices: DictConfig, data_params: DataParameters, **kwargs
+    ):
         """Saves the system's configuration in `hparams`.
 
         Args:
             model: Nested Omegaconf object containing the model architecture's configuration.
             optim: Nested Omegaconf object containing the optimizers' configuration.
+            choices: Nested Omegaconf object containing the choice made from the pre-set configurations.
             data_params: Parameters related to the data necessary to initialize the model.
             **kwargs: Dictionary of arguments to save as the model's `hparams`.
         """
