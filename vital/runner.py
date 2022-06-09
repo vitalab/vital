@@ -63,7 +63,7 @@ class VitalRunner(ABC):
         cfg.seed = seed_everything(cfg.seed, workers=True)
 
         callbacks = VitalRunner.configure_callbacks(cfg)
-        if isinstance(cfg.data.predict, DictConfig):
+        if "predict" in cfg.data and isinstance(cfg.data.predict, DictConfig):
             # If prediction writer callback is specified, add it to the list of callbacks
             callbacks.append(hydra.utils.instantiate(cfg.data.predict))
         callbacks.extend(VitalRunner.configure_results_processors(cfg))
