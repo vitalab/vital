@@ -1,4 +1,4 @@
-import shutil
+from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Union
 
 import h5py
@@ -18,13 +18,23 @@ from vital.utils.image.transform import resize_image
 class CamusPredictionWriter(BasePredictionWriter):
     """Implementation of the prediction writer that saves predictions for the CAMUS dataset in a HDF5 file."""
 
-    def __init__(self):
+    def __init__(self, write_path: Union[str, Path] = None):
+        """Initializes class instance.
+
+        Args:
+            write_path: Path of the output HDF5 dataset where to save the predictions.
+        """
         super().__init__(write_interval="batch")
+        self._write_path = Path(write_path) if write_path else None
 
     def setup(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", stage: Optional[str] = None) -> None:
         """Removes results potentially left behind by previous runs of the callback in the same directory."""
-        shutil.rmtree(pl_module.log_dir / "results", ignore_errors=True)  # Delete leftover results processors' outputs
-        (pl_module.log_dir / "test.h5").unlink(missing_ok=True)  # Delete leftover predictions dataset
+        # Write to the same directory as the experiment logger if no custom path is provided
+        if self._write_path is None:
+            self._write_path = pl_module.log_dir / "test.h5"
+
+        # Delete leftover predictions dataset
+        self._write_path.unlink(missing_ok=True)
 
     def write_on_batch_end(
         self,
@@ -70,7 +80,7 @@ class CamusPredictionWriter(BasePredictionWriter):
             crop_shape=pl_module.hparams.data_params.in_shape[1:],
         )
 
-        with h5py.File(pl_module.log_dir / "test.h5", "a") as dataset:
+        with h5py.File(self._write_path, "a") as dataset:
             # Create the file hierarchy where to save the batch's predictions
             patient_group = dataset.require_group(patient_id)
             view_group = patient_group.create_group(view)

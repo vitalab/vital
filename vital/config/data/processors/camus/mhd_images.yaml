@@ -6,7 +6,7 @@ mhd_images:
   multiprocessing: True
 
   # Options specific to ResultsProcessor using CAMUS results iterators
-  results_path: ${sys.getcwd:}/test.h5
+  results_path: ${data.predict.write_path}
   use_sequence: ${data.use_sequence}
 
   # Options specific to `MhdImages`
