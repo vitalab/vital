@@ -2,7 +2,7 @@ import importlib
 import logging
 import shutil
 from pathlib import Path
-from typing import Union
+from typing import Type, Union
 
 import comet_ml
 import torch
@@ -96,7 +96,10 @@ def resolve_model_checkpoint_path(checkpoint: Union[str, Path]) -> Path:
 
 
 def load_from_checkpoint(
-    checkpoint: Union[str, Path], train_mode: bool = False, device_type: str = None
+    checkpoint: Union[str, Path],
+    train_mode: bool = False,
+    device_type: str = None,
+    expected_checkpoint_type: Type[VitalSystem] = None,
 ) -> VitalSystem:
     """Loads a Lightning module checkpoint, casting it to the appropriate type.
 
@@ -110,6 +113,8 @@ def load_from_checkpoint(
         train_mode: Whether the model should be in 'train' mode (`True`) or 'eval' mode (`False`).
         device_type: Device on which to move the Lightning module after it's been loaded. Defaults to using 'cuda' if
             it is available, and 'cpu' otherwise.
+        expected_checkpoint_type: Type of model expected to be loaded from the checkpoint. Used to perform a runtime
+            check, and raise an error if the expected model type does not match the loaded model.
 
     Returns:
         Lightning module loaded from the checkpoint, casted to its original type.
@@ -124,6 +129,14 @@ def load_from_checkpoint(
 
     # Restore the model from the checkpoint
     model = model_cls.load_from_checkpoint(str(ckpt_path), ckpt=checkpoint)
+
+    # Perform runtime check on the type of the loaded model
+    if expected_checkpoint_type and not isinstance(model, expected_checkpoint_type):
+        raise RuntimeError(
+            f"Type of the model loaded from the checkpoint does not correspond to the model's expected type. "
+            f"Type of the model loaded from checkpoint: {type(model)} "
+            f"Expected type of the model: {expected_checkpoint_type}"
+        )
 
     # Set the mode of the model according to the caller's requirements
     model.train(mode=train_mode)
