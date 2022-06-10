@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Mapping, Sequence
+from typing import Any, Dict, Mapping, Sequence, Union
 
 import numpy as np
 from scipy import ndimage
@@ -11,8 +11,25 @@ from vital.utils.format.native import flatten
 from vital.utils.format.numpy import to_onehot
 
 
-class StructurePostProcessing:
-    """Base post-processing class for post-processing applied to each individual structure of a segmentation map."""
+class PostProcessor:
+    """Base class for handling the post-processing of batch of images."""
+
+    @abstractmethod
+    def __call__(self, batch: np.ndarray) -> Union[np.ndarray, Dict[str, Any]]:
+        """Processes a batch of images.
+
+        Args:
+            batch: (N, H, W), Batch of 2D images to post-process.
+
+        Returns:
+            (N, H, W), Processed batch of 2D images maps
+            or
+            Dict containing at least the processed batch of images under the `Tags.post_pred` key.
+        """
+
+
+class PostProcessor2DStructure(PostProcessor):
+    """Base class for post-processing applied to each individual structure of a segmentation map."""
 
     def __init__(self, labels: Sequence[SemanticStructureId]):
         """Initializes class instance.
@@ -26,11 +43,11 @@ class StructurePostProcessing:
         """Applies a specific post-processing algorithm on each individual structure in a segmentation map.
 
         Args:
-            seg: Segmentation to process.
+            seg: ([N], H, W), Segmentation to process.
             **kwargs: Capture non-used parameters to get a callable API compatible with similar callables.
 
         Returns:
-            (H, W), Processed segmentation.
+            ([N], H, W), Processed segmentation.
         """
         if seg.dtype != np.bool:  # If it is a categorical image containing multiple structures
             post_img = np.zeros_like(seg)
@@ -46,14 +63,14 @@ class StructurePostProcessing:
         """Applies a post-processing algorithm on the binary mask of a single structure from a segmentation map.
 
         Args:
-            mask: Binary mask of a semantic structure.
+            mask: ([N], H, W), Binary mask of a semantic structure.
 
         Returns:
-            Processed binary mask of the semantic structure.
+            ([N], H, W), Processed binary mask of the semantic structure.
         """
 
 
-class Post2DBigBlob(StructurePostProcessing):
+class Post2DBigBlob(PostProcessor2DStructure):
     """Post-processing that returns only the biggest blob of non-zero value in a binary mask."""
 
     @staticmethod
@@ -85,7 +102,7 @@ class Post2DBigBlob(StructurePostProcessing):
         return lbl.astype(bool)
 
 
-class Post2DFillIntraHoles(StructurePostProcessing):
+class Post2DFillIntraHoles(PostProcessor2DStructure):
     """Post-processing that fills holes inside the non-zero area of a binary mask."""
 
     @staticmethod
@@ -140,7 +157,7 @@ class Post2DFillInterHoles:
         return post_img
 
 
-class PostGaussianFilter:
+class PostGaussianFilter(PostProcessor):
     """Post-processing that applies a gaussian filter along specific dimensions of the segmentation maps."""
 
     def __init__(
@@ -172,11 +189,12 @@ class PostGaussianFilter:
         """Applies a gaussian filter along specific dimensions of the segmentation maps.
 
         Args:
-            seg: Segmentation to process.
+            seg: (N, H, W), Segmentation to process.
             **kwargs: Capture non-used parameters to get a callable API compatible with similar callables.
 
         Returns:
-            Processed segmentation, with an additional last dimension for the "softmax" if `keep_softmax=True`.
+            (N, H, W, [C]), Processed segmentation, with an additional last dimension for the probability of each class
+            if `do_argmax=False`.
         """
         onehot_seg = to_onehot(seg)
         sigmas = np.array([self._kernel_stddevs.get(dim, 0) for dim in range(onehot_seg.ndim)])
