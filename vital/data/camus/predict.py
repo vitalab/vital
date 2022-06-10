@@ -10,7 +10,6 @@ from torch import Tensor
 from vital.data.camus.config import CamusTags, seg_save_options
 from vital.data.camus.dataset import get_segmentation_attributes
 from vital.data.camus.utils.register import CamusRegisteringTransformer
-from vital.data.config import Subset
 from vital.utils.format.numpy import to_categorical
 from vital.utils.image.transform import resize_image
 
@@ -71,8 +70,8 @@ class CamusPredictionWriter(BasePredictionWriter):
             aux_predictions = prediction
 
         # Collect the metadata related to the batch's data
-        batch_metadata = trainer.datamodule.dataset(subset=Subset.PREDICT).get_view_metadata(batch_idx)
-        patient_id, view = batch_metadata.id.split("/")
+        view_metadata = batch[CamusTags.metadata]
+        patient_id, view = batch[CamusTags.id].split("/")
 
         # Init objects to process the predictions
         registering_transformer = CamusRegisteringTransformer(
@@ -86,26 +85,26 @@ class CamusPredictionWriter(BasePredictionWriter):
             view_group = patient_group.create_group(view)
 
             # Save the relevant data for a posteriori result analysis
-            full_resolution_prediction = np.empty_like(batch_metadata.gt)
+            full_resolution_prediction = np.empty_like(view_metadata.gt)
             pred_view_seg = to_categorical(pred_view_seg.detach().cpu().numpy(), channel_axis=1)
             for instant, pred_instant_seg in enumerate(pred_view_seg):
 
                 # Format the predictions to fit with the groundtruth
-                if batch_metadata.registering:  # Undo registering on predictions
+                if view_metadata.registering:  # Undo registering on predictions
                     registering_parameters = {
-                        reg_step: batch_metadata.registering[reg_step][instant]
+                        reg_step: view_metadata.registering[reg_step][instant]
                         for reg_step in CamusRegisteringTransformer.registering_steps
                     }
                     pred_instant_seg = registering_transformer.undo_registering(
                         pred_instant_seg, registering_parameters
                     )
                 else:
-                    height, width = batch_metadata.gt.shape[1:]  # Extract images' original dimensions
+                    height, width = view_metadata.gt.shape[1:]  # Extract images' original dimensions
                     pred_instant_seg = resize_image(pred_instant_seg, (width, height))
 
                 full_resolution_prediction[instant] = pred_instant_seg
 
-            for tag, data in [(CamusTags.gt, batch_metadata.gt), (CamusTags.pred, full_resolution_prediction)]:
+            for tag, data in [(CamusTags.gt, view_metadata.gt), (CamusTags.pred, full_resolution_prediction)]:
                 data_group = view_group.create_group(tag)
                 ds = data_group.create_dataset(CamusTags.raw, data=data, **seg_save_options)
                 # Save shape attributes of the segmentation as dataset attributes
@@ -118,8 +117,8 @@ class CamusPredictionWriter(BasePredictionWriter):
                 pred_group.create_dataset(tag, data=aux_prediction.detach().cpu().numpy())
 
             # Save metadata
-            view_group.attrs[CamusTags.voxelspacing] = batch_metadata.voxelspacing
-            view_group.attrs[CamusTags.instants] = list(batch_metadata.instants)  # Indicate available instants
-            view_group.attrs.update(batch_metadata.instants)  # Indicate clinically important instants' frames
-            if batch_metadata.registering:  # Save registering parameters if the VAE was trained on registered data
-                view_group.attrs.update(batch_metadata.registering)
+            view_group.attrs[CamusTags.voxelspacing] = view_metadata.voxelspacing
+            view_group.attrs[CamusTags.instants] = list(view_metadata.instants)  # Indicate available instants
+            view_group.attrs.update(view_metadata.instants)  # Indicate clinically important instants' frames
+            if view_metadata.registering:  # Save registering parameters if the VAE was trained on registered data
+                view_group.attrs.update(view_metadata.registering)

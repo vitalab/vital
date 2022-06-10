@@ -88,7 +88,7 @@ class Camus(VisionDataset):
         # Determine whether to return data in a format suitable for training or inference
         if self.predict:
             self.item_list = self.list_groups(level="view")
-            self.getter = self._get_test_item
+            self.getter = self._get_predict_item
         else:
             self.item_list = self._get_instant_paths()
             self.getter = self._get_train_item
@@ -209,7 +209,7 @@ class Camus(VisionDataset):
         """Fetches data and metadata related to an instant (single image/groundtruth pair + metadata).
 
         Args:
-            index: Index of the instant sample in the train/val set's ``self.item_list``.
+            index: Index of the instant sample in the dataset's ``self.item_list``.
 
         Returns:
             Data and metadata related to an instant.
@@ -242,33 +242,51 @@ class Camus(VisionDataset):
             **gt_attrs,
         }
 
-    def _get_test_item(self, index: int) -> Dict[str, Tensor]:
-        """Fetches data required for inference on a test item, i.e. a view.
+    def _get_predict_item(self, index: int) -> Dict[str, Tensor]:
+        """Fetches data required for inference on a prediction item, i.e. a view.
 
         Args:
-            index: Index of the test sample in the test set's ``self.item_list``.
+            index: Index of the prediction sample in the dataset's ``self.item_list``.
 
         Returns:
-            Data related a to a test item, i.e. a view.
+            Data related a to a prediction item, i.e. a view.
         """
         patient_view_key = self.item_list[index]
 
-        # Collect data
         with h5py.File(self.root, "r") as dataset:
+            # Collect data
             view_imgs, view_gts = self._get_data(dataset, patient_view_key, CamusTags.img_proc, CamusTags.gt_proc)
             view_gts = self._process_target_data(view_gts)
 
+            # Collect metadata
+            info, clinically_important_instants = Camus._get_metadata(
+                dataset, patient_view_key, CamusTags.info, CamusTags.instants
+            )
+            instants = {
+                instant: Camus._get_metadata(dataset, patient_view_key, instant)
+                for instant in clinically_important_instants
+            }
+            full_resolution_gts = Camus._get_data(dataset, patient_view_key, CamusTags.gt)
+            full_resolution_gts = self._process_target_data(full_resolution_gts)
+
             # If we do not use the whole sequence
             if self.dataset_with_sequence and not self.use_sequence:
-                instants = {
-                    instant: Camus._get_metadata(dataset, patient_view_key, instant)
-                    for instant in Camus._get_metadata(dataset, patient_view_key, CamusTags.instants)
-                }
-
                 # Only keep clinically important instants
                 instant_indices = list(instants.values())
                 view_imgs = view_imgs[instant_indices]
                 view_gts = view_gts[instant_indices]
+                full_resolution_gts = full_resolution_gts[instant_indices]
+
+                # Update indices of clinically important instants to match the new slicing of the sequences
+                instants = {instant: idx for idx, instant in enumerate(instants)}
+
+            # Extract metadata concerning the registering applied
+            registering_parameters = None
+            if self.registered_dataset:
+                registering_parameters = {
+                    reg_step: Camus._get_metadata(dataset, patient_view_key, reg_step)
+                    for reg_step in CamusRegisteringTransformer.registering_steps
+                }
 
         # Format data
         view_imgs = torch.stack([to_tensor(view_img) for view_img in view_imgs])
@@ -282,6 +300,10 @@ class Camus(VisionDataset):
         frame_pos = torch.linspace(0, 1, len(view_imgs))
         gts_attrs = get_segmentation_attributes(view_gts, self.labels)
 
+        # Build the batch to return
+        view_metadata = ViewMetadata(
+            gt=full_resolution_gts, voxelspacing=info[6:9][::-1], instants=instants, registering=registering_parameters
+        )
         return {
             CamusTags.id: patient_view_key,
             CamusTags.group: patient_view_key,
@@ -289,57 +311,8 @@ class Camus(VisionDataset):
             CamusTags.gt: view_gts,
             CamusTags.frame_pos: frame_pos,
             **gts_attrs,
+            CamusTags.metadata: view_metadata,
         }
-
-    def get_view_metadata(self, index: int) -> ViewMetadata:
-        """Fetches metadata related to a test item, i.e. a view.
-
-        Args:
-            index: Index of the test sample in the test set's ``self.item_list``.
-
-        Returns:
-            Data related a to a test item, i.e. a view.
-        """
-        patient_view_key = self.item_list[index]
-        with h5py.File(self.root, "r") as dataset:
-
-            # Collect metadata
-            info, clinically_important_instants = Camus._get_metadata(
-                dataset, patient_view_key, CamusTags.info, CamusTags.instants
-            )
-            instants = {
-                instant: Camus._get_metadata(dataset, patient_view_key, instant)
-                for instant in clinically_important_instants
-            }
-
-            # Collect ground truth segmentation at full resolution
-            gts = Camus._get_data(dataset, patient_view_key, CamusTags.gt)
-            gts = self._process_target_data(gts)
-
-            # If we do not use the whole sequence
-            if self.dataset_with_sequence and not self.use_sequence:
-                # Only keep clinically important instants
-                instant_indices = list(instants.values())
-                gts = gts[instant_indices]
-
-                # Update indices of clinically important instants to match the new slicing of the sequences
-                instants = {instant: idx for idx, instant in enumerate(instants)}
-
-            # Extract metadata concerning the registering applied
-            registering_parameters = None
-            if self.registered_dataset:
-                registering_parameters = {
-                    reg_step: Camus._get_metadata(dataset, patient_view_key, reg_step)
-                    for reg_step in CamusRegisteringTransformer.registering_steps
-                }
-
-        return ViewMetadata(
-            id=patient_view_key,
-            gt=gts,
-            voxelspacing=info[6:9][::-1],
-            instants=instants,
-            registering=registering_parameters,
-        )
 
     @squeeze
     def _process_target_data(self, *args: np.ndarray) -> List[np.ndarray]:

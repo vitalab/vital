@@ -88,6 +88,7 @@ class CamusTags(Tags):
         instants: Tag indicating the clinically important instants available in the sequence.
         img_proc: Tag referring to resized images, used as input when training models.
         gt_proc: Tag referring to resized groundtruths used as reference when training models.
+        metadata: Tag referring to a view's metadata.
         info: Tag referring to images' metadata.
         voxelspacing: Tag referring to voxels' size along each (time, height, width) dimension (in mm).
         raw: Tag referring to data before it was processed by some algorithm (e.g. groundtruths before resizing,
@@ -111,6 +112,7 @@ class CamusTags(Tags):
 
     img_proc: str = "img_proc"
     gt_proc: str = "gt_proc"
+    metadata: str = "metadata"
     info: str = "info"
     voxelspacing: str = "voxelspacing"
 
