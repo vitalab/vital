@@ -83,7 +83,7 @@ tracking of experiments using Comet, simply use one of the pre-built Hydra confi
 configuration is for Comet in `online` mode, but you can use it in `offline` mode by selecting the corresponding config
 file when launching the [VitalRunner](vital/runner.py):
 ```bash
-python <your_runner_script.py> logger=comet/offline ...
+python vital/runner.py logger=comet/offline ...
 ```
 To configure the Comet API and experiment's metadata, Comet relies on either i) environment variables (which you can set
 in a `.env` that will automatically be loaded using `python-dotenv`) or ii) a [`.comet.config`](.comet.config)` file. For

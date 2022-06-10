@@ -22,21 +22,27 @@ class CamusUnet(nn.Module):
         - Paper that fine-tuned the U-Net model for the CAMUS dataset: https://ieeexplore.ieee.org/document/8649738
     """
 
-    def __init__(self, in_channels: int, out_channels: int, init_channels: int, use_batchnorm: bool = True):
+    def __init__(
+        self,
+        input_shape: Tuple[int, ...],
+        output_shape: Tuple[int, ...],
+        init_channels: int = 32,
+        use_batchnorm: bool = True,
+    ):
         """Initializes class instance.
 
         Args:
-            in_channels: Number of channels of the input image to segment.
-            out_channels: Number of channels of the segmentation to predict.
+            input_shape: (in_channels, H, W), Shape of the input images.
+            output_shape: (num_classes, H, W), Shape of the output segmentation map.
             init_channels: Number of output feature maps from the first layer, used to compute the number of feature
                 maps in following layers.
             use_batchnorm: Whether to use batch normalization between the convolution and activation layers in the
                 convolutional blocks.
         """
         super().__init__()
-        self.encoder = _UnetEncoder(in_channels, init_channels, use_batchnorm=use_batchnorm)
+        self.encoder = _UnetEncoder(input_shape[0], init_channels, use_batchnorm=use_batchnorm)
         self.bottleneck = self._block(init_channels * 4, init_channels * 4, use_batchnorm=use_batchnorm)
-        self.decoder = _UnetDecoder(out_channels, init_channels, use_batchnorm=use_batchnorm)
+        self.decoder = _UnetDecoder(output_shape[0], init_channels, use_batchnorm=use_batchnorm)
 
     @staticmethod
     def _block(in_channels: int, out_channels: int, use_batchnorm: bool = True) -> nn.Module:

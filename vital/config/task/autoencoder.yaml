@@ -1,0 +1,7 @@
+defaults:
+  - default
+
+_target_: vital.tasks.autoencoder.SegmentationAutoencoderTask
+segmentation_data_tag: gt
+ce_weight: 0.1
+dice_weight: 1

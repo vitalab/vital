@@ -17,7 +17,7 @@ from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 from vital.data.data_module import VitalDataModule
 from vital.results.processor import ResultsProcessorCallback
 from vital.system import VitalSystem
-from vital.utils.serialization import resolve_model_checkpoint_path
+from vital.utils.saving import resolve_model_checkpoint_path
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,9 @@ class VitalRunner(ABC):
         datamodule: VitalDataModule = hydra.utils.instantiate(cfg.data, _recursive_=False)
 
         # Instantiate system (which will handle instantiating the model and optimizer).
-        model: VitalSystem = hydra.utils.instantiate(cfg.task, data_params=datamodule.data_params, _recursive_=False)
+        model: VitalSystem = hydra.utils.instantiate(
+            cfg.task, choices=cfg.choices, data_params=datamodule.data_params, _recursive_=False
+        )
 
         if cfg.ckpt:  # Load pretrained model if checkpoint is provided
             if cfg.weights_only:

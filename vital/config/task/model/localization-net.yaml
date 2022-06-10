@@ -1,0 +1,5 @@
+_target_: vital.models.segmentation.localization_net.LocalizationNet
+
+backbone: ???
+backbone_kwargs: null
+cropped_shape: null
