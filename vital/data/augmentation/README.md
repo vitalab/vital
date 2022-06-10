@@ -2,9 +2,9 @@
 
 ### Description
 The script generates a massive dataset of artificially generated segmentations (using rejection sampling) that are
-classified as anatomically correct or incorrect. These numerous artificially generated segmentations can then be used
-in post-processing to replace predicted segmentations that are anatomically incorrect, therefore guaranteeing the
-anatomical validity of the final results.
+classified as anatomically correct or incorrect. These numerous artificially generated and anatomically correct
+segmentations can then be used in post-processing to replace predicted segmentations that are anatomically incorrect,
+therefore guaranteeing the anatomical validity of the final results.
 
 ### How to run
 If you've generated either the ACDC or CAMUS dataset and have trained an autoencoder system on it, you can perform
