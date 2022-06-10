@@ -18,6 +18,7 @@ from vital.data.data_module import VitalDataModule
 from vital.results.processor import ResultsProcessor, ResultsProcessorCallback
 from vital.system import VitalSystem
 from vital.utils.saving import resolve_model_checkpoint_path
+from vital.utils.sys import register_omegaconf_resolvers
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +42,7 @@ class VitalRunner(ABC):
         # Load before hydra main to allow for setting environment variables with ${oc.env:ENV_NAME}
         load_dotenv(override=True)
 
-        OmegaConf.register_new_resolver("sys.gpus", lambda x=None: int(torch.cuda.is_available()))
-        OmegaConf.register_new_resolver("sys.num_workers", lambda x=None: os.cpu_count() - 1)
-        OmegaConf.register_new_resolver("sys.getcwd", lambda x=None: os.getcwd())
+        register_omegaconf_resolvers()
 
     @staticmethod
     @hydra.main(config_path="config", config_name="vital_default")
