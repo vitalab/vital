@@ -10,14 +10,16 @@ import comet_ml  # noqa
 import hydra
 import torch
 from dotenv import load_dotenv
-from omegaconf import DictConfig, OmegaConf, open_dict
+from omegaconf import DictConfig, open_dict
 from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
 from vital.results.processor import ResultsProcessor, ResultsProcessorCallback
 from vital.system import VitalSystem
+from vital.utils.config import ascend_config_node
 from vital.utils.saving import resolve_model_checkpoint_path
+from vital.utils.sys import register_omegaconf_resolvers
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +43,7 @@ class VitalRunner(ABC):
         # Load before hydra main to allow for setting environment variables with ${oc.env:ENV_NAME}
         load_dotenv(override=True)
 
-        OmegaConf.register_new_resolver("sys.gpus", lambda x=None: int(torch.cuda.is_available()))
-        OmegaConf.register_new_resolver("sys.num_workers", lambda x=None: os.cpu_count() - 1)
-        OmegaConf.register_new_resolver("sys.getcwd", lambda x=None: os.getcwd())
+        register_omegaconf_resolvers()
 
     @staticmethod
     @hydra.main(config_path="config", config_name="vital_default")
@@ -119,8 +119,8 @@ class VitalRunner(ABC):
         if cfg.predict:
             trainer.predict(model, datamodule=datamodule)
 
-    @classmethod
-    def _check_cfg(cls, cfg: DictConfig) -> DictConfig:
+    @staticmethod
+    def _check_cfg(cfg: DictConfig) -> DictConfig:
         """Parse args, making custom checks on the values of the parameters in the process.
 
         Args:
@@ -166,25 +166,6 @@ class VitalRunner(ABC):
         Returns:
             Callbacks for the Lightning Trainer.
         """
-
-        def ascend_config_node(cfg: DictConfig, node: str) -> DictConfig:
-            """Ascends unwanted node introduced in config hierarchy by directories meant to keep config files organised.
-
-            If `cfg` is None or `node` does not exist, simply return `cfg` without modifying it.
-
-            Args:
-                cfg: Config node with an unwanted child node to bring to the top-level.
-                node: Name of the node to bring back to the top level of `cfg`.
-
-            Returns:
-                `cfg` with the content of `node` merged at its top-level.
-            """
-            if isinstance(cfg, DictConfig) and node in cfg:
-                cfg_dict = OmegaConf.to_container(cfg, resolve=True)
-                cfg_dict.update(cfg_dict.pop(node))
-                cfg = OmegaConf.create(cfg_dict)
-            return cfg
-
         data_processor_cfgs, task_processor_cfgs = {}, {}
         if "processors" in cfg.data:
             data_processor_cfgs = ascend_config_node(cfg.data.processors, cfg.choices.data)
@@ -245,8 +226,8 @@ class VitalRunner(ABC):
                         experiment_logger = hydra.utils.instantiate(cfg.logger)
         return experiment_logger
 
-    @classmethod
-    def _best_model_path(cls, log_dir: Path, cfg: DictConfig) -> Path:
+    @staticmethod
+    def _best_model_path(log_dir: Path, cfg: DictConfig) -> Path:
         """Defines the path where to copy the best model checkpoint after training.
 
         Args:
