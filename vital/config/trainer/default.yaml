@@ -1,2 +1,3 @@
 _target_: pytorch_lightning.Trainer
 gpus: ${sys.gpus:}
+enable_progress_bar: True

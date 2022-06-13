@@ -1,0 +1,2 @@
+_target_: vital.data.camus.predict.CamusPredictionWriter
+write_path: ${sys.getcwd:}/test.h5

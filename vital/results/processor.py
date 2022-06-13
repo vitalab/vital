@@ -1,9 +1,12 @@
 import logging
+import shutil
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Mapping, Optional, Tuple, Type
 
+import pytorch_lightning as pl
 from pathos.multiprocessing import Pool
+from pytorch_lightning import Callback
 from tqdm import tqdm
 
 from vital.results.utils.itertools import IterableResult, Result
@@ -25,7 +28,10 @@ class ResultsProcessor:
         """Initializes class instance.
 
         Args:
-            output_name: Name for the aggregated output, if the processor produces an aggregated output.
+            output_name: Relative path where to save the results under the output folder. Depending on the whether the
+                processor logs output for individual results or aggregates outputs in a file, can be either the name of
+                a file or a subdirectory.
+            Name for the aggregated output, if the processor produces an aggregated output.
             progress_bar: If ``True``, enables progress bars detailing the progress of the processing.
             multiprocessing: If ``True``, enables multiprocessing when processing results.
             **iterable_result_kwargs: Parameters to pass along to results iterator's ``__init__``. Be careful to avoid
@@ -45,23 +51,51 @@ class ResultsProcessor:
         self.multiprocessing = multiprocessing
         self.iterable_result_kwargs = iterable_result_kwargs
 
-    def __call__(self, output_folder: Path, output_prefix: str = None, **iterable_result_kwargs) -> None:
+    def __call__(self, output_folder: Path, **iterable_result_kwargs) -> None:
         """Iterates over a set of results and logs/saves the result of the processing to a processor-specific format.
 
         Args:
             output_folder: Path where to save the output.
-            output_prefix: Prefix to add to progress bars/logging messages/output filenames.
             **iterable_result_kwargs: Parameters to pass along to results iterator's ``__init__``. Be careful to avoid
-                conflicts with kwargs passed along to the results iterator in `__init__`.
+                conflicts with kwargs passed along to the results iterator in `__init__`. In case of conflict with
+                `IterableResult` passed in the `__init__`, the parameters passed here will override those passed in the
+                `__init__`.
         """
-        self.output_folder = output_folder
-        self.output_folder.mkdir(parents=True, exist_ok=True)
+        # Resolve the path where to save the results (whether it points to a subdirectory or a file)
+        self.output_path = output_folder
+        if self.output_name:
+            self.output_path /= self.output_name
 
-        results = self.IterableResultT(**self.iterable_result_kwargs, **iterable_result_kwargs)
-        log_msg = f"Processing {output_prefix} data through {self.desc}"
+        # Clean up any leftover outputs from a previous run of the processor targeting the same output directory
+        if self.output_path.suffix:
+            # If the output is a file, delete the file if it already exists
+            self.output_path.unlink(missing_ok=True)
+
+            # Identify the directory where the file is saved
+            output_dir = self.output_path.parent
+        else:
+            # If the output is a directory, delete all its contents
+            output_dir = self.output_path
+            shutil.rmtree(output_dir, ignore_errors=True)
+
+        # Ensure the lowest-level output directory exists
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Merge possibly conflicting options, with warnings for conflicting arguments
+        for kwarg, val in iterable_result_kwargs.items():
+            if kwarg in self.iterable_result_kwargs:
+                logger.warning(
+                    f"In '{self.__class__.__name__}', kwarg '{kwarg}={val}' passed to `__call__' conflicts with the "
+                    f"same kwarg passed to `__init__` '{kwarg}={self.iterable_result_kwargs[kwarg]}'. The value passed "
+                    f"to `__call__` takes precedence."
+                )
+        iterable_result_kwargs = {**self.iterable_result_kwargs, **iterable_result_kwargs}
+
+        results = self.IterableResultT(**iterable_result_kwargs)
+        log_msg = f"Processing results through {self.desc}"
         if self.ProcessingOutput is None:
             # If the processor only writes to logs as a side effect as it iterates over the results
-            log_msg += f" and logging to '{output_folder}'"
+            log_msg += f" and logging to '{self.output_path}'"
 
         if self.multiprocessing:
             pool = Pool()
@@ -76,11 +110,8 @@ class ResultsProcessor:
 
         if self.ProcessingOutput:
             # If the processor outputs data for each result to be aggregated to a single output
-            outputs = dict(result_processing_jobs)
-            output_name = (output_prefix + "_" if output_prefix else "") + self.output_name
-            output_path = output_folder / output_name
-            logger.info(f"Aggregating {output_prefix} output processed by {self.desc} to {output_path}")
-            self.aggregate_outputs(outputs, output_path)
+            logger.info(f"Aggregating output processed by {self.desc} to {self.output_path}")
+            self.aggregate_outputs(dict(result_processing_jobs), self.output_path)
         else:  # If the processor only writes to logs as a side effect as it iterates over the results
             for _ in result_processing_jobs:
                 pass
@@ -132,9 +163,6 @@ class ResultsProcessor:
             help="Path to the directory in which to save the output of the processor",
         )
         parser.add_argument(
-            "--output_prefix", type=str, help="Prefix to add to progress bars/logging messages/output filenames"
-        )
-        parser.add_argument(
             "--disable_progress_bar",
             dest="progress_bar",
             action="store_false",
@@ -157,5 +185,14 @@ class ResultsProcessor:
         kwargs = vars(parser.parse_args())
 
         output_folder = kwargs.pop("output_folder")
-        output_prefix = kwargs.pop("output_prefix")
-        cls(**kwargs)(output_folder=output_folder, output_prefix=output_prefix)
+        cls(**kwargs)(output_folder)
+
+
+class ResultsProcessorCallback(Callback):
+    """Generic wrapper that creates a callback compatible with PL from a pre-configured `ResultsProcessor` instance."""
+
+    def __init__(self, processor: ResultsProcessor):
+        self.processor = processor
+
+    def on_predict_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:  # noqa: D102
+        self.processor(pl_module.log_dir / "results")

@@ -1,5 +1,6 @@
 from typing import Dict
 
+import numpy as np
 import torch
 from torch import Tensor
 from torch.nn import functional as F
@@ -54,6 +55,19 @@ class SegmentationTask(SharedTrainEvalTask):
 
         # Format output
         return {"loss": loss, "ce": ce, "dice": mean_dice, **dices}
+
+    def predict_step(self, batch: Dict[str, Tensor], batch_idx: int, dataloader_idx: int = 0) -> Tensor:  # noqa: D102
+        x = batch[Tags.img]
+
+        # Split the sequences in batches, in case the sequences are bigger than the batch size that fits in memory
+        y_hat = []
+        batch_size = self.trainer.datamodule.batch_size
+        for batch_idx in range(int(np.ceil(len(x) / batch_size))):
+            x_batch = x[batch_idx * batch_size : (batch_idx + 1) * batch_size]
+            y_hat.append(self(x_batch))
+        y_hat = torch.cat(y_hat)  # Assemble the segmentation of the whole batch from that of the sub-batches
+
+        return y_hat
 
 
 class RoiSegmentationTask(SegmentationTask):

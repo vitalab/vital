@@ -1,7 +1,9 @@
 defaults:
   - model: ???
   - optim: adam
+  - processors: null
 
+_target_: ???
 enable_model_summary: True
 
 train_log_kwargs:
