@@ -15,7 +15,7 @@ from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
-from vital.results.processor import ResultsProcessorCallback
+from vital.results.processor import ResultsProcessor, ResultsProcessorCallback
 from vital.system import VitalSystem
 from vital.utils.saving import resolve_model_checkpoint_path
 
@@ -158,13 +158,13 @@ class VitalRunner(ABC):
 
     @staticmethod
     def configure_results_processors(cfg: DictConfig) -> List[Callback]:
-        """Initializes `ResultsProcessor`s wrapped as Lightning callbacks.
+        """Initializes Lightning callbacks dedicated to processing prediction results.
 
         Args:
             cfg: Full configuration for the experiment.
 
         Returns:
-            `ResultsProcessor`s wrapped as callbacks for the Lightning Trainer.
+            Callbacks for the Lightning Trainer.
         """
 
         def ascend_config_node(cfg: DictConfig, node: str) -> DictConfig:
@@ -196,10 +196,19 @@ class VitalRunner(ABC):
         for processor_name, processor_cfg in processor_cfgs.items():
             if "_target_" in processor_cfg:
                 logger.info(f"Instantiating results processor <{processor_name}>")
-                # Instantiate the `ResultsProcessor` and wrap it inside a Lightning `Callback`,
-                # so that it can be called automatically by Lightning
                 processor = hydra.utils.instantiate(processor_cfg)
-                processor_callbacks.append(ResultsProcessorCallback(processor))
+
+                if isinstance(processor, Callback):
+                    # If the processor is already a Lightning `Callback`, directly add it to the callbacks
+                    processor_callbacks.append(processor)
+                elif isinstance(processor, ResultsProcessor):
+                    # If the processor is a `ResultsProcessor`, use the generic callback wrapper
+                    processor_callbacks.append(ResultsProcessorCallback(processor))
+                else:
+                    raise ValueError(
+                        f"Unsupported type '{type(processor)}' for result processor <{processor_name}>. It should be "
+                        f"either a '{ResultsProcessor}' or a '{Callback}'."
+                    )
             else:
                 logger.warning(f"No _target_ in results processor config. Cannot instantiate {processor_name}")
         return processor_callbacks
