@@ -118,8 +118,8 @@ class VitalRunner(ABC):
         if cfg.predict:
             trainer.predict(model, datamodule=datamodule)
 
-    @classmethod
-    def _check_cfg(cls, cfg: DictConfig) -> DictConfig:
+    @staticmethod
+    def _check_cfg(cfg: DictConfig) -> DictConfig:
         """Parse args, making custom checks on the values of the parameters in the process.
 
         Args:
@@ -244,8 +244,8 @@ class VitalRunner(ABC):
                         experiment_logger = hydra.utils.instantiate(cfg.logger)
         return experiment_logger
 
-    @classmethod
-    def _best_model_path(cls, log_dir: Path, cfg: DictConfig) -> Path:
+    @staticmethod
+    def _best_model_path(log_dir: Path, cfg: DictConfig) -> Path:
         """Defines the path where to copy the best model checkpoint after training.
 
         Args:
