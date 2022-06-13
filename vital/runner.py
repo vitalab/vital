@@ -10,13 +10,14 @@ import comet_ml  # noqa
 import hydra
 import torch
 from dotenv import load_dotenv
-from omegaconf import DictConfig, OmegaConf, open_dict
+from omegaconf import DictConfig, open_dict
 from pytorch_lightning import Callback, Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
 from vital.results.processor import ResultsProcessor, ResultsProcessorCallback
 from vital.system import VitalSystem
+from vital.utils.config import ascend_config_node
 from vital.utils.saving import resolve_model_checkpoint_path
 from vital.utils.sys import register_omegaconf_resolvers
 
@@ -165,25 +166,6 @@ class VitalRunner(ABC):
         Returns:
             Callbacks for the Lightning Trainer.
         """
-
-        def ascend_config_node(cfg: DictConfig, node: str) -> DictConfig:
-            """Ascends unwanted node introduced in config hierarchy by directories meant to keep config files organised.
-
-            If `cfg` is None or `node` does not exist, simply return `cfg` without modifying it.
-
-            Args:
-                cfg: Config node with an unwanted child node to bring to the top-level.
-                node: Name of the node to bring back to the top level of `cfg`.
-
-            Returns:
-                `cfg` with the content of `node` merged at its top-level.
-            """
-            if isinstance(cfg, DictConfig) and node in cfg:
-                cfg_dict = OmegaConf.to_container(cfg, resolve=True)
-                cfg_dict.update(cfg_dict.pop(node))
-                cfg = OmegaConf.create(cfg_dict)
-            return cfg
-
         data_processor_cfgs, task_processor_cfgs = {}, {}
         if "processors" in cfg.data:
             data_processor_cfgs = ascend_config_node(cfg.data.processors, cfg.choices.data)
