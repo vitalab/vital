@@ -32,6 +32,7 @@ class VitalDataModule(pl.LightningDataModule, ABC):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self._dataset: Dict[Subset, Dataset] = {}
+        self.save_hyperparameters(ignore="data_params")
 
     def dataset(self, subset: Subset = None) -> Union[Dict[Subset, Dataset], Dataset]:
         """Returns the subsets of the data (e.g. train) and their torch ``Dataset`` handle.
