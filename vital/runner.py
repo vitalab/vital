@@ -4,20 +4,19 @@ from abc import ABC
 from argparse import Namespace
 from pathlib import Path
 from shutil import copy2
-from typing import List, Union
+from typing import Union
 
 import comet_ml  # noqa
 import hydra
 import torch
 from dotenv import load_dotenv
 from omegaconf import DictConfig, open_dict
-from pytorch_lightning import Callback, Trainer, seed_everything
+from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
-from vital.results.processor import ResultsProcessor, ResultsProcessorCallback
 from vital.system import VitalSystem
-from vital.utils.config import ascend_config_node
+from vital.utils.config import instantiate_config_node_leaves
 from vital.utils.saving import resolve_model_checkpoint_path
 from vital.utils.sys import register_omegaconf_resolvers
 
@@ -61,13 +60,16 @@ class VitalRunner(ABC):
             ckpt_path = resolve_model_checkpoint_path(cfg.ckpt)
 
         cfg.seed = seed_everything(cfg.seed, workers=True)
-
-        callbacks = VitalRunner.configure_callbacks(cfg)
-        if "predict" in cfg.data and isinstance(cfg.data.predict, DictConfig):
-            # If prediction writer callback is specified, add it to the list of callbacks
-            callbacks.append(hydra.utils.instantiate(cfg.data.predict))
-        callbacks.extend(VitalRunner.configure_results_processors(cfg))
         experiment_logger = VitalRunner.configure_logger(cfg)
+
+        # Instantiate the different types of callbacks from the configs
+        callbacks = []
+        if isinstance(callbacks_node := cfg.get("callbacks"), DictConfig):
+            callbacks.extend(instantiate_config_node_leaves(callbacks_node, "callback"))
+        if isinstance(results_processors_node := cfg.get("results_processors"), DictConfig):
+            callbacks.extend(instantiate_config_node_leaves(results_processors_node, "results processor"))
+        if isinstance(predict_node := cfg.data.get("predict"), DictConfig):
+            callbacks.append(hydra.utils.instantiate(predict_node))
 
         if cfg.resume:
             trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=experiment_logger, callbacks=callbacks)
@@ -135,64 +137,6 @@ class VitalRunner(ABC):
                 cfg.trainer.default_root_dir = os.getcwd()
 
         return cfg
-
-    @staticmethod
-    def configure_callbacks(cfg: DictConfig) -> List[Callback]:
-        """Initializes Lightning callbacks.
-
-        Args:
-            cfg: Full configuration for the experiment.
-
-        Returns:
-            Callbacks for the Lightning Trainer.
-        """
-        callbacks = []
-        if "callbacks" in cfg and isinstance(cfg.callbacks, DictConfig):
-            for conf_name, conf in cfg.callbacks.items():
-                if "_target_" in conf:
-                    logger.info(f"Instantiating callback <{conf_name}>")
-                    callbacks.append(hydra.utils.instantiate(conf))
-                else:
-                    logger.warning(f"No _target_ in callback config. Cannot instantiate {conf_name}")
-        return callbacks
-
-    @staticmethod
-    def configure_results_processors(cfg: DictConfig) -> List[Callback]:
-        """Initializes Lightning callbacks dedicated to processing prediction results.
-
-        Args:
-            cfg: Full configuration for the experiment.
-
-        Returns:
-            Callbacks for the Lightning Trainer.
-        """
-        data_processor_cfgs, task_processor_cfgs = {}, {}
-        if "processors" in cfg.data:
-            data_processor_cfgs = ascend_config_node(cfg.data.processors, cfg.choices.data)
-        if "processors" in cfg.task:
-            task_processor_cfgs = ascend_config_node(cfg.task.processors, cfg.choices.task)
-        processor_cfgs = {**data_processor_cfgs, **task_processor_cfgs}
-
-        processor_callbacks = []
-        for processor_name, processor_cfg in processor_cfgs.items():
-            if "_target_" in processor_cfg:
-                logger.info(f"Instantiating results processor <{processor_name}>")
-                processor = hydra.utils.instantiate(processor_cfg)
-
-                if isinstance(processor, Callback):
-                    # If the processor is already a Lightning `Callback`, directly add it to the callbacks
-                    processor_callbacks.append(processor)
-                elif isinstance(processor, ResultsProcessor):
-                    # If the processor is a `ResultsProcessor`, use the generic callback wrapper
-                    processor_callbacks.append(ResultsProcessorCallback(processor))
-                else:
-                    raise ValueError(
-                        f"Unsupported type '{type(processor)}' for result processor <{processor_name}>. It should be "
-                        f"either a '{ResultsProcessor}' or a '{Callback}'."
-                    )
-            else:
-                logger.warning(f"No _target_ in results processor config. Cannot instantiate {processor_name}")
-        return processor_callbacks
 
     @staticmethod
     def configure_logger(cfg: DictConfig) -> Union[bool, LightningLoggerBase]:

@@ -1,8 +1,8 @@
 defaults:
   - default
-  - override predict: camus
-  - override processors:
+  - results_processors@_global_.results_processors:
     - camus/mhd_images
+  - override predict: camus
 
 _target_: vital.data.camus.data_module.CamusDataModule
 

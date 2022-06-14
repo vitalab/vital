@@ -1,6 +1,6 @@
 defaults:
   - predict: null
-  - processors: null
+  - results_processors@_global_.results_processors: null
 
 _target_: ???
 dataset_path: ???
