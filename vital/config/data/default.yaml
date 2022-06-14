@@ -1,5 +1,6 @@
 defaults:
   - predict: null
+  - postprocessing: null
   - results_processors@_global_.results_processors: null
 
 _target_: ???

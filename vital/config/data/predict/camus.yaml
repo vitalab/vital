@@ -1,2 +1,4 @@
 _target_: vital.data.camus.predict.CamusPredictionWriter
 write_path: ${sys.getcwd:}/test.h5
+write_post_predictions_only: False
+epoch_end_progress_bar: ${trainer.enable_progress_bar}

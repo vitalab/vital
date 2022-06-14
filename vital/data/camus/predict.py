@@ -5,26 +5,54 @@ import h5py
 import numpy as np
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import BasePredictionWriter
+from pytorch_lightning.callbacks.prediction_writer import WriteInterval
 from torch import Tensor
 
 from vital.data.camus.config import CamusTags, seg_save_options
 from vital.data.camus.dataset import get_segmentation_attributes
 from vital.data.camus.utils.register import CamusRegisteringTransformer
 from vital.utils.format.numpy import to_categorical
+from vital.utils.image.process import PostProcessor
 from vital.utils.image.transform import resize_image
 
 
 class CamusPredictionWriter(BasePredictionWriter):
     """Implementation of the prediction writer that saves predictions for the CAMUS dataset in a HDF5 file."""
 
-    def __init__(self, write_path: Union[str, Path] = None):
+    def __init__(
+        self,
+        write_path: Union[str, Path] = None,
+        postprocessors: Sequence[PostProcessor] = None,
+        write_post_predictions_only: bool = False,
+        epoch_end_progress_bar: bool = True,
+    ):
         """Initializes class instance.
 
         Args:
             write_path: Path of the output HDF5 dataset where to save the predictions.
+            postprocessors: Callable post-processor objects to use to process the predictions.
+            write_post_predictions_only: Whether to skip saving the predictions for each batch (assuming they've already
+                been saved) and go straight to post-processing the predictions at the end of the prediction epoch.
+            epoch_end_progress_bar: Whether to display on progress bar in the epoch end hook when post-processing the
+                predictions.
         """
-        super().__init__(write_interval="batch")
+        write_interval = WriteInterval.BATCH
+        if postprocessors:
+            write_interval = WriteInterval.BATCH_AND_EPOCH
+        if write_post_predictions_only:
+            if not postprocessors:
+                raise ValueError(
+                    "`CamusPredictionWriter` called to only post-process predictions, but no functions to post-process "
+                    "the results were provided."
+                )
+            write_interval = WriteInterval.EPOCH
+
+        super().__init__(write_interval=write_interval)
         self._write_path = Path(write_path) if write_path else None
+        self._epoch_end_progress_bar = epoch_end_progress_bar
+        self._postprocessors = postprocessors
+        if self._postprocessors is None:
+            self._postprocessors = []
 
     def setup(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", stage: Optional[str] = None) -> None:
         """Removes results potentially left behind by previous runs of the callback in the same directory."""
