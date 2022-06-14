@@ -46,7 +46,7 @@ class VitalRunner(ABC):
         register_omegaconf_resolvers()
 
     @staticmethod
-    @hydra.main(config_path="config", config_name="vital_default")
+    @hydra.main(version_base=None, config_path="config", config_name="vital_default")
     def run_system(cfg: DictConfig) -> None:
         """Handles the training and evaluation of a model.
 

@@ -5,6 +5,7 @@ defaults:
   - callbacks:
       - model_checkpoint
   - logger: comet/online
+  - _self_
 
 seed: null
 
@@ -29,3 +30,8 @@ choices: ${hydra:runtime.choices}
 
 # Best model save path defines where to save the model. If none, hydra working directory is used.
 best_model_save_path: null
+
+# Prefer old Hydra default of changing directory for each job from version<=1.1
+hydra:
+  job:
+    chdir: True
