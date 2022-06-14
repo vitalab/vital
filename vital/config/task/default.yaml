@@ -1,7 +1,7 @@
 defaults:
   - model: ???
   - optim: adam
-  - processors: null
+  - results_processors@_global_.results_processors: null
 
 _target_: ???
 enable_model_summary: True
