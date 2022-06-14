@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Callable, List
 
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 from pytorch_lightning import Callback
 
 from vital.results.processor import ResultsProcessor, ResultsProcessorCallback
@@ -77,22 +77,3 @@ def instantiate_results_processor(cfg: DictConfig, cfg_name: str) -> Callback:
             f"'{ResultsProcessor}' or a '{Callback}'."
         )
     return processor
-
-
-def ascend_config_node(cfg: DictConfig, node: str) -> DictConfig:
-    """Ascends unwanted node introduced in config hierarchy by directories meant to keep config files organised.
-
-    If `cfg` is None or `node` does not exist, simply return `cfg` without modifying it.
-
-    Args:
-        cfg: Config node with an unwanted child node to bring to the top-level.
-        node: Name of the node to bring back to the top level of `cfg`.
-
-    Returns:
-        `cfg` with the content of `node` merged at its top-level.
-    """
-    if isinstance(cfg, DictConfig) and node in cfg:
-        cfg_dict = OmegaConf.to_container(cfg, resolve=True)
-        cfg_dict.update(cfg_dict.pop(node))
-        cfg = OmegaConf.create(cfg_dict)
-    return cfg
