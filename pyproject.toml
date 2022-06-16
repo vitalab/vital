@@ -67,6 +67,7 @@ bmode-pol2cart = "vital.utils.image.us.bmode:main"
 camus-hdf5 = "vital.data.camus.dataset_generator:main"
 acdc-hdf5 = "vital.data.acdc.dataset_generator:main"
 anatomical-da = "vital.data.augmentation.anatomically_constrained_da:main"
+cardinal-anonymise = "vital.data.cardinal.anonymise_files:main"
 
 [tool.black]
 line-length = 120
