@@ -16,7 +16,7 @@ from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
 
 from vital.data.data_module import VitalDataModule
 from vital.system import VitalSystem
-from vital.utils.config import instantiate_config_node_leaves
+from vital.utils.config import instantiate_config_node_leaves, instantiate_results_processor
 from vital.utils.saving import resolve_model_checkpoint_path
 from vital.utils.sys import register_omegaconf_resolvers
 
@@ -67,7 +67,11 @@ class VitalRunner(ABC):
         if isinstance(callbacks_node := cfg.get("callbacks"), DictConfig):
             callbacks.extend(instantiate_config_node_leaves(callbacks_node, "callback"))
         if isinstance(results_processors_node := cfg.get("results_processors"), DictConfig):
-            callbacks.extend(instantiate_config_node_leaves(results_processors_node, "results processor"))
+            callbacks.extend(
+                instantiate_config_node_leaves(
+                    results_processors_node, "results processor", instantiate_fn=instantiate_results_processor
+                )
+            )
         if isinstance(predict_node := cfg.data.get("predict"), DictConfig):
             callbacks.append(hydra.utils.instantiate(predict_node))
 
