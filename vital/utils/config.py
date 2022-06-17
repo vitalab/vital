@@ -27,7 +27,7 @@ def read_ini_config(ini_config: Path) -> ConfigParser:
 
 
 def instantiate_config_node_leaves(
-    cfg: DictConfig, node_desc: str, instantiate_fn: Callable[[DictConfig], Any] = None
+    cfg: DictConfig, node_desc: str, instantiate_fn: Callable[[DictConfig, str], Any] = None
 ) -> List[Any]:
     """Iterates over the leafs of the `cfg` config node and instantiates the leaves.
 
@@ -48,7 +48,10 @@ def instantiate_config_node_leaves(
     for obj_name, obj_cfg in cfg.items():
         if "_target_" in obj_cfg:
             logger.info(f"Instantiating {node_desc} <{obj_name}>")
-            objects.append(instantiate_fn(obj_cfg))
+            instantiate_args = []
+            if instantiate_fn != hydra.utils.instantiate:  # If using a custom instantiation function
+                instantiate_args = [obj_name]
+            objects.append(instantiate_fn(obj_cfg, *instantiate_args))
         else:
             logger.warning(f"No '_target_' field in {node_desc} config. Cannot instantiate {obj_name}")
     return objects
