@@ -5,6 +5,7 @@ defaults:
     - camus/segmentation_metrics
     - camus/clinical_metrics
     - camus/anatomical_metrics
+  - override postprocessing: echo/default
   - override predict: camus
 
 _target_: vital.data.camus.data_module.CamusDataModule
