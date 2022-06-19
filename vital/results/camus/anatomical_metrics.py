@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, Union
 
 import numpy as np
 
@@ -24,7 +24,7 @@ class AnatomicalMetrics(anatomical_metrics.AnatomicalMetrics):
     ]
     thresholds = config.thresholds
 
-    def __init__(self, labels: Sequence[Label], shape: Tuple[int, int] = None, **kwargs):
+    def __init__(self, labels: Sequence[Union[str, Label]], shape: Tuple[int, int] = None, **kwargs):
         """Initializes class instance.
 
         Args:
@@ -34,8 +34,10 @@ class AnatomicalMetrics(anatomical_metrics.AnatomicalMetrics):
             **kwargs: Additional parameters to pass along to ``super().__init__()``.
         """
         super().__init__(**kwargs)
-        self.labels = labels
         self.shape = shape
+
+        # Make sure labels are defined using the enum
+        self.labels = tuple(Label.from_name(str(label)) for label in labels)
 
     def process_result(self, result: InstantResult) -> Tuple[str, "AnatomicalMetrics.ProcessingOutput"]:
         """Computes anatomical metrics on data from an instant.
