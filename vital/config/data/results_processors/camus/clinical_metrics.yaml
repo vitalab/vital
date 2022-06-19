@@ -7,7 +7,7 @@ clinical_metrics:
 
   # Options specific to ResultsProcessor using CAMUS results iterators
   results_path: ${data.predict.write_path}
-  use_sequence: ${data.use_sequence}
+  use_sequence: False # This option should NEVER be changed
 
   # Options specific to `ClinicalMetrics`
   input: "pred/raw"
