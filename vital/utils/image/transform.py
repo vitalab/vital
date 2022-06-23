@@ -1,15 +1,14 @@
 from typing import Sequence, Tuple
 
 import numpy as np
-import PIL
 import torch
 from PIL import Image
-from PIL.Image import NEAREST
+from PIL.Image import Resampling
 from skimage.util import crop
 from torch import Tensor
 
 
-def resize_image(image: np.ndarray, size: Tuple[int, int], resample: PIL.Image = NEAREST) -> np.ndarray:
+def resize_image(image: np.ndarray, size: Tuple[int, int], resample: Resampling = Resampling.NEAREST) -> np.ndarray:
     """Resizes the image to the specified dimensions.
 
     Args:

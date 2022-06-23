@@ -3,7 +3,7 @@ from typing import Dict, Mapping, Tuple, Union, overload
 
 import numpy as np
 from keras_preprocessing.image import ImageDataGenerator
-from PIL.Image import LINEAR
+from PIL.Image import Resampling
 
 from vital.utils.format.numpy import to_categorical, to_onehot
 from vital.utils.image.transform import resize_image
@@ -495,7 +495,7 @@ class AffineRegisteringTransformer:
         if image is not None:
             # Crop the image around the bbox and resize to target shape
             image = _crop(np.squeeze(image), crop_parameters[2:])
-            image = resize_image(image, self.crop_shape[::-1], resample=LINEAR)[..., np.newaxis]
+            image = resize_image(image, self.crop_shape[::-1], resample=Resampling.LINEAR)[..., np.newaxis]
             out += (image,)
 
         return out

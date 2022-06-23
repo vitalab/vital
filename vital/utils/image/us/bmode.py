@@ -59,11 +59,13 @@ class _BMode:
         """
         raise NotImplementedError
 
-    def _to_coordinates(self, grid: "_BMode.Grid") -> np.ndarray:
+    def _to_coordinates(self, grid: "_BMode.Grid", progress_bar: bool = False) -> np.ndarray:
         """Interpolates `self.data` to be expressed in the `grid` coordinates rather than `self.grid`.
 
         Args:
             grid: New coordinate grid to use.
+            progress_bar: If ``True``, enables progress bars detailing the progress of the conversion of each frame in
+                the sequence.
 
         Returns:
             `self.data` expressed in the `grid` coordinates.
@@ -82,13 +84,15 @@ class _BMode:
 
         # Interpolate frames in parallel because processing each frame can take up to 3.5 seconds
         with Pool() as pool:
-            interpolation_jobs = tqdm(
-                pool.imap(griddata_wrapper, data),
-                desc="Converting sequence of ultrasound images in polar coordinates to cartesian coordinates",
-                total=len(data),
-                unit="frame",
-                leave=False,
-            )
+            interpolation_jobs = pool.imap(griddata_wrapper, data)
+            if progress_bar:
+                interpolation_jobs = tqdm(
+                    interpolation_jobs,
+                    desc="Converting sequence of ultrasound images in polar coordinates to cartesian coordinates",
+                    total=len(data),
+                    unit="frame",
+                    leave=False,
+                )
             interpolated_data = np.array([interpolated_frame for interpolated_frame in interpolation_jobs])
 
         # If the source data was 2D, make get rid of the frame dimension
@@ -214,11 +218,13 @@ class CartesianBMode(_BMode):
         return cls.Grid(z_grid, x_grid)
 
     @classmethod
-    def from_polar(cls, polar_bmode: PolarBMode) -> "CartesianBMode":
+    def from_polar(cls, polar_bmode: PolarBMode, progress_bar: bool = False) -> "CartesianBMode":
         """Builds an instance of a cartesian B-mode image from the image expressed in polar coordinates.
 
         Args:
             polar_bmode: B-mode image expressed in polar coordinates.
+            progress_bar: If ``True``, enables progress bars detailing the progress of the conversion of each frame in
+                the sequence.
 
         Returns:
             Instance of a cartesian B-mode image, corresponding to the input polar B-mode image.
@@ -231,8 +237,8 @@ class CartesianBMode(_BMode):
         cart_grid = cls.compute_grid(z_bounds, res, x_bounds, res)
 
         # Convert polar data to cartesian data
-        cart_data = polar_bmode._to_coordinates(cart_grid)
-        cart_bmode = cls(data=cart_data, grid=cart_grid, voxelspacing=(res, res))
+        cart_data = polar_bmode._to_coordinates(cart_grid, progress_bar=progress_bar)
+        cart_bmode = cls(data=cart_data, grid=cart_grid, voxelspacing=(res * 1e3, res * 1e3))
         return cart_bmode
 
 
@@ -272,7 +278,7 @@ def main():
     ):
         # Read h5 file as polar image and convert it to a cartesian image
         with h5py.File(h5_file) as f:
-            cart_img = CartesianBMode.from_polar(PolarBMode.from_ge_hdf5(f)).data
+            cart_img = CartesianBMode.from_polar(PolarBMode.from_ge_hdf5(f), progress_bar=True).data
 
         # Save the resulting image
         if cart_img.ndim > 2:

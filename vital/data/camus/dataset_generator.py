@@ -9,7 +9,7 @@ from typing import Dict, List, Literal, Sequence, Tuple
 
 import h5py
 import numpy as np
-from PIL.Image import LINEAR
+from PIL.Image import Resampling
 from tqdm import tqdm
 
 from vital.data.camus.config import (
@@ -23,7 +23,7 @@ from vital.data.camus.config import (
 )
 from vital.data.camus.utils.register import CamusRegisteringTransformer
 from vital.data.config import Subset
-from vital.utils.image.io import load_mhd
+from vital.utils.image.io import sitk_load
 from vital.utils.image.transform import remove_labels, resize_image
 from vital.utils.logging import configure_logging
 
@@ -159,7 +159,9 @@ class CrossValidationDatasetGenerator:
                     data_y, data_x
                 )
             else:
-                data_x_proc = np.array([resize_image(x, self.target_image_size, resample=LINEAR) for x in data_x])
+                data_x_proc = np.array(
+                    [resize_image(x, self.target_image_size, resample=Resampling.LINEAR) for x in data_x]
+                )
                 data_y_proc = np.array([resize_image(y, self.target_image_size) for y in data_y])
 
             # Write image and groundtruth data
@@ -250,8 +252,8 @@ class CrossValidationDatasetGenerator:
 
         # Open interpolated segmentations
         data_x, data_y = [], []
-        sequence, info = load_mhd(patient_folder / sequence_fn_template.format(""))
-        sequence_gt, _ = load_mhd(patient_folder / sequence_fn_template.format("_gt"))
+        sequence, info = sitk_load(patient_folder / sequence_fn_template.format(""))
+        sequence_gt, _ = sitk_load(patient_folder / sequence_fn_template.format("_gt"))
 
         for image, segmentation in zip(sequence, sequence_gt):  # For every instant in the sequence
             data_x.append(image)
