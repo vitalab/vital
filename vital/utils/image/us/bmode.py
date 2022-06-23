@@ -232,7 +232,7 @@ class CartesianBMode(_BMode):
 
         # Convert polar data to cartesian data
         cart_data = polar_bmode._to_coordinates(cart_grid)
-        cart_bmode = cls(data=cart_data, grid=cart_grid, voxelspacing=(res, res))
+        cart_bmode = cls(data=cart_data, grid=cart_grid, voxelspacing=(res * 1e3, res * 1e3))
         return cart_bmode
 
 
