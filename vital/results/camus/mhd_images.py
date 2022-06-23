@@ -7,7 +7,7 @@ from vital.data.camus.config import CamusTags
 from vital.results.camus.utils.data_struct import PatientResult
 from vital.results.camus.utils.itertools import Patients
 from vital.results.processor import ResultsProcessor
-from vital.utils.image.io import save_as_mhd
+from vital.utils.image.io import sitk_save
 
 
 class MhdImages(ResultsProcessor):
@@ -42,7 +42,7 @@ class MhdImages(ResultsProcessor):
             view_folder.mkdir(parents=True, exist_ok=True)
 
             for tag in self.input_tags:
-                save_as_mhd(
+                sitk_save(
                     view[tag].data,
                     view_folder / (tag.replace("/", "_") + ".mhd"),
                     spacing=view.voxelspacing[::-1],

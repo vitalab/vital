@@ -23,7 +23,7 @@ from vital.data.camus.config import (
 )
 from vital.data.camus.utils.register import CamusRegisteringTransformer
 from vital.data.config import Subset
-from vital.utils.image.io import load_mhd
+from vital.utils.image.io import sitk_load
 from vital.utils.image.transform import remove_labels, resize_image
 from vital.utils.logging import configure_logging
 
@@ -250,8 +250,8 @@ class CrossValidationDatasetGenerator:
 
         # Open interpolated segmentations
         data_x, data_y = [], []
-        sequence, info = load_mhd(patient_folder / sequence_fn_template.format(""))
-        sequence_gt, _ = load_mhd(patient_folder / sequence_fn_template.format("_gt"))
+        sequence, info = sitk_load(patient_folder / sequence_fn_template.format(""))
+        sequence_gt, _ = sitk_load(patient_folder / sequence_fn_template.format("_gt"))
 
         for image, segmentation in zip(sequence, sequence_gt):  # For every instant in the sequence
             data_x.append(image)

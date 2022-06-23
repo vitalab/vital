@@ -7,8 +7,8 @@ import SimpleITK
 from PIL import Image, ImageSequence
 
 
-def load_mhd(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[Number, ...], ...]]:
-    """Loads a mhd image and returns the image and its metadata.
+def sitk_load(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[Number, ...], ...]]:
+    """Loads an image using SimpleITK and returns the image and its metadata.
 
     Args:
         filepath: Path to the image.
@@ -27,16 +27,17 @@ def load_mhd(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[Number, ...], ...]
     return im_array, info
 
 
-def save_as_mhd(
+def sitk_save(
     im_array: np.ndarray, output_filepath: Path, origin=(0, 0, 0), spacing=(1, 1, 1), dtype=np.float32
 ) -> None:
-    """Saves an array to mhd format.
+    """Saves an array to an image format using SimpleITK.
 
     Args:
         im_array: ([N], H, W), Image array.
         output_filepath: Output filename. Must end in ".mhd".
         origin: Center of the image.
-        spacing: Size of the voxels along each dimension.
+        spacing: (H, W, N), Size of the voxels along each dimension. Be careful about the order of the dimensions,
+            because it is not the same as the image array itself.
         dtype: Type of data to save.
     """
     seg = SimpleITK.GetImageFromArray(im_array.astype(dtype))
