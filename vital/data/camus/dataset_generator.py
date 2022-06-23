@@ -9,7 +9,7 @@ from typing import Dict, List, Literal, Sequence, Tuple
 
 import h5py
 import numpy as np
-from PIL.Image import LINEAR
+from PIL.Image import Resampling
 from tqdm import tqdm
 
 from vital.data.camus.config import (
@@ -159,7 +159,9 @@ class CrossValidationDatasetGenerator:
                     data_y, data_x
                 )
             else:
-                data_x_proc = np.array([resize_image(x, self.target_image_size, resample=LINEAR) for x in data_x])
+                data_x_proc = np.array(
+                    [resize_image(x, self.target_image_size, resample=Resampling.LINEAR) for x in data_x]
+                )
                 data_y_proc = np.array([resize_image(y, self.target_image_size) for y in data_y])
 
             # Write image and groundtruth data
