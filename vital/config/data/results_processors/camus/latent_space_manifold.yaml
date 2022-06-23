@@ -1,5 +1,5 @@
-mhd_images:
-  _target_: vital.results.camus.mhd_images.MhdImages
+latent_space_manifold:
+  _target_: vital.results.camus.latent_space_manifold.LatentSpaceManifoldPlots
 
   # Base ResultsProcessor options
   progress_bar: ${trainer.enable_progress_bar}
@@ -9,5 +9,6 @@ mhd_images:
   results_path: ${data.predict.write_path}
   use_sequence: ${data.use_sequence}
 
-  # Options specific to `MhdImages`
-  inputs: ["pred/raw"]
+  # Options specific to `GroupsEmbeddingPlots`
+  embedding_params: null
+  interactive: False
