@@ -12,5 +12,5 @@ anatomical_metrics:
   # Options specific to `AnatomicalMetrics`
   input: "pred/raw"
   target: 'gt/raw'
-  labels: [bg, lv, myo, atrium]
+  labels: ${data.labels}
   shape: null

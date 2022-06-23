@@ -12,4 +12,4 @@ segmentation_metrics:
   # Options specific to `SegmentationMetrics`
   input: "pred/raw"
   target: 'gt/raw'
-  labels: [bg, lv, myo, atrium]
+  labels: ${data.labels}
