@@ -37,7 +37,7 @@ def sitk_save(
         im_array: ([N], H, W), Image array.
         output_filepath: Output filename. Must end in ".mhd".
         origin: Center of the image.
-        spacing: (H, W, N), Size of the voxels along each dimension. Be careful about the order of the dimensions,
+        spacing: (W, H, N), Size of the voxels along each dimension. Be careful about the order of the dimensions,
             because it is not the same as the image array itself.
         dtype: Type of data to save.
     """
