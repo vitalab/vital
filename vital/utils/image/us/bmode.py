@@ -5,13 +5,13 @@ from pathlib import Path
 from typing import Tuple
 
 import h5py
-import matplotlib.pyplot as plt
 import numpy as np
 from pathos.multiprocessing import Pool
 from scipy.interpolate import griddata
 from tqdm import tqdm
 
 from vital.utils.image.coord import pol2cart
+from vital.utils.image.io import plt_save
 from vital.utils.logging import configure_logging
 
 
@@ -260,18 +260,6 @@ def main():
     )
     args = parser.parse_args()
 
-    # Ensure that matplotlib is using the non-interactive 'agg' backend
-    # to avoid known memory-leak bug in matplotlib with not-shown GUI windows
-    # Link to issue: https://github.com/matplotlib/matplotlib/issues/20300
-    plt.switch_backend("agg")
-
-    def _save_img(img: np.ndarray, filename: Path) -> None:
-        plt.imshow(img, cmap="gray")  # Show B-mode in standard grayscale colormap
-        # Only display the image, without the default matplotlib axes and padding
-        plt.axis("off")
-        plt.savefig(filename, bbox_inches="tight", pad_inches=0.0)
-        plt.close()
-
     # Loop to convert files
     for h5_file in tqdm(
         args.polar_h5_file, desc="Converting polar GE HDF5 files to cartesian coordinates", unit="file"
@@ -293,10 +281,10 @@ def main():
                 unit="frame",
                 leave=False,
             ):
-                _save_img(cart_img_2d, args.output_dir / h5_file.stem / f"{img_idx}.png")
+                plt_save(cart_img_2d, args.output_dir / h5_file.stem / f"{img_idx}.png")
         else:
             # Otherwise, save the 2D image as PNG file directly in the root output directory
-            _save_img(cart_img, args.output_dir / f"{h5_file.stem}.png")
+            plt_save(cart_img, args.output_dir / f"{h5_file.stem}.png")
 
 
 if __name__ == "__main__":

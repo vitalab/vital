@@ -4,6 +4,7 @@ from typing import Tuple
 
 import numpy as np
 import SimpleITK
+from matplotlib import pyplot as plt
 from PIL import Image, ImageSequence
 
 
@@ -36,7 +37,7 @@ def sitk_save(
         im_array: ([N], H, W), Image array.
         output_filepath: Output filename. Must end in ".mhd".
         origin: Center of the image.
-        spacing: (H, W, N), Size of the voxels along each dimension. Be careful about the order of the dimensions,
+        spacing: (W, H, N), Size of the voxels along each dimension. Be careful about the order of the dimensions,
             because it is not the same as the image array itself.
         dtype: Type of data to save.
     """
@@ -44,6 +45,26 @@ def sitk_save(
     seg.SetOrigin(origin)
     seg.SetSpacing(spacing)
     SimpleITK.WriteImage(seg, str(output_filepath))
+
+
+def plt_save(img: np.ndarray, filename: Path, cmap: str = "gray") -> None:
+    """Saves a numpy array as an image using Pyplot, disabling the default padding and axes.
+
+    Args:
+        img: Image pixel data.
+        filename: Path where to save the image.
+        cmap: Colormap to use.
+    """
+    # Ensure that matplotlib is using the non-interactive 'agg' backend
+    # to avoid known memory-leak bug in matplotlib with not-shown GUI windows
+    # Link to issue: https://github.com/matplotlib/matplotlib/issues/20300
+    plt.switch_backend("agg")
+
+    plt.imshow(img, cmap=cmap)  # Show B-mode in standard grayscale colormap
+    # Only display the image, without the default matplotlib axes and padding
+    plt.axis("off")
+    plt.savefig(filename, bbox_inches="tight", pad_inches=0.0)
+    plt.close()
 
 
 def load_gif(filepath: Path) -> np.ndarray:
