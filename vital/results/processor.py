@@ -9,7 +9,7 @@ from pathos.multiprocessing import Pool
 from pytorch_lightning import Callback
 from tqdm import tqdm
 
-from vital.results.utils.itertools import IterableResult, Result
+from vital.utils.itertools import Item, Iterable
 from vital.utils.logging import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 class ResultsProcessor:
     """Abstract class used for processing inference results, e.g. compute metrics, convert format, etc."""
 
-    IterableResultT: Type[IterableResult[Result]]  #: Iterable over the results to process.
-    ProcessingOutput: Type = None  #: Type of the data returned by processing a single result, if any.
-    desc: str  #: Description of the processor. Used in progress bar, output filenames, etc.
+    IterableResultT: Type[Iterable[Item]]  # Iterable over the results to process.
+    ProcessingOutput: Type = None  # Type of the data returned by processing a single result, if any.
+    desc: str  # Description of the processor. Used in progress bar, output filenames, etc.
 
     def __init__(
         self, output_name: str = None, progress_bar: bool = True, multiprocessing: bool = True, **iterable_result_kwargs
@@ -120,7 +120,7 @@ class ResultsProcessor:
             pool.close()
             pool.join()
 
-    def process_result(self, result: Result) -> Optional[Tuple[str, "ProcessingOutput"]]:
+    def process_result(self, result: Item) -> Optional[Tuple[str, "ProcessingOutput"]]:
         """Processes a single result (either writing to a file or computing an output to aggregate later).
 
         Args:
