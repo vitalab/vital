@@ -1,8 +1,30 @@
 import itertools
-from typing import Dict, List, Mapping, Sequence, Tuple, TypeVar, Union
+import typing
+from abc import ABC
+from argparse import ArgumentParser
+from typing import Dict, List, Mapping, Sequence, Sized, Tuple, TypeVar, Union
 
 K = TypeVar("K")
 V = TypeVar("V")
+Item = TypeVar("Item")
+
+
+class Iterable(typing.Iterable[Item], Sized, ABC):
+    """Wrapper around the native `Iterable` that enforces functionalities leveraged by other `vital` APIs."""
+
+    desc: str  # Description of an iterable item. Used in e.g. logging messages, progress bar, etc.
+
+    @classmethod
+    def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
+        """Adds arguments required to configure the iterable to an argument parser.
+
+        Args:
+            parser: Parser object for which to add arguments for configuring iterable.
+
+        Returns:
+            Parser object with support for arguments for configuring iterable.
+        """
+        return parser
 
 
 def dict_values_cartesian_product(matrix: Mapping[K, List[V]]) -> List[Dict[K, V]]:

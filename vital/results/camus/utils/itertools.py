@@ -6,10 +6,10 @@ import h5py
 
 from vital.data.camus.config import CamusTags, FullCycleInstant
 from vital.results.camus.utils.data_struct import InstantResult, PatientResult, ViewResult
-from vital.results.utils.itertools import IterableResult
+from vital.utils.itertools import Iterable
 
 
-class _ResultOptionsMixin(IterableResult):
+class _ResultOptionsMixin(Iterable):
     """Mixin for configuring common options across result iterators."""
 
     def __init__(
@@ -64,7 +64,7 @@ class _ResultOptionsMixin(IterableResult):
         return parser
 
 
-class Patients(_ResultOptionsMixin, IterableResult[PatientResult]):
+class Patients(_ResultOptionsMixin, Iterable[PatientResult]):
     """Iterable over each patient in an HDF5 results dataset."""
 
     desc = "patient"
@@ -84,7 +84,7 @@ class Patients(_ResultOptionsMixin, IterableResult[PatientResult]):
         return length
 
 
-class PatientViews(_ResultOptionsMixin, IterableResult[ViewResult]):
+class PatientViews(_ResultOptionsMixin, Iterable[ViewResult]):
     """Iterable over each patient/view in an HDF5 results dataset."""
 
     desc = f"{Patients.desc}/view"
@@ -102,7 +102,7 @@ class PatientViews(_ResultOptionsMixin, IterableResult[ViewResult]):
         return sum(len(patient.views) for patient in self.patients)
 
 
-class PatientViewInstants(_ResultOptionsMixin, IterableResult[InstantResult]):
+class PatientViewInstants(_ResultOptionsMixin, Iterable[InstantResult]):
     """Iterable over each patient/view/instant in an HDF5 results dataset."""
 
     desc = f"{PatientViews.desc}/instant"
