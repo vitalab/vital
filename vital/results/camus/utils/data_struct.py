@@ -1,35 +1,11 @@
 from dataclasses import dataclass
 from numbers import Real
-from typing import List, Mapping, Tuple
+from typing import Mapping, Tuple
 
 import h5py
 
 from vital.data.camus.config import CamusTags
-from vital.results.utils.data_struct import Attributes, Dataset, Group, GroupItemMixin
-
-
-def _load_leaf_group_from_hdf5(group: h5py.Group, keep_indices: List[int] = None) -> Group:
-    return Group({ds: _load_dataset_from_hdf5(group[ds], keep_indices=keep_indices) for ds in group}, dict(group.attrs))
-
-
-def _load_dataset_from_hdf5(ds: h5py.Dataset, keep_indices: List[int] = None) -> Dataset:
-    return Dataset(
-        ds if not keep_indices else ds[keep_indices], _load_attributes_from_hdf5(ds.attrs, keep_indices=keep_indices)
-    )
-
-
-def _load_attributes_from_hdf5(attrs: h5py.AttributeManager, keep_indices: List[int] = None) -> Attributes:
-    return {name: val if not keep_indices else val[keep_indices] for name, val in attrs.items()}
-
-
-def _filter_leaf_group(group: Group, keep_indices: int) -> Group:
-    return Group(
-        {
-            ds_name: Dataset(ds.data[keep_indices], {name: val[keep_indices] for name, val in ds.attrs.items()})
-            for ds_name, ds in group.data.items()
-        },
-        group.attrs,
-    )
+from vital.utils.data_struct import Group, filter_leaf_group, load_leaf_group_from_hdf5
 
 
 @dataclass
@@ -63,7 +39,7 @@ class PatientResult:
 
 
 @dataclass
-class ViewResult(GroupItemMixin, Group):
+class ViewResult(Group):
     """Data structure that bundles references, results and metadata for one sequence from a patient.
 
     Args:
@@ -94,7 +70,7 @@ class ViewResult(GroupItemMixin, Group):
         return cls(
             id=view.name.strip("/"),
             data={
-                group_name: _load_leaf_group_from_hdf5(group, keep_indices=instants)
+                group_name: load_leaf_group_from_hdf5(group, keep_indices=instants)
                 for group_name, group in view.items()
             },
             attrs=dict(view.attrs),
@@ -104,7 +80,7 @@ class ViewResult(GroupItemMixin, Group):
 
 
 @dataclass
-class InstantResult(GroupItemMixin, Group):
+class InstantResult(Group):
     """Data structure that bundles reference, result and metadata for an instant from one sequence of a patient.
 
     Args:
@@ -130,7 +106,7 @@ class InstantResult(GroupItemMixin, Group):
         return InstantResult(
             id=f"{view_result.id}/{instant}",
             data={
-                group_name: _filter_leaf_group(group, keep_indices=instant)
+                group_name: filter_leaf_group(group, keep_indices=instant)
                 for group_name, group in view_result.data.items()
             },
             attrs=view_result.attrs,
