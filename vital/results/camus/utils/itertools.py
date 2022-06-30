@@ -1,3 +1,4 @@
+import logging
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Iterator, List, Literal
@@ -8,9 +9,13 @@ from vital.data.camus.config import CamusTags, FullCycleInstant
 from vital.results.camus.utils.data_struct import InstantResult, PatientResult, ViewResult
 from vital.utils.itertools import Iterable
 
+logger = logging.getLogger(__name__)
 
-class _ResultOptionsMixin(Iterable):
-    """Mixin for configuring common options across result iterators."""
+
+class Patients(Iterable[PatientResult]):
+    """Iterable over each patient in an HDF5 results dataset."""
+
+    desc = "patient"
 
     def __init__(
         self,
@@ -35,7 +40,28 @@ class _ResultOptionsMixin(Iterable):
         self.results_path = results_path
         self.sequence = sequence
         self.use_sequence = use_sequence
-        self._fast_dev_patients = fast_dev_patients
+
+        with h5py.File(self.results_path, "r") as results_file:
+            self.num_patients = len(results_file)
+        if fast_dev_patients is not None:
+            if fast_dev_patients > self.num_patients:
+                logger.warning(
+                    f"'{self.__class__.__name__}' `fast_dev_patients` parameter set to iterate over "
+                    f"{fast_dev_patients} patients, but data is only available for {self.num_patients} patients. "
+                    f"'{self.__class__.__name__}' limited to the {self.num_patients} available patients."
+                )
+            else:
+                self.num_patients = fast_dev_patients
+
+    def __iter__(self) -> Iterator[PatientResult]:  # noqa: D105
+        with h5py.File(self.results_path, "r") as results_file:
+            for patient_id in list(results_file)[: self.num_patients]:
+                yield PatientResult.from_hdf5(
+                    results_file[patient_id], sequence=self.sequence, use_sequence=self.use_sequence
+                )
+
+    def __len__(self) -> int:  # noqa: D105
+        return self.num_patients
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:  # noqa: D102
@@ -64,33 +90,13 @@ class _ResultOptionsMixin(Iterable):
         return parser
 
 
-class Patients(_ResultOptionsMixin, Iterable[PatientResult]):
-    """Iterable over each patient in an HDF5 results dataset."""
-
-    desc = "patient"
-
-    def __iter__(self) -> Iterator[PatientResult]:  # noqa: D105
-        with h5py.File(self.results_path, "r") as results_file:
-            for patient_count, patient_id in enumerate(results_file):
-                if self._fast_dev_patients and patient_count > self._fast_dev_patients:
-                    break
-                yield PatientResult.from_hdf5(
-                    results_file[patient_id], sequence=self.sequence, use_sequence=self.use_sequence
-                )
-
-    def __len__(self) -> int:  # noqa: D105
-        with h5py.File(self.results_path, "r") as results_file:
-            length = len(results_file)
-        return length
-
-
-class PatientViews(_ResultOptionsMixin, Iterable[ViewResult]):
+class PatientViews(Iterable[ViewResult]):
     """Iterable over each patient/view in an HDF5 results dataset."""
 
     desc = f"{Patients.desc}/view"
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__()
         self.patients = Patients(**kwargs)
 
     def __iter__(self) -> Iterator[ViewResult]:  # noqa: D105
@@ -101,14 +107,18 @@ class PatientViews(_ResultOptionsMixin, Iterable[ViewResult]):
     def __len__(self) -> int:  # noqa: D105
         return sum(len(patient.views) for patient in self.patients)
 
+    @classmethod
+    def add_args(cls, parser: ArgumentParser) -> ArgumentParser:  # noqa: D102
+        return Patients.add_args(parser)
 
-class PatientViewInstants(_ResultOptionsMixin, Iterable[InstantResult]):
+
+class PatientViewInstants(Iterable[InstantResult]):
     """Iterable over each patient/view/instant in an HDF5 results dataset."""
 
     desc = f"{PatientViews.desc}/instant"
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__()
         self.patient_views = PatientViews(**kwargs)
 
     def __iter__(self) -> Iterator[InstantResult]:  # noqa: D105
@@ -118,6 +128,10 @@ class PatientViewInstants(_ResultOptionsMixin, Iterable[InstantResult]):
 
     def __len__(self) -> int:  # noqa: D105
         return sum(view.num_frames for view in self.patient_views)
+
+    @classmethod
+    def add_args(cls, parser: ArgumentParser) -> ArgumentParser:  # noqa: D102
+        return PatientViews.add_args(parser)
 
 
 def get_instants_by_view(
