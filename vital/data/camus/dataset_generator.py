@@ -2,10 +2,9 @@ import logging
 import os
 from dataclasses import asdict
 from functools import reduce
-from numbers import Real
 from operator import add
 from pathlib import Path
-from typing import Dict, List, Literal, Sequence, Tuple
+from typing import Any, Dict, List, Literal, Sequence, Tuple
 
 import h5py
 import numpy as np
@@ -150,7 +149,7 @@ class CrossValidationDatasetGenerator:
         ]
         for view in available_views:
             # The order of the instants within a view dataset is chronological: ED -> ES -> ED
-            data_x, data_y, info_view, instants = self._get_view_data(patient_id, view)
+            data_x, data_y, view_metadata, instants = self._get_view_data(patient_id, view)
 
             data_y = remove_labels(data_y, [lbl.value for lbl in self.labels_to_remove], fill_label=Label.BG.value)
 
@@ -173,7 +172,7 @@ class CrossValidationDatasetGenerator:
             patient_view_group.create_dataset(name=CamusTags.gt_proc, data=data_y_proc, **seg_save_options)
 
             # Write metadata useful for providing instants or full sequences
-            patient_view_group.attrs[CamusTags.info] = info_view
+            patient_view_group.attrs[CamusTags.voxelspacing] = view_metadata["spacing"][::-1]
             patient_view_group.attrs[CamusTags.instants] = list(instants)
             patient_view_group.attrs.update(instants)
 
@@ -181,7 +180,9 @@ class CrossValidationDatasetGenerator:
             if self.flags[CamusTags.registered]:
                 patient_view_group.attrs.update(registering_parameters)
 
-    def _get_view_data(self, patient_id: str, view: str) -> Tuple[np.ndarray, np.ndarray, List[Real], Dict[str, int]]:
+    def _get_view_data(
+        self, patient_id: str, view: str
+    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any], Dict[str, int]]:
         """Fetches the data for a specific view of a patient.
 
         If ``self.use_sequence`` is ``True``, augments the dataset with sequence between the ED and ES instants.
@@ -209,7 +210,7 @@ class CrossValidationDatasetGenerator:
             instants[instant] = int(view_info[instant if instant != FullCycleInstant.ED_E else "NbFrame"]) - 1
 
         # Get data for the whole sequence ranging from ED to ES
-        sequence, sequence_gt, info = self._get_sequence_data(patient_id, view)
+        sequence, sequence_gt, sequence_metadata = self._get_sequence_data(patient_id, view)
 
         # Ensure ED comes before ES (swap when ES->ED)
         if (ed_idx := instants[Instant.ED]) > (es_idx := instants[Instant.ES]):
@@ -233,9 +234,11 @@ class CrossValidationDatasetGenerator:
             instants = {instant_key: idx for idx, instant_key in enumerate(instants)}
 
         # Add channel dimension
-        return np.array(data_x), np.array(data_y), info, instants
+        return np.array(data_x), np.array(data_y), sequence_metadata, instants
 
-    def _get_sequence_data(self, patient_id: str, view: str) -> Tuple[List[np.ndarray], List[np.ndarray], List[Real]]:
+    def _get_sequence_data(
+        self, patient_id: str, view: str
+    ) -> Tuple[List[np.ndarray], List[np.ndarray], Dict[str, Any]]:
         """Fetches additional reference segmentations, interpolated between ED and ES instants.
 
         Args:
@@ -252,16 +255,14 @@ class CrossValidationDatasetGenerator:
 
         # Open interpolated segmentations
         data_x, data_y = [], []
-        sequence, info = sitk_load(patient_folder / sequence_fn_template.format(""))
+        sequence, sequence_metadata = sitk_load(patient_folder / sequence_fn_template.format(""))
         sequence_gt, _ = sitk_load(patient_folder / sequence_fn_template.format("_gt"))
 
         for image, segmentation in zip(sequence, sequence_gt):  # For every instant in the sequence
             data_x.append(image)
             data_y.append(segmentation)
 
-        info = [item for sublist in info for item in sublist]  # Flatten info
-
-        return data_x, data_y, info
+        return data_x, data_y, sequence_metadata
 
 
 def main():

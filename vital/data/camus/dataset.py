@@ -259,8 +259,8 @@ class Camus(VisionDataset):
             view_gts = self._process_target_data(view_gts)
 
             # Collect metadata
-            info, clinically_important_instants = Camus._get_metadata(
-                dataset, patient_view_key, CamusTags.info, CamusTags.instants
+            voxelspacing, clinically_important_instants = Camus._get_metadata(
+                dataset, patient_view_key, CamusTags.voxelspacing, CamusTags.instants
             )
             instants = {
                 instant: Camus._get_metadata(dataset, patient_view_key, instant)
@@ -302,7 +302,7 @@ class Camus(VisionDataset):
 
         # Build the batch to return
         view_metadata = ViewMetadata(
-            gt=full_resolution_gts, voxelspacing=info[6:9][::-1], instants=instants, registering=registering_parameters
+            gt=full_resolution_gts, voxelspacing=voxelspacing, instants=instants, registering=registering_parameters
         )
         return {
             CamusTags.id: patient_view_key,
