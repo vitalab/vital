@@ -495,7 +495,7 @@ class AffineRegisteringTransformer:
         if image is not None:
             # Crop the image around the bbox and resize to target shape
             image = _crop(np.squeeze(image), crop_parameters[2:])
-            image = resize_image(image, self.crop_shape[::-1], resample=Resampling.LINEAR)[..., np.newaxis]
+            image = resize_image(image, self.crop_shape[::-1], resample=Resampling.BILINEAR)[..., np.newaxis]
             out += (image,)
 
         return out
