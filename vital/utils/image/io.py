@@ -1,13 +1,12 @@
-from numbers import Number
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 import numpy as np
 import SimpleITK
 from PIL import Image, ImageSequence
 
 
-def sitk_load(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[Number, ...], ...]]:
+def sitk_load(filepath: Path) -> Tuple[np.ndarray, Dict[str, Any]]:
     """Loads an image using SimpleITK and returns the image and its metadata.
 
     Args:
@@ -17,11 +16,11 @@ def sitk_load(filepath: Path) -> Tuple[np.ndarray, Tuple[Tuple[Number, ...], ...
         - ([N], H, W), Image array.
         - Collection of metadata.
     """
-    # load image and save info
+    # Load image and save info
     image = SimpleITK.ReadImage(str(filepath))
-    info = (image.GetSize(), image.GetOrigin(), image.GetSpacing(), image.GetDirection())
+    info = {"origin": image.GetOrigin(), "spacing": image.GetSpacing(), "direction": image.GetDirection()}
 
-    # create numpy array from the .mhd file and corresponding image
+    # Extract numpy array from the SimpleITK image object
     im_array = np.squeeze(SimpleITK.GetArrayFromImage(image))
 
     return im_array, info
