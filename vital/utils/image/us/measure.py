@@ -5,7 +5,6 @@ import numpy as np
 from scipy import ndimage
 from skimage import morphology
 
-from vital.data.camus.config import Label
 from vital.data.config import SemanticStructureId
 from vital.utils.decorators import auto_cast_data, batch_function
 from vital.utils.image.measure import Measure, T
@@ -23,9 +22,7 @@ class EchoMeasure(Measure):
 
     @staticmethod
     def _lv_base(
-        segmentation: np.ndarray,
-        lv_labels: SemanticStructureId = Label.LV.value,
-        myo_labels: SemanticStructureId = Label.MYO.value,
+        segmentation: np.ndarray, lv_labels: SemanticStructureId, myo_labels: SemanticStructureId
     ) -> Tuple[PixelCoord, PixelCoord]:
         """Identifies the coordinates of the left and right markers at the base of the left ventricle.
 
@@ -66,11 +63,7 @@ class EchoMeasure(Measure):
     @staticmethod
     @auto_cast_data
     @batch_function(item_ndim=2)
-    def lv_base_width(
-        segmentation: T,
-        lv_labels: SemanticStructureId = Label.LV.value,
-        myo_labels: SemanticStructureId = Label.MYO.value,
-    ) -> T:
+    def lv_base_width(segmentation: T, lv_labels: SemanticStructureId, myo_labels: SemanticStructureId) -> T:
         """Measures the distance between the left and right markers at the base of the left ventricle.
 
         Args:
@@ -93,11 +86,7 @@ class EchoMeasure(Measure):
     @staticmethod
     @auto_cast_data
     @batch_function(item_ndim=2)
-    def lv_length(
-        segmentation: T,
-        lv_labels: SemanticStructureId = Label.LV.value,
-        myo_labels: SemanticStructureId = Label.MYO.value,
-    ) -> T:
+    def lv_length(segmentation: T, lv_labels: SemanticStructureId, myo_labels: SemanticStructureId) -> T:
         """Measures the LV length as the distance between the LV's base midpoint and its furthest point at the apex.
 
         Args:

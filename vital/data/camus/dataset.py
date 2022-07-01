@@ -11,11 +11,11 @@ from torchvision.transforms.functional import to_tensor
 
 from vital.data.camus.config import CamusTags, Label
 from vital.data.camus.data_struct import ViewMetadata
-from vital.data.camus.utils.measure import EchoMeasure
 from vital.data.camus.utils.register import CamusRegisteringTransformer
 from vital.data.config import Subset
 from vital.utils.decorators import squeeze
 from vital.utils.image.transform import remove_labels, segmentation_to_tensor
+from vital.utils.image.us.measure import EchoMeasure
 
 ItemId = Tuple[str, int]
 InstantItem = Dict[str, Union[str, Tensor]]
@@ -391,8 +391,8 @@ def get_segmentation_attributes(
     if Label.LV in labels and Label.MYO in labels:
         attrs.update(
             {
-                CamusTags.lv_base_width: EchoMeasure.lv_base_width(segmentation),
-                CamusTags.lv_length: EchoMeasure.lv_length(segmentation),
+                CamusTags.lv_base_width: EchoMeasure.lv_base_width(segmentation, Label.LV.value, Label.MYO.value),
+                CamusTags.lv_length: EchoMeasure.lv_length(segmentation, Label.LV.value, Label.MYO.value),
                 CamusTags.epi_center_x: EchoMeasure.structure_center(
                     segmentation, [Label.LV.value, Label.MYO.value], axis=1
                 ),
