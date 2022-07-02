@@ -7,11 +7,11 @@ from typing import Tuple
 import h5py
 import numpy as np
 from pathos.multiprocessing import Pool
+from PIL import Image
 from scipy.interpolate import griddata
 from tqdm import tqdm
 
 from vital.utils.image.coord import pol2cart
-from vital.utils.image.io import plt_save
 from vital.utils.logging import configure_logging
 
 
@@ -259,6 +259,7 @@ def main():
         help="Root directory where to save the ultrasound in cartesian coordinates as PNG images",
     )
     args = parser.parse_args()
+    args.output_dir.mkdir(parents=True, exist_ok=True)
 
     # Loop to convert files
     for h5_file in tqdm(
@@ -267,11 +268,11 @@ def main():
         # Read h5 file as polar image and convert it to a cartesian image
         with h5py.File(h5_file) as f:
             cart_img = CartesianBMode.from_polar(PolarBMode.from_ge_hdf5(f), progress_bar=True).data
+        cart_img = cart_img.astype(np.uint8)  # Convert to `np.uint8` so that PIL interprets the pixel data correctly
 
         # Save the resulting image
         if cart_img.ndim > 2:
-            # If the input is a sequence of images, save each frame to PNG files inside a directory dedicated to the
-            # sequence
+            # If the input is a sequence of images, save each frame to PNG files inside a directory for the sequence
             sequence_dir = args.output_dir / h5_file.stem
             sequence_dir.mkdir(parents=True, exist_ok=True)
             for img_idx, cart_img_2d in tqdm(
@@ -281,10 +282,11 @@ def main():
                 unit="frame",
                 leave=False,
             ):
-                plt_save(cart_img_2d, args.output_dir / h5_file.stem / f"{img_idx}.png")
+                (args.output_dir / h5_file.stem).mkdir(exist_ok=True)
+                Image.fromarray(cart_img_2d).save(args.output_dir / h5_file.stem / f"{img_idx}.png")
         else:
             # Otherwise, save the 2D image as PNG file directly in the root output directory
-            plt_save(cart_img, args.output_dir / f"{h5_file.stem}.png")
+            Image.fromarray(cart_img).save(args.output_dir / f"{h5_file.stem}.png")
 
 
 if __name__ == "__main__":
