@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 import SimpleITK
 from PIL import Image, ImageSequence
 
 
-def sitk_load(filepath: Path) -> Tuple[np.ndarray, Dict[str, Any]]:
+def sitk_load(filepath: Union[str, Path]) -> Tuple[np.ndarray, Dict[str, Any]]:
     """Loads an image using SimpleITK and returns the image and its metadata.
 
     Args:
@@ -27,7 +27,7 @@ def sitk_load(filepath: Path) -> Tuple[np.ndarray, Dict[str, Any]]:
 
 
 def sitk_save(
-    im_array: np.ndarray, output_filepath: Path, origin=(0, 0, 0), spacing=(1, 1, 1), dtype=np.float32
+    im_array: np.ndarray, output_filepath: Union[str, Path], origin=(0, 0, 0), spacing=(1, 1, 1), dtype=np.float32
 ) -> None:
     """Saves an array to an image format using SimpleITK.
 
