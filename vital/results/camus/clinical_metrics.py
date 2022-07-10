@@ -16,7 +16,7 @@ class ClinicalMetrics(Metrics):
     """Class that computes clinical metrics on the results and saves them to csv."""
 
     desc = "clinical_metrics"
-    IterableResultT = Patients
+    ResultsCollection = Patients
     input_choices = [f"{CamusTags.pred}/{CamusTags.raw}", f"{CamusTags.pred}/{CamusTags.post}"]
     target_choices = [f"{CamusTags.gt}/{CamusTags.raw}"]
 

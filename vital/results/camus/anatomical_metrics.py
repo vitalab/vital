@@ -16,7 +16,7 @@ from vital.utils.image.transform import resize_image
 class AnatomicalMetrics(anatomical_metrics.AnatomicalMetrics):
     """Class that computes anatomical metrics on the results and saves them to csv."""
 
-    IterableResultT = PatientViewInstants
+    ResultsCollection = PatientViewInstants
     input_choices = [
         f"{CamusTags.pred}/{CamusTags.raw}",
         f"{CamusTags.pred}/{CamusTags.post}",
