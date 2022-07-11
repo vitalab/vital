@@ -7,13 +7,13 @@ import h5py
 
 from vital.data.camus.config import CamusTags, FullCycleInstant
 from vital.results.camus.utils.data_struct import InstantResult, PatientResult, ViewResult
-from vital.utils.itertools import Iterable
+from vital.utils.itertools import Collection
 
 logger = logging.getLogger(__name__)
 
 
-class Patients(Iterable[PatientResult]):
-    """Iterable over each patient in an HDF5 results dataset."""
+class Patients(Collection[PatientResult]):
+    """Collection of patients from an HDF5 results dataset."""
 
     desc = "patient"
 
@@ -90,8 +90,8 @@ class Patients(Iterable[PatientResult]):
         return parser
 
 
-class PatientViews(Iterable[ViewResult]):
-    """Iterable over each patient/view in an HDF5 results dataset."""
+class PatientViews(Collection[ViewResult]):
+    """Collection of patient/views from an HDF5 results dataset."""
 
     desc = f"{Patients.desc}/view"
 
@@ -112,8 +112,8 @@ class PatientViews(Iterable[ViewResult]):
         return Patients.add_args(parser)
 
 
-class PatientViewInstants(Iterable[InstantResult]):
-    """Iterable over each patient/view/instant in an HDF5 results dataset."""
+class PatientViewInstants(Collection[InstantResult]):
+    """Collection of patient/view/instants from an HDF5 results dataset."""
 
     desc = f"{PatientViews.desc}/instant"
 
