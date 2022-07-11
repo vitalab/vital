@@ -37,7 +37,7 @@ class GroupsEmbeddingPlots(ResultsProcessor):
         """Embeds the gathered high-dimensional results using UMAP and plots the generated embedding.
 
         Args:
-            outputs: Mapping between each result in the iterable results and its data to embed.
+            outputs: Mapping between each result in the results collection and its data to embed.
             output_path: Folder in which to save the plotted embeddings (if not in interactive mode).
         """
         #  Formats data required to plot the groups' distribution in high dimensional latent space.
@@ -100,10 +100,10 @@ class GroupsEmbeddingPlots(ResultsProcessor):
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
-        """Creates parser with support for generic groups embedding and iterable results arguments.
+        """Creates parser with support for generic groups embedding and results collection arguments.
 
         Returns:
-            Parser object with support for generic groups embedding and iterable results arguments.
+            Parser object with support for generic groups embedding and results collection arguments.
         """
         parser = super().build_parser()
         parser.add_argument(

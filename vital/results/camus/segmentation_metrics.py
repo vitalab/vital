@@ -17,7 +17,7 @@ class SegmentationMetrics(Metrics):
     desc = "segmentation_metrics"
     input_choices = [f"{CamusTags.pred}/{CamusTags.raw}", f"{CamusTags.pred}/{CamusTags.post}"]
     target_choices = [f"{CamusTags.gt}/{CamusTags.raw}"]
-    IterableResultT = PatientViewInstants
+    ResultsCollection = PatientViewInstants
 
     def __init__(self, labels: Sequence[Union[str, Label]], **kwargs):
         """Initializes class instance.

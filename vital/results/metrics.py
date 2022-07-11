@@ -42,7 +42,7 @@ class Metrics(ResultsProcessor):
         """Writes the computed metrics, with the aggregated results at the top, to csv format.
 
         Args:
-            outputs: Mapping between each result in the iterable results and their metrics' values.
+            outputs: Mapping between each result in the results collection and their metrics' values.
             output_path: Name of the metrics' csv file to be produced as output.
         """
         df_metrics = pd.DataFrame.from_dict(outputs, orient="index")
@@ -50,7 +50,7 @@ class Metrics(ResultsProcessor):
         # Build a dataframe with the aggregated metrics at the top and relevant index names
         aggregated_metrics = self._aggregate_metrics(df_metrics)
         df_full_metrics = pd.concat([aggregated_metrics, df_metrics])
-        df_full_metrics.index.name = self.IterableResultT.desc
+        df_full_metrics.index.name = self.ResultsCollection.desc
 
         # Save the combination of aggregated and detailed metrics to the csv file
         pd.DataFrame(df_full_metrics).to_csv(output_path, na_rep="Nan")
@@ -68,10 +68,10 @@ class Metrics(ResultsProcessor):
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
-        """Creates parser with support for generic metrics and iterable arguments.
+        """Creates parser with support for generic metrics and collection arguments.
 
         Returns:
-            Parser object with support for generic metrics and iterable arguments.
+            Parser object with support for generic metrics and collection arguments.
         """
         parser = super().build_parser()
         parser.add_argument(

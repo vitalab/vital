@@ -14,7 +14,7 @@ from vital.results.embedding import GroupsEmbeddingPlots
 class LatentSpaceManifoldPlots(GroupsEmbeddingPlots):
     """Class that plots the UMAP embedding of a latent space manifold in a 2D space."""
 
-    IterableResultT = PatientViews
+    ResultsCollection = PatientViews
 
     def process_result(self, result: ViewResult) -> Tuple[str, "LatentSpaceManifoldPlots.ProcessingOutput"]:
         """Extracts latent space encodings from a view result.

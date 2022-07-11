@@ -9,7 +9,7 @@ from pathos.multiprocessing import Pool
 from pytorch_lightning import Callback
 from tqdm import tqdm
 
-from vital.utils.itertools import Item, Iterable
+from vital.utils.itertools import Collection, Item
 from vital.utils.logging import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -18,12 +18,16 @@ logger = logging.getLogger(__name__)
 class ResultsProcessor:
     """Abstract class used for processing inference results, e.g. compute metrics, convert format, etc."""
 
-    IterableResultT: Type[Iterable[Item]]  # Iterable over the results to process.
+    ResultsCollection: Type[Collection[Item]]  # Type of the collection of results to process.
     ProcessingOutput: Type = None  # Type of the data returned by processing a single result, if any.
     desc: str  # Description of the processor. Used in progress bar, output filenames, etc.
 
     def __init__(
-        self, output_name: str = None, progress_bar: bool = True, multiprocessing: bool = True, **iterable_result_kwargs
+        self,
+        output_name: str = None,
+        progress_bar: bool = True,
+        multiprocessing: bool = True,
+        **results_collection_kwargs,
     ):
         """Initializes class instance.
 
@@ -34,8 +38,9 @@ class ResultsProcessor:
             Name for the aggregated output, if the processor produces an aggregated output.
             progress_bar: If ``True``, enables progress bars detailing the progress of the processing.
             multiprocessing: If ``True``, enables multiprocessing when processing results.
-            **iterable_result_kwargs: Parameters to pass along to results iterator's ``__init__``. Be careful to avoid
-                conflicts with kwargs passed along to the results iterator in `__call__`.
+            **results_collection_kwargs: Parameters to pass along to the results' collection's ``__init__``. Be careful
+                to avoid conflicts with kwargs passed along to the results' collection in `__call__`. In case of
+                conflicts with kwargs passed to `__call__`, the `__call__` parameters will override those passed here.
 
         Raises:
             ValueError: If processor that returns results to be aggregated is not provided with a name to use as part of
@@ -49,16 +54,16 @@ class ResultsProcessor:
         self.output_name = output_name
         self.progress_bar = progress_bar
         self.multiprocessing = multiprocessing
-        self.iterable_result_kwargs = iterable_result_kwargs
+        self.results_collection_kwargs = results_collection_kwargs
 
-    def __call__(self, output_folder: Path, **iterable_result_kwargs) -> None:
+    def __call__(self, output_folder: Path, **results_collection_kwargs) -> None:
         """Iterates over a set of results and logs/saves the result of the processing to a processor-specific format.
 
         Args:
             output_folder: Path where to save the output.
-            **iterable_result_kwargs: Parameters to pass along to results iterator's ``__init__``. Be careful to avoid
-                conflicts with kwargs passed along to the results iterator in `__init__`. In case of conflict with
-                `IterableResult` passed in the `__init__`, the parameters passed here will override those passed in the
+            **results_collection_kwargs: Parameters to pass along to the results' collection's ``__init__``. Be careful
+                to avoid conflicts with kwargs passed along to the results' collection in `__init__`. In case of
+                conflicts with kwargs passed to `__init__`, the parameters passed here will override those passed to
                 `__init__`.
         """
         # Resolve the path where to save the results (whether it points to a subdirectory or a file)
@@ -82,16 +87,16 @@ class ResultsProcessor:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Merge possibly conflicting options, with warnings for conflicting arguments
-        for kwarg, val in iterable_result_kwargs.items():
-            if kwarg in self.iterable_result_kwargs:
+        for kwarg, val in results_collection_kwargs.items():
+            if kwarg in self.results_collection_kwargs:
                 logger.warning(
                     f"In '{self.__class__.__name__}', kwarg '{kwarg}={val}' passed to `__call__' conflicts with the "
-                    f"same kwarg passed to `__init__` '{kwarg}={self.iterable_result_kwargs[kwarg]}'. The value passed "
-                    f"to `__call__` takes precedence."
+                    f"same kwarg passed to `__init__` '{kwarg}={self.results_collection_kwargs[kwarg]}'. The value "
+                    f"passed to `__call__` takes precedence."
                 )
-        iterable_result_kwargs = {**self.iterable_result_kwargs, **iterable_result_kwargs}
+        results_collection_kwargs = {**self.results_collection_kwargs, **results_collection_kwargs}
 
-        results = self.IterableResultT(**iterable_result_kwargs)
+        results = self.ResultsCollection(**results_collection_kwargs)
         log_msg = f"Processing results through {self.desc}"
         if self.ProcessingOutput is None:
             # If the processor only writes to logs as a side effect as it iterates over the results
@@ -137,7 +142,7 @@ class ResultsProcessor:
         """Aggregates the outputs obtained by processing all the results.
 
         Args:
-            outputs: Mapping between each result in the iterable results and their output.
+            outputs: Mapping between each result in the results collection and their output.
             output_path: Path where to write the aggregation of the outputs.
         """
         if self.ProcessingOutput is None:
@@ -150,10 +155,10 @@ class ResultsProcessor:
 
     @classmethod
     def build_parser(cls) -> ArgumentParser:
-        """Creates parser with support for generic result processor and iterable arguments.
+        """Creates parser with support for generic results processor and collection arguments.
 
         Returns:
-           Parser object with support for generic result processor and iterable arguments.
+           Parser object with support for generic results processor and collection arguments.
         """
         parser = ArgumentParser()
         parser.add_argument(
@@ -174,7 +179,7 @@ class ResultsProcessor:
             action="store_false",
             help="Disables parallel processing of results",
         )
-        parser = cls.IterableResultT.add_args(parser)
+        parser = cls.ResultsCollection.add_args(parser)
         return parser
 
     @classmethod

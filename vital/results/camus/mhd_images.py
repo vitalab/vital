@@ -14,7 +14,7 @@ class MhdImages(ResultsProcessor):
     """Class that saves the results' data arrays to image format."""
 
     desc = "mhd_images"
-    IterableResultT = Patients
+    ResultsCollection = Patients
     input_choices = [
         f"{CamusTags.pred}/{CamusTags.raw}",
         f"{CamusTags.pred}/{CamusTags.post}",

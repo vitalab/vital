@@ -2,29 +2,38 @@ import itertools
 import typing
 from abc import ABC
 from argparse import ArgumentParser
-from typing import Dict, List, Mapping, Sequence, Sized, Tuple, TypeVar, Union
+from typing import Dict, List, Mapping, Sequence, Tuple, TypeVar, Union
 
 K = TypeVar("K")
 V = TypeVar("V")
 Item = TypeVar("Item")
 
 
-class Iterable(typing.Iterable[Item], Sized, ABC):
-    """Wrapper around the native `Iterable` that enforces functionalities leveraged by other `vital` APIs."""
+class Collection(typing.Collection[Item], ABC):
+    """Wrapper around the native `Collection` that enforces functionalities leveraged by other `vital` APIs."""
 
-    desc: str  # Description of an iterable item. Used in e.g. logging messages, progress bar, etc.
+    desc: str  # Description of an item from the collection. Used in e.g. logging messages, progress bar, etc.
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:
-        """Adds arguments required to configure the iterable to an argument parser.
+        """Adds arguments required to configure the collection to an argument parser.
 
         Args:
-            parser: Parser object for which to add arguments for configuring iterable.
+            parser: Parser object for which to add arguments for configuring the collection.
 
         Returns:
-            Parser object with support for arguments for configuring iterable.
+            Parser object with support for arguments for configuring the collection.
         """
         return parser
+
+    def __contains__(self, item):  # noqa: D105
+        # TODO: Fix collection inheritance to not require this explicit
+        # Normally, user-defined `Collection` types w/o a defined `__contains__` method should immediately fall back to
+        # using `__iter__`. But for some reason, if `__contains__` is not implemented here, any class derived from our
+        # `Collection` type will raise a `TypeError` at instantiation reading:
+        # "Can't instantiate abstract class {CLASS_NAME} with abstract method __contains__"
+        # Therefore, the current implementation of `__contains__` is required to avoid this bug.
+        return super().__contains__(item)
 
 
 def dict_values_cartesian_product(matrix: Mapping[K, List[V]]) -> List[Dict[K, V]]:
