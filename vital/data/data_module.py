@@ -1,8 +1,10 @@
 import os
 from abc import ABC
+from argparse import ArgumentParser
 from typing import Dict, Union
 
 import pytorch_lightning as pl
+from pytorch_lightning.utilities.argparse import add_argparse_args
 from torch.utils.data import Dataset
 
 from vital.data.config import DataParameters, Subset
@@ -50,3 +52,7 @@ class VitalDataModule(pl.LightningDataModule, ABC):
             return self._dataset[subset]
 
         return self._dataset
+
+    @classmethod
+    def add_argparse_args(cls, parent_parser: ArgumentParser, **kwargs) -> ArgumentParser:  # noqa: D102
+        return add_argparse_args(cls, add_argparse_args(VitalDataModule, parent_parser))
