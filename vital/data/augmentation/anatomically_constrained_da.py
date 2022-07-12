@@ -1,7 +1,7 @@
 import functools
 import itertools
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
 from argparse import ArgumentParser
 from multiprocessing import Pool
 from pathlib import Path
@@ -15,7 +15,7 @@ from vital.data.camus.data_module import CamusDataModule
 from vital.data.data_module import VitalDataModule
 from vital.tasks.autoencoder import SegmentationAutoencoderTask
 from vital.tasks.utils.autoencoder import decode, encode_dataset
-from vital.utils.image.io import save_as_mhd
+from vital.utils.image.io import sitk_save
 from vital.utils.logging import configure_logging
 from vital.utils.parsing import StoreDictKeyPair
 from vital.utils.sampling.rejection_sampling import RejectionSampler
@@ -49,7 +49,8 @@ class AnatomicallyConstrainedDataAugmenter(ABC):
     classified as anatomically correct or incorrect.
     """
 
-    datamodule_cls: Type[VitalDataModule]  #: Implementation of the data module for the dataset we want to augment
+    datamodule_cls: Type[VitalDataModule]  # Implementation of the data module for the dataset we want to augment
+    img_format: str  # File extension of the image format to save the reconstructed samples as
 
     def __init__(self, ae_system: SegmentationAutoencoderTask, **data_module_kwargs):
         """Initializes class instance.
@@ -66,16 +67,6 @@ class AnatomicallyConstrainedDataAugmenter(ABC):
         # This wrapper is specified as a field (rather than a method) to allow for instance-specific configuration
         # (e.g. through currying) while not requiring the whole class to picklable when using the multiprocessing API.
         self._check_segmentation_validity: Callable[[np.ndarray], bool]
-
-    @classmethod
-    @abstractmethod
-    def _save_decoded_sample(cls, sampled_segmentation: np.ndarray, path_without_suffix: Path) -> None:
-        """Saves a decoded sample to the same format as the images from the original dataset.
-
-        Args:
-            sampled_segmentation: Segmentation decoded from a latent space sample.
-            path_without_suffix: Name of the decoded sample to save (without file extension).
-        """
 
     def sample(
         self, num_samples: int, rs_batch_size: int = None, **rejection_sampler_kwargs
@@ -228,7 +219,7 @@ class AnatomicallyConstrainedDataAugmenter(ABC):
             unit="sample",
         )
         for sample, name in pbar:
-            self._save_decoded_sample(decode(self.autoencoder, sample), name)
+            sitk_save(decode(self.autoencoder, sample), name.with_suffix(f".{self.img_format}"), dtype=np.uint8)
 
     @classmethod
     def add_argparse_args(cls, parent_parser: ArgumentParser) -> ArgumentParser:
@@ -255,6 +246,7 @@ class AnatomicallyConstrainedDataAugmenter(ABC):
 #     """Implementation of the artificial data augmenter framework for the CAMUS dataset."""
 #
 #     datamodule_cls = AcdcDataModule
+#     img_format = "nii.gz"
 #
 #     def __init__(self, **kwargs):
 #         super().__init__(**kwargs)
@@ -263,16 +255,13 @@ class AnatomicallyConstrainedDataAugmenter(ABC):
 #         from vital.metrics.acdc.anatomical.utils import check_segmentation_validity
 #
 #         self._check_segmentation_validity = functools.partial(check_segmentation_validity, voxelspacing=(1.4, 1.4))
-#
-#     @classmethod
-#     def _save_decoded_sample(cls, sampled_segmentation: np.ndarray, path_without_suffix: Path) -> None:  # noqa: D102
-#         save_nii_file(sampled_segmentation, path_without_suffix.with_suffix("nii.gz"), zoom=(1.4, 1.4))
 
 
 class CamusAnatomicallyConstrainedDataAugmenter(AnatomicallyConstrainedDataAugmenter):
     """Implementation of the artificial data augmenter framework for the CAMUS dataset."""
 
     datamodule_cls = CamusDataModule
+    img_format = "mhd"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -291,10 +280,6 @@ class CamusAnatomicallyConstrainedDataAugmenter(AnatomicallyConstrainedDataAugme
         self._check_segmentation_validity = functools.partial(
             check_segmentation_validity, voxelspacing=(0.505, 1.011), labels=self.autoencoder.hparams.data_params.labels
         )
-
-    @classmethod
-    def _save_decoded_sample(cls, sampled_segmentation: np.ndarray, path_without_suffix: Path) -> None:  # noqa: D102
-        save_as_mhd(sampled_segmentation, path_without_suffix.with_suffix(".mhd"), dtype=np.uint8)
 
 
 def main():
@@ -350,7 +335,10 @@ def main():
     # Parse args and setup the target data augmenter
     args = parser.parse_args()
     data_augmenter_cls = dataset_augmenters[args.dataset]
-    data_augmenter = data_augmenter_cls(ae_system=load_from_checkpoint(args.pretrained_ae), **vars(args))
+    data_augmenter = data_augmenter_cls(
+        ae_system=load_from_checkpoint(args.pretrained_ae, expected_checkpoint_type=SegmentationAutoencoderTask),
+        **vars(args),
+    )
 
     # Perform the data augmentation
     samples_wo_errors, samples_w_errors = data_augmenter.sample(
