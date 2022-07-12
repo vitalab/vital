@@ -6,18 +6,22 @@ from pytorch_lightning import LightningDataModule
 from pytorch_lightning.trainer.states import TrainerFn
 from tqdm.auto import tqdm
 
-from vital.data.config import Tags
 from vital.tasks.autoencoder import SegmentationAutoencoderTask
 
 
 def encode_dataset(
-    autoencoder: SegmentationAutoencoderTask, datamodule: LightningDataModule, progress_bar: bool = False
+    autoencoder: SegmentationAutoencoderTask,
+    datamodule: LightningDataModule,
+    segmentation_data_tag: str = None,
+    progress_bar: bool = False,
 ) -> np.ndarray:
     """Encodes masks from the train and val sets of a dataset in the latent space learned by an autoencoder model.
 
     Args:
         autoencoder: Autoencoder model used to encode masks in a latent space.
         datamodule: Abstraction of the dataset to encode, allowing to access both the training and validation sets.
+        segmentation_data_tag: Key to locate the data to encode from all the data returned in a batch. If not provided,
+            defaults to the tag of the dataset the autoencoder was trained on.
         progress_bar: Whether to display a progress bar for the encoding of the samples.
 
     Returns:
@@ -33,8 +37,9 @@ def encode_dataset(
         data = tqdm(data, desc="Encoding groundtruths", total=num_batches, unit="batch")
 
     # Encode training and validation groundtruths in the latent space
+    seg_data_tag = autoencoder.hparams.segmentation_data_tag if not segmentation_data_tag else segmentation_data_tag
     with torch.no_grad():
-        dataset_samples = [autoencoder(batch[Tags.gt], task="encode").cpu() for batch in data]
+        dataset_samples = [autoencoder(batch[seg_data_tag], task="encode").cpu() for batch in data]
     dataset_samples = torch.cat(dataset_samples).numpy()
 
     return dataset_samples
