@@ -3,6 +3,7 @@ import itertools
 import numpy as np
 import torch
 from pytorch_lightning import LightningDataModule
+from pytorch_lightning.trainer.states import TrainerFn
 from tqdm.auto import tqdm
 
 from vital.data.config import Tags
@@ -23,7 +24,7 @@ def encode_dataset(
         Array of training and validation samples encoded in the latent space.
     """
     # Setup the datamodule used to get the data points to encode in the latent space
-    datamodule.setup(stage="fit")
+    datamodule.setup(stage=TrainerFn.FITTING)
     train_dataloader, val_dataloader = datamodule.train_dataloader(), datamodule.val_dataloader()
     data = itertools.chain(train_dataloader, val_dataloader)
     num_batches = len(train_dataloader) + len(val_dataloader)
