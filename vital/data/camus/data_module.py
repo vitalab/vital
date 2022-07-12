@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from pathlib import Path
 from typing import List, Literal, Optional, Sequence, Union
 
@@ -115,3 +116,36 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         return DataLoader(
             self.dataset(subset=Subset.PREDICT), batch_size=None, num_workers=self.num_workers, pin_memory=True
         )
+
+    @classmethod
+    def add_argparse_args(cls, parent_parser: ArgumentParser, **kwargs) -> ArgumentParser:
+        """Override of generic ``add_argparse_args`` to manually add parser for arguments of custom types."""
+        parser = super().add_argparse_args(parent_parser)
+
+        # Hack to fetch the argument group created specifically for the data module's arguments
+        dm_arg_group = [
+            arg_group
+            for arg_group in parser._action_groups
+            if arg_group.title == f"{cls.__module__}.{cls.__qualname__}"
+        ][0]
+
+        # Add arguments w/ custom types not supported by Lightning's argparse creation tool
+        dm_arg_group.add_argument(
+            "--labels",
+            type=Label.from_name,
+            default=tuple(Label),
+            nargs="+",
+            choices=tuple(Label),
+            help="Labels of the segmentation classes to take into account (including background). "
+            "If None, target all labels included in the data",
+        )
+        dm_arg_group.add_argument(
+            "--neighbor_padding",
+            type=str,
+            choices=["edge", "wrap"],
+            default="edge",
+            help="Mode used to determine how to pad neighboring instants at the beginning/end of a sequence. The "
+            "options mirror those of the ``mode`` parameter of ``numpy.pad``.",
+        )
+
+        return parent_parser
