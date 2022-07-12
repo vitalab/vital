@@ -1,3 +1,5 @@
+from typing import Callable, Union
+
 import numpy as np
 
 
@@ -46,3 +48,57 @@ def to_categorical(y: np.ndarray, channel_axis: int = -1, dtype: str = "uint8") 
         A class vector representation of the input.
     """
     return y.argmax(axis=channel_axis).astype(dtype)
+
+
+def wrap_pad(
+    fn: Callable[..., np.ndarray],
+    array: np.ndarray,
+    *args,
+    pad_mode: str,
+    pad_width: Union[int, float],
+    pad_axis: int = None,
+    **kwargs,
+) -> np.ndarray:
+    """Pad array before calling the function that processes the array, and undo padding on the result.
+
+    Args:
+        fn: Function that processes an array and returns a result of the same shape.
+        array: Array to pad before processing.
+        *args: Additional parameters to pass along to ``fn``.
+        pad_mode: Mode used to determine how to pad points at the beginning/end of the array. The options available are
+            those of the ``mode`` parameter of ``numpy.pad``.
+        pad_width: If it is an integer, the number of entries to repeat before/after the array. If it is a float, the
+            fraction of the data's length to repeat before/after the array.
+        pad_axis: Axis along which to pad. If `None`, pad along all axes.
+        **kwargs: Additional parameters to pass along to ``fn``.
+
+    Returns:
+        Result of processing the padded array.
+    """
+    if pad_mode:
+        if isinstance(pad_width, float):
+            len_pad_width = int(len(array) * pad_width)
+        elif isinstance(pad_width, int):
+            len_pad_width = pad_width
+        else:
+            raise ValueError(
+                f"The padding width requested is of unexpected type: {type(pad_width)}. It should be either a float "
+                f"(to indicate a fraction of the signal's length to pad) or an integer (to indicate a number of points "
+                f"to pad)."
+            )
+
+        if pad_axis is None:
+            pad_mask = [(len_pad_width, len_pad_width)] * array.ndim
+        else:
+            pad_mask = [(0, 0)] * array.ndim
+            pad_mask[pad_axis] = (len_pad_width, len_pad_width)
+
+        array = np.pad(array, pad_mask, mode=pad_mode)
+
+    res = fn(array, *args, **kwargs)
+
+    if pad_mode:
+        pad_slice = tuple(np.s_[before : dim - after] for dim, (before, after) in zip(array.shape, pad_mask))
+        res = res[pad_slice]
+
+    return res

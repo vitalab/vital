@@ -9,6 +9,7 @@ from torch import Tensor
 from vital.utils.format.native import Item
 from vital.utils.format.native import prefix as prefix_fn
 from vital.utils.format.native import squeeze as squeeze_fn
+from vital.utils.format.numpy import wrap_pad as wrap_pad_fn
 
 
 def _has_method(o: object, name: str) -> bool:
@@ -175,3 +176,34 @@ def auto_move_data(fn: Callable) -> Callable:
         return fn(self, *args, **kwargs)
 
     return auto_transfer_args
+
+
+def wrap_pad(pad_mode_default: str = None, pad_width_default: Union[int, float] = None, pad_axis_default: int = 0):
+    """Decorator to pad array before calling the function that processes the array, and undo the padding on the result.
+
+    Args:
+        pad_mode_default: Mode used to determine how to pad points at the beginning/end of the array. The options
+            available are those of the ``mode`` parameter of ``numpy.pad``.
+        pad_width_default: If it is an integer, the number of entries to repeat before/after the array. If it is a
+            float, the fraction of the data's length to repeat before/after the array.
+        pad_axis_default: Axis along which to pad. If `None`, pad along all axes.
+
+    Returns:
+        Function with the option to pad a array before processing it.
+    """
+
+    def wrap_pad_decorator(fn: Callable[..., np.ndarray]) -> Callable[..., np.ndarray]:
+        @wraps(fn)
+        def wrap_pad_wrapper(
+            array: np.ndarray,
+            *args,
+            pad_mode: str = pad_mode_default,
+            pad_width: Union[int, float] = pad_width_default,
+            pad_axis: int = pad_axis_default,
+            **kwargs,
+        ):
+            return wrap_pad_fn(fn, array, *args, pad_mode=pad_mode, pad_width=pad_width, pad_axis=pad_axis, **kwargs)
+
+        return wrap_pad_wrapper
+
+    return wrap_pad_decorator
