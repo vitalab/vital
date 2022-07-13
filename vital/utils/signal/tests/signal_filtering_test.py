@@ -14,7 +14,7 @@ from vital.metrics.evaluate.attribute import check_temporal_consistency_errors
 from vital.utils.logging import configure_logging
 from vital.utils.parsing import StoreDictKeyPair
 from vital.utils.signal.regression import kernel_ridge_regression
-from vital.utils.signal.snake import PenaltySnake, Snake
+from vital.utils.signal.snake import DualLagrangianRelaxationSnake, PenaltySnake, Snake
 from vital.utils.signal.tests import load_signals_from_json
 
 AttributesStatistics = Dict[str, Tuple[float, float]]
@@ -151,12 +151,15 @@ if __name__ == "__main__":
             smoothness_weight=10,
             smoothness_constraint_func=functools.partial(_smoothness_penalty, attr_stats=attr_stats),
         )(signal),
+        "dlrsnake": lambda signal, attr_stats: DualLagrangianRelaxationSnake(
+            grad_step=1e-3, smoothness_constraint_func=functools.partial(_smoothness_penalty, attr_stats=attr_stats)
+        )(signal),
     }
     filters = {
         "krr_poly": krr_poly_filters["krr_poly gamma=10,degree=6,alpha=0.1"],
         "krr_rbf": krr_rbf_filters["krr_rbf gamma=10,alpha=0.1"],
         "snake": snake_filters["snake smooth=10"],
-        "csnake": constrained_snake_filters["psnake smooth=0"],
+        "csnake": constrained_snake_filters["dlrsnake"],
     }
 
     # Produce plots for different combinations of filters

@@ -218,3 +218,46 @@ class PenaltySnake(_ConstrainedSnake):
             self._smoothness_constraint_func(cur_signal).any()
             or not self._smoothness_constraint_func(next_signal).any()
         )
+
+
+class DualLagrangianRelaxationSnake(_ConstrainedSnake):
+    """Snake + optimization of the smoothness weight to enforce the constraint for all the points in the signal."""
+
+    def __init__(
+        self,
+        smoothness_weight_bounds: Tuple[int, int] = (0, 128),
+        smoothness_weight_search_depth: int = 5,
+        smoothness_weight_margin: float = 0,
+        **kwargs,
+    ):
+        """Initializes class instance.
+
+        Args:
+            smoothness_weight_bounds: Min and max bounds between which to search for the optimal smoothness weight.
+            smoothness_weight_search_depth: Number of iterations of binary search to run before settling for an
+                "optimal" smoothness weight.
+            smoothness_weight_margin: Since the binary search finds a value that lies right at the edge of the feasible
+                domain, this parameter configures a margin between the "optimal" value at the edge of the feasible
+                domain and a safer value to choose in practice. The margin is used as a factor on the "optimal" value,
+                according to the following rule:
+                ``smoothness_weight = optimal_smoothness_weight * (1 + smoothness_weight_margin)``.
+            **kwargs: Additional parameters to pass along to ``super().__init__()``.
+        """
+        super().__init__(**kwargs)
+        self._smoothness_weight_bounds = smoothness_weight_bounds
+        self._smoothness_search_depth = smoothness_weight_search_depth
+        self._smoothness_weight_margin = smoothness_weight_margin
+
+    def _optimize(self, signal: np.ndarray) -> Tuple[np.ndarray, Snake.SnakeState]:
+        """Adds a binary search for the smallest smoothness weight that enforces the constraint for all the points."""
+        low, high = self._smoothness_weight_bounds
+        for _ in range(self._smoothness_search_depth):
+            self._grad_weights["smoothness"] = (low + high) / 2
+            smoothed_signal, _ = super()._optimize(signal)
+            if self._smoothness_constraint_func(smoothed_signal).any():
+                low = self._grad_weights["smoothness"]
+            else:
+                high = self._grad_weights["smoothness"]
+
+        self._grad_weights["smoothness"] = high * (1 + self._smoothness_weight_margin)
+        return super()._optimize(signal)
