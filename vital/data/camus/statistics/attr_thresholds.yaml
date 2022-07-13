@@ -1,0 +1,8 @@
+# Maximum tolerated difference between values for a frame and values interpolated from its previous/next neighbors
+lv_area: 1.60e-2
+lv_base_width: 9.69e-2
+lv_length: 2.62e-2
+lv_orientation: 2.29e-2
+myo_area: 3.21e-2
+epi_center_x: 4.56e-3
+epi_center_y: 1.10e-2
