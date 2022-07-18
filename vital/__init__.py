@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 ENV_VITAL_HOME = "VITAL_HOME"
 DEFAULT_CACHE_DIR = "~/.cache"
 
@@ -11,6 +13,7 @@ def get_vital_home() -> Path:
     Returns:
         Path to the home directory for the `vital` library.
     """
+    load_dotenv(override=True)
     vital_home = os.getenv(ENV_VITAL_HOME)
     if vital_home is None:
         user_cache_dir = os.getenv("XDG_CACHE_HOME", DEFAULT_CACHE_DIR)
