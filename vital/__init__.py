@@ -7,6 +7,15 @@ ENV_VITAL_HOME = "VITAL_HOME"
 DEFAULT_CACHE_DIR = "~/.cache"
 
 
+def get_vital_root() -> Path:
+    """Resolves the root directory for the `vital` library.
+
+    Returns:
+        Path to the root directory for the `vital` library.
+    """
+    return Path(__file__).resolve().parents[1]
+
+
 def get_vital_home() -> Path:
     """Resolves the home directory for the `vital` library, used to save/cache data reusable across scripts/runs.
 
