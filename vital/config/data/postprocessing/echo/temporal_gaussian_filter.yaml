@@ -1,0 +1,11 @@
+defaults:
+  - _self_
+  - echo/default@_here_
+
+temporal_gaussian_filter:
+  _target_: vital.utils.image.process.filter.PostGaussianFilter
+  sigmas:
+    0: 0.05
+  sigmas_as_ratio: True
+  extend_modes: null
+  do_argmax: True
