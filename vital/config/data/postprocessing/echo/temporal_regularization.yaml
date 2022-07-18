@@ -1,0 +1,19 @@
+defaults:
+  - _self_
+  - echo/default@_here_
+
+temporal_regularization:
+  _target_: vital.utils.image.process.autoencoder.ConstrainedAutoencoderSnake
+  autoencoder: ??? # Name of the AR-VAE model in Comet's model registry or local path to checkpoint
+  data_labels: ${oc.select:data.labels,[0,1,2]} # [bg,lv,myo]
+  registering_transformer: null
+  filter_attrs_only: False
+  grad_step: 1e-2
+  smoothness_weight: 50
+  num_neighbors: 1
+  neighbors_pad_mode: edge
+  max_iterations: 10_000
+  convergence_eps: ${sys.eps.np:float32}
+  attr_smoothness_constraint: dlr
+  attr_thresholds: ${vital.root:}/vital/data/camus/statistics/attr_thresholds.yaml
+  constraint_mode_kwargs: null
