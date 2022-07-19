@@ -44,13 +44,28 @@ class SegmentationAutoencoderTask(SharedTrainEvalTask):
         # Configure metric objects used repeatedly in the train/eval loop
         self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none")
 
-    def configure_model(self) -> nn.Module:
-        """Configure the network architecture used by the system."""
+        # Create buffers to keep track of statistics on the latent dimensions,
+        # which could be necessary for some downstream tasks
+        self._latent_stats = {"latent_min": torch.finfo().max, "latent_max": torch.finfo().min}
+        for stat, default in self._latent_stats.items():
+            # Only register the buffers for the statistics, since their default values are reset at the beginning of
+            # each training epoch
+            self.register_buffer(stat, None)
+
+    def configure_model(self) -> nn.Module:  # noqa: D102
         return hydra.utils.instantiate(
             self.hparams.model,
             image_size=self.hparams.data_params.out_shape[1:],
             channels=self.hparams.data_params.out_shape[0],
         )
+
+    def on_train_epoch_start(self) -> None:  # noqa: D102
+        super().on_epoch_start()
+        # Resets the latent dimensions' statistics on each new epoch, so that they are not biased by the previous epochs
+        for stat, default in self._latent_stats.items():
+            setattr(
+                self, stat, torch.full([self.hparams.model.latent_dim], default, dtype=torch.float, device=self.device)
+            )
 
     @auto_move_data
     def forward(self, x: Tensor, task: Literal["encode", "decode", "reconstruct"] = "reconstruct") -> Tensor:
@@ -101,6 +116,11 @@ class SegmentationAutoencoderTask(SharedTrainEvalTask):
         # Compute loss and metrics
         metrics.update(self._compute_latent_space_metrics(out, batch))
         metrics["loss"] = self._compute_loss(metrics)
+
+        if self.training:
+            # Update latent dimensions statistics when in training mode
+            self.latent_min = torch.minimum(self.latent_min, out[self.model.encoding_tag].min(dim=0)[0])
+            self.latent_max = torch.maximum(self.latent_max, out[self.model.encoding_tag].max(dim=0)[0])
 
         return metrics
 
