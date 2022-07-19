@@ -203,7 +203,7 @@ class AnatomicallyConstrainedDataAugmenter(ABC):
             random_samples[samples_group_name] = (
                 samples_group[np.random.choice(len(samples_group), num_sample_images, replace=False), :]
                 if num_random_samples
-                else np.empty((0, self.autoencoder.hparams.latent_dim))
+                else np.empty((0, 0))
             )
 
             # Setup directories for decoded samples
