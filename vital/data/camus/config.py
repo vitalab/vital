@@ -1,25 +1,24 @@
 from dataclasses import dataclass
+from enum import unique
 from typing import Any, Dict, List, Literal, Sequence
 
 import numpy as np
 
-from vital.data.config import DataTag, Tags
+from vital.data.config import LabelEnum, Tags
 
 
-class Label(DataTag):
-    """Enumeration of tags related to the different anatomical structures segmented in the dataset.
-
-    Attributes:
-        BG: Label of the background.
-        LV: Label of the left ventricle, bounded by the endocardium.
-        MYO: Label of the myocardium, bounded by the encocardium and epicardium.
-        ATRIUM: Label of the left atrium.
-    """
+@unique
+class Label(LabelEnum):
+    """Identifiers of the different anatomical structures available in the dataset's segmentation mask."""
 
     BG = 0
+    """BackGround"""
     LV = 1
+    """Left Ventricle"""
     MYO = 2
+    """MYOcardium"""
     ATRIUM = 3
+    """Atrium"""
 
 
 @dataclass(frozen=True)

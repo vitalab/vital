@@ -30,7 +30,7 @@ class AcdcRegisteringTransformer(AffineRegisteringTransformer):
             Pixel shift to apply along each axis to center the segmentation around the LV/MYO mass.
         """
         segmentation_center = np.array(segmentation.shape[:2]) // 2
-        lv_myo_center = np.array(self._find_structure_center(segmentation, [Label.LV.value, Label.MYO.value]))
+        lv_myo_center = np.array(self._find_structure_center(segmentation, [Label.LV, Label.MYO]))
         return (lv_myo_center - segmentation_center).astype(int)
 
     def _compute_rotation_parameters(self, segmentation: np.ndarray) -> Rotation:
@@ -46,10 +46,8 @@ class AcdcRegisteringTransformer(AffineRegisteringTransformer):
             Angle of the rotation to apply to align the segmentation so that the RV center of mass is always
             left of the LV/MYO center of mass on a straight horizontal line.
         """
-        lv_myo_center = np.array(self._find_structure_center(segmentation, [Label.LV.value, Label.MYO.value]))
-        rv_center = np.array(
-            self._find_structure_center(segmentation, Label.RV.value, default_center=tuple(lv_myo_center))
-        )
+        lv_myo_center = np.array(self._find_structure_center(segmentation, [Label.LV, Label.MYO]))
+        rv_center = np.array(self._find_structure_center(segmentation, Label.RV, default_center=tuple(lv_myo_center)))
         centers_diff = rv_center - lv_myo_center
         rotation_angle = degrees(np.arctan2(centers_diff[1], centers_diff[0]))
         rotation_angle = -(180 - ((rotation_angle + 360) % 360))

@@ -98,7 +98,7 @@ def generate_probability_map(dataset: h5py.File, group: h5py.Group, data_augment
     for label in Label:
         prob_map = np.array(
             [
-                _generate_centered_prob_map(np.copy(img), prior_shape, center, label.value)
+                _generate_centered_prob_map(np.copy(img), prior_shape, center, label)
                 for img, center in tqdm(zip(images, images_center), desc=str(label), total=len(images))
             ]
         )
@@ -237,21 +237,16 @@ def create_database_structure(
         patient = group.create_group(name)
 
         write_instant_group(
-            patient.create_group(Instant.ED.value), ed_img, edg_img, ed_voxel_size, rotation, registering_transformer
+            patient.create_group(Instant.ED), ed_img, edg_img, ed_voxel_size, rotation, registering_transformer
         )
         write_instant_group(
-            patient.create_group(Instant.ES.value), es_img, esg_img, es_voxel_size, rotation, registering_transformer
+            patient.create_group(Instant.ES), es_img, esg_img, es_voxel_size, rotation, registering_transformer
         )
 
         # Add mid-cycle data
         if data_mid:
             write_instant_group(
-                patient.create_group(Instant.MID.value),
-                mid_img,
-                midg_img,
-                mid_voxel_size,
-                rotation,
-                registering_transformer,
+                patient.create_group(Instant.MID), mid_img, midg_img, mid_voxel_size, rotation, registering_transformer
             )
 
 
@@ -324,7 +319,7 @@ def generate_dataset(data_path: Path, output_path: Path, data_augmentation: bool
         output_dataset.attrs[AcdcTags.registered] = registering
 
         # Training samples ###
-        group = output_dataset.create_group(Subset.TRAIN.value)
+        group = output_dataset.create_group(Subset.TRAIN)
         for p_ed, g_ed, p_es, g_es in tqdm(train_paths, desc="Training"):
             # Find missmatch in the zip
             if str(p_ed) != str(g_ed).replace("_gt", "") or str(p_es) != str(g_es).replace("_gt", ""):
@@ -336,7 +331,7 @@ def generate_dataset(data_path: Path, output_path: Path, data_augmentation: bool
         generate_probability_map(output_dataset, group, data_augmentation)
 
         # Validation samples ###
-        group = output_dataset.create_group(Subset.VAL.value)
+        group = output_dataset.create_group(Subset.VAL)
         for p_ed, g_ed, p_es, g_es in tqdm(valid_paths, desc="Validation"):
             # Find missmatch in the zip
             if str(p_ed) != str(g_ed).replace("_gt", "") or str(p_es) != str(g_es).replace("_gt", ""):
@@ -345,7 +340,7 @@ def generate_dataset(data_path: Path, output_path: Path, data_augmentation: bool
             create_database_structure(group, False, registering, p_ed, g_ed, p_es, g_es)
 
         # Testing samples ###
-        group = output_dataset.create_group(Subset.TEST.value)
+        group = output_dataset.create_group(Subset.TEST)
         for p_ed, g_ed, p_mid, g_mid, p_es, g_es in tqdm(test_paths, desc="Testing"):
             p_mid = None if p_mid == "None" else p_mid
             g_mid = None if g_mid == "None" else g_mid

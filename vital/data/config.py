@@ -1,54 +1,74 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import IntEnum, auto, unique
 from typing import List, Optional, Sequence, Tuple, Union
 
+from strenum import LowercaseStrEnum
+
 SemanticStructureId = Union[int, Sequence[int]]
+ProtoLabel = Union[int, str, "LabelEnum"]
 
 
-class DataTag(Enum):
-    """Extension of Python's ``Enum`` type to provide easy conversion and display methods."""
+class LabelEnum(IntEnum):
+    """Abstract base class for enumerated labels, providing more functionalities on top of the core `IntEnum`."""
 
     def __str__(self):  # noqa: D105
         return self.name.lower()
 
-    def __repr__(self):  # noqa: D105
-        return str(self)
+    def __eq__(self, other):
+        """Adds support for equality (case-insensitive) comparison between a string and a label's name."""
+        if isinstance(other, str):
+            return self.name.casefold() == other.casefold()
+        return super().__eq__(other)
 
     @classmethod
-    def values(cls) -> List:
-        """Lists the values for all the elements of the enumeration.
-
-        Returns:
-            Values of all the elements in the enumeration.
-        """
-        return [e.value for e in cls]
-
-    @classmethod
-    def from_name(cls, name: str) -> "DataTag":
-        """Fetches an element of the enumeration based on its name.
+    def from_proto_label(cls, proto_label: ProtoLabel) -> "LabelEnum":
+        """Creates a label from a protobuf label.
 
         Args:
-            name: attribute name of the element in the enumeration.
+            proto_label: Either the integer value of a label, the (case-insensitive) name of a label, or directly a
+                `LabelEnum`.
 
         Returns:
-            Element from the enumeration corresponding to the requested name.
+            A `LabelEnum` instance.
         """
-        return cls[name.upper()]
+        if isinstance(proto_label, int):
+            label = cls(proto_label)
+        elif isinstance(proto_label, str):
+            label = cls[proto_label.upper()]
+        elif isinstance(proto_label, cls):
+            label = proto_label
+        else:
+            raise ValueError(
+                f"Unsupported label type: {type(proto_label)} for proto-label. Should be one of: {ProtoLabel}."
+            )
+        return label
+
+    @classmethod
+    def from_proto_labels(cls, proto_labels: Sequence[ProtoLabel]) -> List["LabelEnum"]:
+        """Creates a list of labels from a sequence of protobuf labels.
+
+        Args:
+            proto_labels: Sequence of either integer values of labels, (case-insensitive) names of labels, or directly
+                `LabelEnum`s.
+
+        Returns:
+            List of `LabelEnum` instances
+        """
+        return [cls.from_proto_label(proto_label) for proto_label in proto_labels]
 
 
-class Subset(DataTag):
-    """Enumeration to gather tags referring to commonly used subsets of a whole dataset.
+@unique
+class Subset(LowercaseStrEnum):
+    """Commonly used subsets of a whole dataset."""
 
-    Attributes:
-        TRAIN: Label of the training subset.
-        VAL: Label of the validation subset.
-        TEST: Label of the testing subset.
-    """
-
-    TRAIN = "train"
-    VAL = "val"
-    TEST = "test"
-    PREDICT = "predict"
+    TRAIN = auto()
+    """Training subset."""
+    VAL = auto()
+    """Validation subset."""
+    TEST = auto()
+    """Testing subset."""
+    PREDICT = auto()
+    """Prediction subset."""
 
 
 @dataclass(frozen=True)
@@ -88,4 +108,4 @@ class DataParameters:
 
     in_shape: Tuple[int, ...]
     out_shape: Tuple[int, ...]
-    labels: Optional[Tuple[DataTag, ...]] = None
+    labels: Optional[Tuple[LabelEnum, ...]] = None

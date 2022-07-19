@@ -8,6 +8,7 @@ scikit-learn
 pandas
 h5py
 PyYAML
+StrEnum
 tqdm
 SimpleITK
 torch~=1.11.0

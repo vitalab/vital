@@ -19,10 +19,10 @@ class CamusResultsProcessor(ABC):
         """
         parser.add_argument(
             "--labels",
-            type=Label.from_name,
-            default=list(Label),
+            type=Label.from_proto_label,
+            default=tuple(Label),
             nargs="+",
-            choices=list(Label),
+            choices=tuple(Label),
             help="Labels of the classes included in the segmentations. By default, considers that all class labels "
             "provided in the dataset are included",
         )

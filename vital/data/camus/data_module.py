@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 from vital.data.camus.config import CamusTags, Label, in_channels
 from vital.data.camus.dataset import Camus
-from vital.data.config import DataParameters, Subset
+from vital.data.config import DataParameters, ProtoLabel, Subset
 from vital.data.data_module import VitalDataModule
 from vital.data.mixins import StructuredDataMixin
 
@@ -18,7 +18,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
     def __init__(
         self,
         dataset_path: Union[str, Path],
-        labels: Sequence[Union[str, Label]] = Label,
+        labels: Sequence[ProtoLabel] = Label,
         fold: int = 5,
         use_sequence: bool = False,
         num_neighbors: int = 0,
@@ -40,7 +40,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
             **kwargs: Keyword arguments to pass to the parent's constructor.
         """
         dataset_path = Path(dataset_path)
-        labels = tuple(Label.from_name(str(label)) for label in labels)
+        labels = tuple(Label.from_proto_labels(labels))
 
         # Infer the shape of the data from the content of the dataset.
         try:
@@ -132,7 +132,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         # Add arguments w/ custom types not supported by Lightning's argparse creation tool
         dm_arg_group.add_argument(
             "--labels",
-            type=Label.from_name,
+            type=Label.from_proto_label,
             default=tuple(Label),
             nargs="+",
             choices=tuple(Label),

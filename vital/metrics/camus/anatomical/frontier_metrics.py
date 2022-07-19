@@ -20,7 +20,7 @@ class FrontierMetrics:
         Returns:
             Count of pixels in the gap between the two areas segmented as left ventricle and myocardium.
         """
-        return self.segmentation_metrics.count_holes_between_regions(Label.LV.value, Label.MYO.value)
+        return self.segmentation_metrics.count_holes_between_regions(Label.LV, Label.MYO)
 
     def count_holes_between_lv_and_atrium(self) -> int:
         """Counts the pixels in the gap between the left ventricle (LV) and left atrium.
@@ -28,7 +28,7 @@ class FrontierMetrics:
         Returns:
             Count of pixels in the gap between the two areas segmented as left ventricle and left atrium.
         """
-        return self.segmentation_metrics.count_holes_between_regions(Label.LV.value, Label.MYO.value)
+        return self.segmentation_metrics.count_holes_between_regions(Label.LV, Label.MYO)
 
     def measure_frontier_ratio_between_lv_and_bg(self) -> float:
         """Measures the ratio between the length of the frontier between the LV and BG and the width of the LV.
@@ -36,7 +36,7 @@ class FrontierMetrics:
         Returns:
             Ratio between the length of the frontier between the LV and BG and the width of the LV.
         """
-        return self.segmentation_metrics.measure_frontier_ratio_between_regions(Label.LV.value, Label.BG.value)
+        return self.segmentation_metrics.measure_frontier_ratio_between_regions(Label.LV, Label.BG)
 
     def measure_frontier_ratio_between_myo_and_atrium(self) -> float:
         """Measures the ratio between the length of the frontier between the MYO and atrium and the width of the MYO.
@@ -44,4 +44,4 @@ class FrontierMetrics:
         Returns:
             Ratio between the length of the frontier between the MYO and atrium and the width of the MYO.
         """
-        return self.segmentation_metrics.measure_frontier_ratio_between_regions(Label.MYO.value, Label.ATRIUM.value)
+        return self.segmentation_metrics.measure_frontier_ratio_between_regions(Label.MYO, Label.ATRIUM)

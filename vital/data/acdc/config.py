@@ -1,39 +1,37 @@
 from dataclasses import dataclass
+from enum import auto, unique
 from typing import Any, Dict
 
 import numpy as np
+from strenum import LowercaseStrEnum
 
-from vital.data.config import DataTag, Tags
+from vital.data.config import LabelEnum, Tags
 
 
-class Label(DataTag):
-    """Enumeration of tags related to the different anatomical structures segmented in the dataset.
-
-    Attributes:
-        BG: Label of the background.
-        RV: Label of the right ventricle.
-        MYO: Label of the myocardium.
-        LV: Label of the left ventricle.
-    """
+@unique
+class Label(LabelEnum):
+    """Identifiers of the different anatomical structures available in the dataset's segmentation mask."""
 
     BG = 0
+    """BackGround"""
     RV = 1
+    """Right Ventricle"""
     MYO = 2
+    """MYOcardium"""
     LV = 3
+    """Left Ventricle"""
 
 
-class Instant(DataTag):
-    """Collection of tags related to noteworthy 3D volumes of 2D MRI slices.
+@unique
+class Instant(LowercaseStrEnum):
+    """Identifiers of noteworthy 3D volumes of 2D MRI slices."""
 
-    Args:
-        ED: Tag referring to the end-diastolic volume.
-        ES: Tag referring to the end-systolic volume.
-        MID: Tag referring to a sample between ED and ES.
-    """
-
-    ED = "ED"
-    ES = "ES"
-    MID = "MID"
+    ED = auto()
+    """End-Diastolic volume"""
+    ES = auto()
+    """End-Systolic volume"""
+    MID = auto()
+    """Volume in the MIDdle between ED and ES"""
 
 
 @dataclass(frozen=True)
