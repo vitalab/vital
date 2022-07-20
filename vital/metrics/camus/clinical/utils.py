@@ -27,8 +27,8 @@ def compute_clinical_metrics_by_patient(
         Mapping between the clinical metrics' names and their value for the patient.
     """
     # Extract left ventricle masks from the data
-    results_masks = [np.isin(result, Label.LV.value) for result in results]
-    references_masks = [np.isin(reference, Label.LV.value) for reference in references]
+    results_masks = [np.isin(result, Label.LV) for result in results]
+    references_masks = [np.isin(reference, Label.LV) for reference in references]
 
     # Compute clinical metrics on groundtruth
     gt_lv_edv, gt_lv_esv = compute_left_ventricle_volumes(

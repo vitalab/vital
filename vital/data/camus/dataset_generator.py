@@ -101,7 +101,7 @@ class CrossValidationDatasetGenerator:
                 fold_group = cross_validation_group.create_group(f"fold_{fold}")
                 for subset, subset_name_in_data in self._subset_names_in_data.items():
                     fold_subset_patients = self.get_fold_subset_from_file(data, fold, subset_name_in_data)
-                    fold_group.create_dataset(subset.value, data=np.array(fold_subset_patients, dtype="S"))
+                    fold_group.create_dataset(subset, data=np.array(fold_subset_patients, dtype="S"))
 
             # Get a list of all the patients in the dataset
             patient_ids = reduce(
@@ -151,7 +151,7 @@ class CrossValidationDatasetGenerator:
             # The order of the instants within a view dataset is chronological: ED -> ES -> ED
             data_x, data_y, view_metadata, instants = self._get_view_data(patient_id, view)
 
-            data_y = remove_labels(data_y, [lbl.value for lbl in self.labels_to_remove], fill_label=Label.BG.value)
+            data_y = remove_labels(data_y, self.labels_to_remove, fill_label=Label.BG)
 
             if self.flags[CamusTags.registered]:
                 registering_parameters, data_y_proc, data_x_proc = self.registering_transformer.register_batch(
@@ -313,7 +313,7 @@ def main():
     parser.add_argument("-r", "--register", action="store_true", help="Apply registering on images and groundtruths")
     parser.add_argument(
         "--labels",
-        type=Label.from_name,
+        type=Label.from_proto_label,
         default=list(Label),
         nargs="+",
         choices=list(Label),

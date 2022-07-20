@@ -31,13 +31,13 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
         """
         # Find the bottom limit of the atrium
         # (using a bounding box encompassing all segmentation classes)
-        segmentation_mask = 1 - segmentation[..., Label.BG.value]
+        segmentation_mask = 1 - segmentation[..., Label.BG]
         segmentation_props = regionprops(segmentation_mask)[0]
         distance_from_left_atrium_to_border = segmentation.shape[0] - segmentation_props.bbox[2]
 
         # Find the center of mass of the epicardium (union of the left ventricle and myocardium)
         segmentation_center = segmentation.shape[0] // 2, segmentation.shape[1] // 2
-        epicardium_center = Measure.structure_center(to_categorical(segmentation), [Label.LV.value, Label.MYO.value])
+        epicardium_center = Measure.structure_center(to_categorical(segmentation), [Label.LV, Label.MYO])
 
         # Center the image as closely as possible around the epicardium without cutting off the left atrium
         rows_shift = max(epicardium_center[0] - segmentation_center[0], -distance_from_left_atrium_to_border)
@@ -53,9 +53,7 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
         Returns:
             Angle of the rotation to align the major axis of the left ventricle with the vertical axis.
         """
-        return Measure.structure_orientation(
-            to_categorical(segmentation), Label.LV.value, reference_orientation=90
-        ).item()
+        return Measure.structure_orientation(to_categorical(segmentation), Label.LV, reference_orientation=90).item()
 
     def _compute_crop_parameters(self, segmentation: np.ndarray, margin: float = 0.05) -> Crop:
         """Computes the coordinates of an isotropic bounding box around all segmented classes.
@@ -99,9 +97,9 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
     #     """
     #     # Find dimensions of the bounding box encompassing all segmentation classes
     #     segmentation_mask = (
-    #         segmentation[..., Label.LV.value]
-    #         | segmentation[..., Label.MYO.value]
-    #         | segmentation[..., Label.ATRIUM.value]
+    #         segmentation[..., Label.LV]
+    #         | segmentation[..., Label.MYO]
+    #         | segmentation[..., Label.ATRIUM]
     #     )
     #     segmentation_props = regionprops(segmentation_mask)[0]
     #     segmentation_bbox = segmentation_props.bbox

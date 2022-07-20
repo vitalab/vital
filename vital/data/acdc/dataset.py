@@ -55,8 +55,7 @@ class Acdc(VisionDataset):
             self.da_transforms = None
 
         super().__init__(path, transform=transform, target_transform=target_transform)
-
-        self.image_set = image_set.value
+        self.image_set = image_set
 
         with h5py.File(path, "r") as f:
             if AcdcTags.registered in f.attrs.keys():
@@ -296,7 +295,7 @@ if __name__ == "__main__":
 
     if params.predict:
         patient = ds[random.randint(0, len(ds) - 1)]
-        instant = patient.instants[Instant.ED.value]
+        instant = patient.instants[Instant.ED]
         img = instant.img
         gt = instant.gt
         print("Image shape: {}".format(img.shape))

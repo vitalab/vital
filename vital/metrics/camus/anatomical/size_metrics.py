@@ -26,5 +26,5 @@ class SizeMetrics:
             an horizontal line anchored at their joined center of mass.
         """
         return self.segmentation_metrics.measure_width_ratio_between_regions(
-            Label.LV.value, Label.MYO.value, no_structure_flag=self.no_structure_flag
+            Label.LV, Label.MYO, no_structure_flag=self.no_structure_flag
         )

@@ -1,10 +1,11 @@
 from argparse import ArgumentParser
-from typing import Sequence, Tuple, Union
+from typing import Sequence, Tuple
 
 import medpy.metric as metric
 import numpy as np
 
 from vital.data.camus.config import CamusTags, Label
+from vital.data.config import ProtoLabel
 from vital.results.camus import CamusResultsProcessor
 from vital.results.camus.utils.data_struct import InstantResult
 from vital.results.camus.utils.itertools import PatientViewInstants
@@ -19,7 +20,7 @@ class SegmentationMetrics(Metrics):
     target_choices = [f"{CamusTags.gt}/{CamusTags.raw}"]
     ResultsCollection = PatientViewInstants
 
-    def __init__(self, labels: Sequence[Union[str, Label]], **kwargs):
+    def __init__(self, labels: Sequence[ProtoLabel], **kwargs):
         """Initializes class instance.
 
         Args:
@@ -28,18 +29,17 @@ class SegmentationMetrics(Metrics):
         """
         super().__init__(**kwargs)
 
-        # Make sure labels are defined using the enum
-        labels = tuple(Label.from_name(str(label)) for label in labels)
+        # Make sure labels are defined using the enums
+        self.labels = {str(label): label for label in Label.from_proto_labels(labels)}
 
-        # Compute scores on all labels, except background
-        self.labels = {str(label): label.value for label in labels}
-        self.labels.pop(str(Label.BG))
+        # Exclude background from the computation of the scores
+        self.labels.pop(str(Label.BG), None)
 
         # In the case of the myocardium (EPI) we want to calculate metrics for the entire epicardium
         # Therefore we concatenate ENDO (lumen) and EPI (myocardium)
-        if Label.LV in labels and Label.MYO in labels:
+        if str(Label.LV) in self.labels and str(Label.MYO) in self.labels:
             self.labels.pop(str(Label.MYO))
-            self.labels["epi"] = (Label.LV.value, Label.MYO.value)
+            self.labels["epi"] = (Label.LV, Label.MYO)
 
         self.scores = {"dsc": metric.dc}
         self.distances = {"hd": metric.hd, "assd": metric.assd}

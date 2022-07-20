@@ -54,7 +54,7 @@ def compute_anatomical_metrics_by_segmentation(
     # Therefore we concatenate label 1 (lumen) and 2 (myocardium)
     segmentation_metrics = Segmentation2DMetrics(
         segmentation,
-        [Label.BG.value, Label.LV.value, Label.MYO.value, (Label.LV.value, Label.MYO.value), Label.ATRIUM.value],
+        [Label.BG, Label.LV, Label.MYO, (Label.LV, Label.MYO), Label.ATRIUM],
         voxelspacing=voxelspacing,
     )
     lv_metrics = LeftVentricleMetrics(segmentation_metrics)

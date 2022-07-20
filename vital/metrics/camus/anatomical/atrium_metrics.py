@@ -13,4 +13,4 @@ class LeftAtriumMetrics(Anatomical2DStructureMetrics):
             segmentation_metrics: Instance, based on the segmentation for which to compute anatomical metrics, of the
                 class implementing various segmentation metrics.
         """
-        super().__init__(segmentation_metrics, Label.ATRIUM.value)
+        super().__init__(segmentation_metrics, Label.ATRIUM)

@@ -15,4 +15,4 @@ class EpicardiumMetrics(Anatomical2DStructureMetrics):
         """
         # For myocardium we want to calculate anatomical metrics for the entire epicardium
         # Therefore we concatenate label 1 (lumen) and 2 (myocardium)
-        super().__init__(segmentation_metrics, (Label.LV.value, Label.MYO.value))
+        super().__init__(segmentation_metrics, (Label.LV, Label.MYO))

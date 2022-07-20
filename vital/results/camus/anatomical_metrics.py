@@ -1,9 +1,10 @@
 from argparse import ArgumentParser
-from typing import Sequence, Tuple, Union
+from typing import Sequence, Tuple
 
 import numpy as np
 
 from vital.data.camus.config import CamusTags, Label
+from vital.data.config import ProtoLabel
 from vital.metrics.camus.anatomical import config
 from vital.metrics.camus.anatomical.utils import compute_anatomical_metrics_by_segmentation
 from vital.results import anatomical_metrics
@@ -24,7 +25,7 @@ class AnatomicalMetrics(anatomical_metrics.AnatomicalMetrics):
     ]
     thresholds = config.thresholds
 
-    def __init__(self, labels: Sequence[Union[str, Label]], shape: Tuple[int, int] = None, **kwargs):
+    def __init__(self, labels: Sequence[ProtoLabel], shape: Tuple[int, int] = None, **kwargs):
         """Initializes class instance.
 
         Args:
@@ -37,7 +38,7 @@ class AnatomicalMetrics(anatomical_metrics.AnatomicalMetrics):
         self.shape = shape
 
         # Make sure labels are defined using the enum
-        self.labels = tuple(Label.from_name(str(label)) for label in labels)
+        self.labels = Label.from_proto_labels(labels)
 
     def process_result(self, result: InstantResult) -> Tuple[str, "AnatomicalMetrics.ProcessingOutput"]:
         """Computes anatomical metrics on data from an instant.

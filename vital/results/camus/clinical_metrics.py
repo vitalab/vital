@@ -80,7 +80,7 @@ class ClinicalMetrics(Metrics):
 
             def _compute_lv_area(data_tag: str) -> Tuple[int, int]:
                 ed, es = data[data_tag].data
-                return np.isin(ed, Label.LV.value).sum(), np.isin(es, Label.LV.value).sum()
+                return np.isin(ed, Label.LV).sum(), np.isin(es, Label.LV).sum()
 
             gt_lv_ed_area, gt_lv_es_area = _compute_lv_area(self.target_tag)
             lv_ed_area, lv_es_area = _compute_lv_area(self.input_tag)

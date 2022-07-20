@@ -128,7 +128,7 @@ class Camus(VisionDataset):
             # List the patients
             groups = [
                 patient_path_byte.decode()
-                for patient_path_byte in dataset[f"cross_validation/fold_{self.fold}/{self.image_set.value}"]
+                for patient_path_byte in dataset[f"cross_validation/fold_{self.fold}/{self.image_set}"]
             ]
             if level == "view":
                 groups = [f"{patient}/{view}" for patient in groups for view in dataset[patient].keys()]
@@ -325,10 +325,7 @@ class Camus(VisionDataset):
             Target data arrays processed and formatted.
         """
         return [
-            remove_labels(
-                target_data, [lbl.value for lbl in self.labels_to_remove], fill_label=Label.BG.value
-            ).squeeze()
-            for target_data in args
+            remove_labels(target_data, self.labels_to_remove, fill_label=Label.BG).squeeze() for target_data in args
         ]
 
     @staticmethod
@@ -380,27 +377,23 @@ def get_segmentation_attributes(
     if Label.LV in labels:
         attrs.update(
             {
-                CamusTags.lv_area: EchoMeasure.structure_area(segmentation, Label.LV.value),
+                CamusTags.lv_area: EchoMeasure.structure_area(segmentation, Label.LV),
                 CamusTags.lv_orientation: EchoMeasure.structure_orientation(
-                    segmentation, Label.LV.value, reference_orientation=90
+                    segmentation, Label.LV, reference_orientation=90
                 ),
             }
         )
     if Label.MYO in labels:
-        attrs.update({CamusTags.myo_area: EchoMeasure.structure_area(segmentation, Label.MYO.value)})
+        attrs.update({CamusTags.myo_area: EchoMeasure.structure_area(segmentation, Label.MYO)})
     if Label.LV in labels and Label.MYO in labels:
         attrs.update(
             {
-                CamusTags.lv_base_width: EchoMeasure.lv_base_width(segmentation, Label.LV.value, Label.MYO.value),
-                CamusTags.lv_length: EchoMeasure.lv_length(segmentation, Label.LV.value, Label.MYO.value),
-                CamusTags.epi_center_x: EchoMeasure.structure_center(
-                    segmentation, [Label.LV.value, Label.MYO.value], axis=1
-                ),
-                CamusTags.epi_center_y: EchoMeasure.structure_center(
-                    segmentation, [Label.LV.value, Label.MYO.value], axis=0
-                ),
+                CamusTags.lv_base_width: EchoMeasure.lv_base_width(segmentation, Label.LV, Label.MYO),
+                CamusTags.lv_length: EchoMeasure.lv_length(segmentation, Label.LV, Label.MYO),
+                CamusTags.epi_center_x: EchoMeasure.structure_center(segmentation, [Label.LV, Label.MYO], axis=1),
+                CamusTags.epi_center_y: EchoMeasure.structure_center(segmentation, [Label.LV, Label.MYO], axis=0),
             }
         )
     if Label.ATRIUM in labels:
-        attrs.update({CamusTags.atrium_area: EchoMeasure.structure_area(segmentation, Label.ATRIUM.value)})
+        attrs.update({CamusTags.atrium_area: EchoMeasure.structure_area(segmentation, Label.ATRIUM)})
     return attrs
