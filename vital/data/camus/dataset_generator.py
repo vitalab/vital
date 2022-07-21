@@ -53,6 +53,7 @@ class CrossValidationDatasetGenerator:
         self,
         data: Path,
         output: Path,
+        img_format: str = "mhd",
         folds: Sequence[int] = range(1, 11),
         target_image_size: Tuple[int, int] = (256, 256),
         sequence_type: Literal["half_cycle", "full_cycle"] = "half_cycle",
@@ -65,6 +66,7 @@ class CrossValidationDatasetGenerator:
         Args:
             data: Path to the CAMUS root directory, under which the patient directories are stored.
             output: Path to the HDF5 file to generate, containing all the raw image data and cross-validation metadata.
+            img_format: File extension of the image format to load the data from, without the leading dot.
             folds: IDs of the folds for which to include metadata in the generated HDF5 file.
             target_image_size: Target height and width at which to resize the image and groundtruth.
             sequence_type: Type of sequential data available, whether it's for half a cycle (ED->ES) or the full cycle
@@ -76,6 +78,7 @@ class CrossValidationDatasetGenerator:
         # Save parameters useful in downstream functions inside the object
         # This is done to avoid overly long function signatures in low-level functions
         self.data = data
+        self.img_format = img_format
         self.flags = {CamusTags.full_sequence: sequence, CamusTags.registered: register}
         self.labels_to_remove = [] if labels is None else [label for label in Label if label not in labels]
         self.target_image_size = target_image_size
@@ -189,7 +192,7 @@ class CrossValidationDatasetGenerator:
         Otherwise, returns the view data as is.
 
         Args:
-            patient_id: Patient ID formatted to match the identifiers in the mhd files' names.
+            patient_id: Patient ID formatted to match the identifiers in the image files' names.
             view: View for which to fetch the patient's data.
 
         Returns:
@@ -242,7 +245,7 @@ class CrossValidationDatasetGenerator:
         """Fetches additional reference segmentations, interpolated between ED and ES instants.
 
         Args:
-            patient_id: Patient id formatted to match the identifiers in the mhd files' names.
+            patient_id: Patient id formatted to match the identifiers in the image files' names.
             view: View for which to fetch the patient's data.
 
         Returns:
@@ -251,7 +254,11 @@ class CrossValidationDatasetGenerator:
             - Metadata concerning the sequence.
         """
         patient_folder = self.data / patient_id
-        sequence_fn_template = f"{patient_id}_{view}_sequence{{}}.mhd"
+        if self.sequence_type == "half_cycle":
+            sequence_tag = "half_sequence"
+        else:  # self.sequence_type == "full_cycle"
+            sequence_tag = "sequence"
+        sequence_fn_template = f"{patient_id}_{view}_{sequence_tag}{{}}.{self.img_format}"
 
         # Open interpolated segmentations
         data_x, data_y = [], []
@@ -280,6 +287,13 @@ def main():
         type=Path,
         default="camus.h5",
         help="Path to the HDF5 file to generate, containing all the raw image data and cross-validation metadata",
+    )
+    parser.add_argument(
+        "--img_format",
+        type=str,
+        default="mhd",
+        help="File extension of the image files to load the data from, without the leading dot. Must be one of the "
+        "format supported by SimpleITK.",
     )
     parser.add_argument(
         "--folds",
@@ -325,6 +339,7 @@ def main():
     CrossValidationDatasetGenerator()(
         args.data,
         args.output,
+        img_format=args.img_format,
         folds=args.folds,
         target_image_size=args.image_size,
         sequence_type=args.sequence_type,
