@@ -63,10 +63,10 @@ class CamusPredictionWriter(BasePredictionWriter):
         """
         # Extract the main prediction, i.e. the predicted segmentation, and the auxiliary predictions
         aux_predictions = {}
-        if isinstance(prediction, Tensor):
+        if isinstance(prediction, Tensor):  # Segmentation model
             pred_view_seg = prediction
-        else:
-            pred_view_seg = prediction.pop(CamusTags.pred)
+        else:  # Autoencoder model
+            pred_view_seg = prediction.pop(pl_module.hparams.mask_tag)
             aux_predictions = prediction
 
         # Collect the metadata related to the batch's data

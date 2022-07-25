@@ -7,7 +7,6 @@ from torch import Tensor, nn
 from torch.nn import functional as F
 from torchmetrics.utilities.data import to_onehot
 
-from vital.data.config import Tags
 from vital.metrics.train.functional import kl_div_zmuv
 from vital.metrics.train.metric import DifferentiableDiceCoefficient
 from vital.tasks.generic import SharedTrainEvalTask
@@ -26,12 +25,14 @@ class SegmentationAutoencoderTask(SharedTrainEvalTask):
     """
 
     def __init__(
-        self, segmentation_data_tag: str = Tags.gt, ce_weight: float = 0.1, dice_weight: float = 1, *args, **kwargs
+        self, mask_tag: str, encoding_tag: str, ce_weight: float = 0.1, dice_weight: float = 1, *args, **kwargs
     ):
         """Initializes class instance.
 
         Args:
-            segmentation_data_tag: Key to locate the data to reconstruct from all the data returned in a batch.
+            mask_tag: Key to locate the data to reconstruct from all the data returned in a batch, and the
+                reconstruction predicted by the autoencoder in the output.
+            encoding_tag: Key to locate the latent space encoding in the output of the autoencoder.
             ce_weight: Weight to give to the cross-entropy term of the autoencoder's reconstruction loss.
             dice_weight: Weight to give to the dice term of the autoencoder's reconstruction loss.
             *args: Positional arguments to pass to the parent's constructor.
@@ -106,10 +107,10 @@ class SegmentationAutoencoderTask(SharedTrainEvalTask):
 
     def _shared_train_val_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:  # noqa: D102
         # Forward
-        out = self.model(self._categorical_to_input(batch[self.hparams.segmentation_data_tag]))
+        out = self.model(self._categorical_to_input(batch[self.hparams.mask_tag]))
 
         # Compute categorical input reconstruction metrics
-        x_hat, x = out[self.model.reconstruction_tag], batch[self.hparams.segmentation_data_tag]
+        x_hat, x = out[self.model.reconstruction_tag], batch[self.hparams.mask_tag]
         ce = F.cross_entropy(x_hat, x)
         dice_values = self._dice(x_hat, x)
         dices = {f"dice/{label}": dice for label, dice in zip(self.hparams.data_params.labels[1:], dice_values)}
@@ -156,7 +157,7 @@ class SegmentationAutoencoderTask(SharedTrainEvalTask):
     def predict_step(  # noqa: D102
         self, batch: Dict[str, Tensor], batch_idx: int, dataloader_idx: int = 0
     ) -> Dict[str, Tensor]:
-        x = batch[self.hparams.segmentation_data_tag]
+        x = batch[self.hparams.mask_tag]
 
         # Split the sequences in batches, in case the sequences are bigger than the batch size that fits in memory
         x_hat, z = [], []
@@ -168,7 +169,7 @@ class SegmentationAutoencoderTask(SharedTrainEvalTask):
         # Assemble the predictions on the whole batch from those of the sub-batches
         x_hat, z = torch.cat(x_hat), torch.cat(z)
 
-        return {Tags.pred: x_hat, Tags.encoding: z}
+        return {self.hparams.mask_tag: x_hat, self.hparams.encoding_tag: z}
 
 
 class SegmentationBetaVaeTask(SegmentationAutoencoderTask):

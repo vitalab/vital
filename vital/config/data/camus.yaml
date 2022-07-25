@@ -13,3 +13,6 @@ dataset_path: ${oc.env:CAMUS_DATA_PATH}
 labels: [bg, lv, myo, atrium]
 fold: 5
 use_sequence: False
+
+image_tag: img
+mask_tag: gt
