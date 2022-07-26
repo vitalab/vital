@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Union
 
@@ -7,13 +8,18 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import BasePredictionWriter
 from pytorch_lightning.callbacks.prediction_writer import WriteInterval
 from torch import Tensor
+from tqdm.auto import tqdm
 
-from vital.data.camus.config import CamusTags, seg_save_options
+from vital.data.camus.config import CamusTags, img_save_options, seg_save_options
 from vital.data.camus.dataset import get_segmentation_attributes
 from vital.data.camus.utils.register import CamusRegisteringTransformer
+from vital.data.config import Tags
+from vital.results.camus.utils.itertools import PatientViews
 from vital.utils.format.numpy import to_categorical
 from vital.utils.image.process import PostProcessor
 from vital.utils.image.transform import resize_image
+
+logger = logging.getLogger(__name__)
 
 
 class CamusPredictionWriter(BasePredictionWriter):
@@ -63,6 +69,53 @@ class CamusPredictionWriter(BasePredictionWriter):
         # Delete leftover predictions dataset
         self._write_path.unlink(missing_ok=True)
 
+    def postprocess_prediction(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        prediction: Union[np.ndarray, Dict[str, np.ndarray]],
+    ) -> Dict[str, Tensor]:
+        """Post-processes the prediction made on a batch of data.
+
+        Args:
+            trainer: `Trainer` used in the experiment.
+            pl_module: `LightningModule` used in the experiment.
+            prediction:  Batch of prediction, or a dictionary containing the batch of prediction under the 'pred' key.
+
+        Returns:
+            Dictionary containing the original prediction (under the 'pred' key), the post-processed prediction
+            (under the 'post_pred' key), and any original content of `prediction` along with additional outputs of the
+            post-processors.
+        """
+        if isinstance(prediction, np.ndarray):
+            output = {Tags.pred: prediction}
+        elif isinstance(prediction, dict) and pl_module.hparams.mask_tag in prediction:
+            prediction[Tags.pred] = prediction.pop(pl_module.hparams.mask_tag)
+            output = prediction
+        else:
+            raise RuntimeError(
+                f"Could not post-process the predictions in '{type(self)}', because we could not infer how to unpack "
+                f"the predictions from '{type(pl_module)}'s `predict_step`. Please only return the predictions to"
+                f"post-process, or include them in a dictionary under the '{pl_module.hparams.mask_tag}' key."
+            )
+
+        output[Tags.post_pred] = output[Tags.pred]
+        for postprocessor in self._postprocessors:
+            post_pred = postprocessor(output[Tags.post_pred])
+            if isinstance(post_pred, dict):
+                post_pred[Tags.post_pred] = post_pred.pop(f"post_{pl_module.hparams.mask_tag}")
+                output.update(post_pred)
+            elif isinstance(post_pred, np.ndarray):
+                output[Tags.post_pred] = post_pred
+            else:
+                raise RuntimeError(
+                    f"Unsupported output type from postprocessor '{type(postprocessor)}' in the postprocessing loop. "
+                    f"Modify the postprocessor to return either a '{np.ndarray}' or a '{dict}', or remove the "
+                    f"postprocessor altogether."
+                )
+
+        return output
+
     def write_on_batch_end(
         self,
         trainer: "pl.Trainer",
@@ -91,10 +144,10 @@ class CamusPredictionWriter(BasePredictionWriter):
         """
         # Extract the main prediction, i.e. the predicted segmentation, and the auxiliary predictions
         aux_predictions = {}
-        if isinstance(prediction, Tensor):
+        if isinstance(prediction, Tensor):  # Segmentation model
             pred_view_seg = prediction
-        else:
-            pred_view_seg = prediction.pop(CamusTags.pred)
+        else:  # Autoencoder model
+            pred_view_seg = prediction.pop(pl_module.hparams.mask_tag)
             aux_predictions = prediction
 
         # Collect the metadata related to the batch's data
@@ -150,3 +203,57 @@ class CamusPredictionWriter(BasePredictionWriter):
             view_group.attrs.update(view_metadata.instants)  # Indicate clinically important instants' frames
             if view_metadata.registering:  # Save registering parameters if the VAE was trained on registered data
                 view_group.attrs.update(view_metadata.registering)
+
+    def write_on_epoch_end(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        predictions: Sequence[Any],
+        batch_indices: Optional[Sequence[Any]],
+    ) -> None:
+        """Post-processes the predictions saved for each batch and saves the post-processed results.
+
+        Args:
+            trainer: `Trainer` used in the experiment.
+            pl_module: `LightningModule` used in the experiment.
+            predictions: Collection of predictions accumulated over the batches. The parameter is there to respect the
+                signature of the parent function, but it is not used here. Rather, the predictions to post-process are
+                read directly from the file they were saved to.
+            batch_indices: Indices of all the batches whose outputs are provided.
+        """
+        # Create an iterator over the results written for each batch
+        patient_views_iter = PatientViews(
+            results_path=self._write_path, sequence="full_cycle", use_sequence=trainer.datamodule.hparams.use_sequence
+        )
+
+        # Set up the feedback to the user
+        progress_msg = f"Post-processing '{self._write_path}' predictions"
+        if self._epoch_end_progress_bar:
+            patient_views_iter = tqdm(
+                patient_views_iter, total=len(patient_views_iter), unit=patient_views_iter.desc, desc=progress_msg
+            )
+        else:
+            logger.info(progress_msg)
+
+        # Initialize the file to write to as a copy of the predictions already saved
+        with h5py.File(self._write_path, "a") as dataset:
+
+            # For each group of results
+            for view_result in patient_views_iter:
+
+                # Post-process the raw predictions
+                post_dict = self.postprocess_prediction(
+                    trainer, pl_module, view_result[f"{CamusTags.pred}/{CamusTags.raw}"].data
+                )
+                post, enc = post_dict[CamusTags.post_pred], post_dict.get(pl_module.hparams.get("encoding_tag"))
+
+                # Write the post-processed predictions to the file
+                view_pred_group = dataset.require_group(f"{view_result.id}/{CamusTags.pred}")
+                post_ds = view_pred_group.require_dataset(CamusTags.post, shape=post.shape, **seg_save_options)
+                post_ds[...] = post
+                for attr, attr_val in get_segmentation_attributes(post, pl_module.hparams.data_params.labels).items():
+                    post_ds.attrs[attr] = attr_val.squeeze()
+
+                if enc is not None:
+                    enc_ds = view_pred_group.require_dataset(CamusTags.encoding, shape=enc.shape, **img_save_options)
+                    enc_ds[...] = enc
