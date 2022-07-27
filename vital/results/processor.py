@@ -1,5 +1,4 @@
 import logging
-import shutil
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Mapping, Optional, Tuple, Type
@@ -74,14 +73,14 @@ class ResultsProcessor:
         # Clean up any leftover outputs from a previous run of the processor targeting the same output directory
         if self.output_path.suffix:
             # If the output is a file, delete the file if it already exists
+            # to avoid problems if processors append to an existing file the result of processing each item
             self.output_path.unlink(missing_ok=True)
 
             # Identify the directory where the file is saved
             output_dir = self.output_path.parent
         else:
-            # If the output is a directory, delete all its contents
+            # If the output is a directory, merge the processor's output with the directory's prior contents
             output_dir = self.output_path
-            shutil.rmtree(output_dir, ignore_errors=True)
 
         # Ensure the lowest-level output directory exists
         output_dir.mkdir(parents=True, exist_ok=True)
