@@ -71,7 +71,7 @@ simply be:
 python vital/runner.py +experiment=mnist-mlp
 
 # Output the config that would have been used, without actually running the code (useful for debugging)
-python vital/runner.py +experiment=mnist-mlp --config job
+python vital/runner.py +experiment=mnist-mlp --cfg job
 ```
 
 ### Tracking experiments
