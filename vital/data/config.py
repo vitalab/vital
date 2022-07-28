@@ -14,12 +14,6 @@ class LabelEnum(IntEnum):
     def __str__(self):  # noqa: D105
         return self.name.lower()
 
-    def __eq__(self, other):
-        """Adds support for equality (case-insensitive) comparison between a string and a label's name."""
-        if isinstance(other, str):
-            return self.name.casefold() == other.casefold()
-        return super().__eq__(other)
-
     @classmethod
     def from_proto_label(cls, proto_label: ProtoLabel) -> "LabelEnum":
         """Creates a label from a protobuf label.
