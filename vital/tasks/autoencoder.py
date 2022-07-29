@@ -44,13 +44,18 @@ class SegmentationAutoencoderTask(SharedTrainEvalTask):
         # Configure metric objects used repeatedly in the train/eval loop
         self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none")
 
-        # Create buffers to keep track of statistics on the latent dimensions,
-        # which could be necessary for some downstream tasks
-        self._latent_stats = {"latent_min": torch.finfo().max, "latent_max": torch.finfo().min}
-        for stat, default in self._latent_stats.items():
-            # Only register the buffers for the statistics, since their default values are reset at the beginning of
-            # each training epoch
-            self.register_buffer(stat, None)
+        # Create buffers to keep track of stats on the latent dimensions, which are necessary for some downstream tasks.
+        # Technically we don't have to specify the initial dimension of the buffers when creating them, since we update
+        # them anyway during training, but Pytorch as a longstanding issue with loading checkpoints with buffers whose
+        # size is unknown during init and only set dynamically during training:
+        # https://github.com/pytorch/pytorch/issues/8104
+        # So, to simplify loading autoencoder checkpoints, we specify the initial dimension of the buffers here.
+        self._init_latent_stats = {
+            "latent_min": torch.full([self.hparams.model.latent_dim], torch.finfo().max, dtype=torch.float),
+            "latent_max": torch.full([self.hparams.model.latent_dim], torch.finfo().min, dtype=torch.float),
+        }
+        for stat, init_tensor in self._init_latent_stats.items():
+            self.register_buffer(stat, init_tensor)
 
     def configure_model(self) -> nn.Module:  # noqa: D102
         return hydra.utils.instantiate(
@@ -62,10 +67,8 @@ class SegmentationAutoencoderTask(SharedTrainEvalTask):
     def on_train_epoch_start(self) -> None:  # noqa: D102
         super().on_epoch_start()
         # Resets the latent dimensions' statistics on each new epoch, so that they are not biased by the previous epochs
-        for stat, default in self._latent_stats.items():
-            setattr(
-                self, stat, torch.full([self.hparams.model.latent_dim], default, dtype=torch.float, device=self.device)
-            )
+        for stat, init_tensor in self._init_latent_stats.items():
+            setattr(self, stat, init_tensor.to(self.device))
 
     @auto_move_data
     def forward(self, x: Tensor, task: Literal["encode", "decode", "reconstruct"] = "reconstruct") -> Tensor:
