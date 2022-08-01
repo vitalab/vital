@@ -68,13 +68,13 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
 
     def setup(self, stage: Optional[str] = None) -> None:  # noqa: D102
         if stage == TrainerFn.FITTING:
-            self._dataset[Subset.TRAIN] = Camus(image_set=Subset.TRAIN, **self._dataset_kwargs)
+            self.subsets[Subset.TRAIN] = Camus(image_set=Subset.TRAIN, **self._dataset_kwargs)
         if stage in [TrainerFn.FITTING, TrainerFn.VALIDATING]:
-            self._dataset[Subset.VAL] = Camus(image_set=Subset.VAL, **self._dataset_kwargs)
+            self.subsets[Subset.VAL] = Camus(image_set=Subset.VAL, **self._dataset_kwargs)
         if stage == TrainerFn.TESTING:
-            self._dataset[Subset.TEST] = Camus(image_set=Subset.TEST, **self._dataset_kwargs)
+            self.subsets[Subset.TEST] = Camus(image_set=Subset.TEST, **self._dataset_kwargs)
         if stage == TrainerFn.PREDICTING:
-            self._dataset[Subset.PREDICT] = Camus(image_set=Subset.TEST, predict=True, **self._dataset_kwargs)
+            self.subsets[Subset.PREDICT] = Camus(image_set=Subset.TEST, predict=True, **self._dataset_kwargs)
 
     def group_ids(self, subset: Subset, level: Literal["patient", "view"] = "view") -> List[str]:
         """Lists the IDs of the different levels of groups/clusters samples in the data can belong to.
@@ -87,35 +87,11 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
         Returns:
             IDs of the different levels of groups/clusters samples in the data can belong to.
         """
-        subset_data = self.dataset().get(subset, Camus(image_set=subset, **self._dataset_kwargs))
-        return subset_data.list_groups(level=level)
-
-    def train_dataloader(self) -> DataLoader:  # noqa: D102
-        return DataLoader(
-            self.dataset(subset=Subset.TRAIN),
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
-
-    def val_dataloader(self) -> DataLoader:  # noqa: D102
-        return DataLoader(
-            self.dataset(subset=Subset.VAL),
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
-
-    def test_dataloader(self) -> DataLoader:  # noqa: D102
-        return DataLoader(
-            self.dataset(subset=Subset.TEST), batch_size=self.batch_size, num_workers=self.num_workers, pin_memory=True
-        )
+        subset_dataset = self.subsets.get(subset, Camus(image_set=subset, **self._dataset_kwargs))
+        return subset_dataset.list_groups(level=level)
 
     def predict_dataloader(self) -> DataLoader:  # noqa: D102
-        return DataLoader(
-            self.dataset(subset=Subset.PREDICT), batch_size=None, num_workers=self.num_workers, pin_memory=True
-        )
+        return DataLoader(self.subsets[Subset.PREDICT], batch_size=None, num_workers=self.num_workers, pin_memory=True)
 
     @classmethod
     def add_argparse_args(cls, parent_parser: ArgumentParser, **kwargs) -> ArgumentParser:

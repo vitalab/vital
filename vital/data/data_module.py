@@ -1,11 +1,11 @@
 import os
 from abc import ABC
 from argparse import ArgumentParser
-from typing import Dict, Union
+from typing import Dict
 
 import pytorch_lightning as pl
 from pytorch_lightning.utilities.argparse import add_argparse_args
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 
 from vital.data.config import DataParameters, Subset
 
@@ -33,25 +33,26 @@ class VitalDataModule(pl.LightningDataModule, ABC):
         self.data_params = data_params
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self._dataset: Dict[Subset, Dataset] = {}
+        self.subsets: Dict[Subset, Dataset] = {}
         self.save_hyperparameters(ignore="data_params")
 
-    def dataset(self, subset: Subset = None) -> Union[Dict[Subset, Dataset], Dataset]:
-        """Returns the subsets of the data (e.g. train) and their torch ``Dataset`` handle.
+    def _dataloader(self, subset: Subset, shuffle: bool = False) -> DataLoader:
+        return DataLoader(
+            self.subsets[subset],
+            batch_size=self.batch_size,
+            shuffle=shuffle,
+            num_workers=self.num_workers,
+            pin_memory=True,
+        )
 
-        It should not be called before ``setup``, when the datasets are set.
+    def train_dataloader(self) -> DataLoader:  # noqa: D102
+        return self._dataloader(Subset.TRAIN, shuffle=True)
 
-        Args:
-            subset: Specific subset for which to get the ``Dataset`` handle.
+    def val_dataloader(self) -> DataLoader:  # noqa: D102
+        return self._dataloader(Subset.VAL)
 
-        Returns:
-            If ``subset`` is provided, returns the handle to a specific dataset. Otherwise, returns the mapping between
-            subsets of the data (e.g. train) and their torch ``Dataset`` handle.
-        """
-        if subset is not None:
-            return self._dataset[subset]
-
-        return self._dataset
+    def test_dataloader(self) -> DataLoader:  # noqa: D102
+        return self._dataloader(Subset.TEST)
 
     @classmethod
     def add_argparse_args(cls, parent_parser: ArgumentParser, **kwargs) -> ArgumentParser:  # noqa: D102

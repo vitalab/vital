@@ -2,7 +2,8 @@ from pathlib import Path
 from typing import Callable, List, Optional, Union
 
 import torch
-from torch.utils.data import DataLoader, Dataset, random_split
+from pytorch_lightning.trainer.states import TrainerFn
+from torch.utils.data import Dataset, random_split
 from torchvision import transforms as transform_lib
 
 from vital import get_vital_home
@@ -50,15 +51,15 @@ class MnistDataModule(VitalDataModule):
         MNIST(root=self._root, train=False, download=self._download)
 
     def setup(self, stage: Optional[str] = None) -> None:  # noqa: D102
-        if stage == "fit":
+        if stage == TrainerFn.FITTING:
             # Initialize one dataset for train/val split
             transforms = self.default_transforms() if self._transforms is None else self._transforms
             dataset_train = MNIST(root=self._root, transform=transforms, train=True)
             # Split
-            self._dataset[Subset.TRAIN] = self._split_dataset(dataset_train)
-            self._dataset[Subset.VAL] = self._split_dataset(dataset_train, train=False)
-        if stage == "test":
-            self._dataset[Subset.TEST] = MNIST(root=self._root, train=False)
+            self.subsets[Subset.TRAIN] = self._split_dataset(dataset_train)
+            self.subsets[Subset.VAL] = self._split_dataset(dataset_train, train=False)
+        if stage == TrainerFn.TESTING:
+            self.subsets[Subset.TEST] = MNIST(root=self._root, transform=self.default_transforms(), train=False)
 
     def _split_dataset(self, dataset: Dataset, train: bool = True) -> Dataset:
         """Splits the dataset into train and validation set.
@@ -108,17 +109,3 @@ class MnistDataModule(VitalDataModule):
         else:
             mnist_transforms = transform_lib.Compose([transform_lib.ToTensor()])
         return mnist_transforms
-
-    def _data_loader(self, dataset: Dataset, shuffle: bool = False) -> DataLoader:
-        return DataLoader(
-            dataset, batch_size=self.batch_size, shuffle=shuffle, num_workers=self.num_workers, pin_memory=True
-        )
-
-    def train_dataloader(self) -> DataLoader:  # noqa: D102
-        return self._data_loader(self.dataset(subset=Subset.TRAIN), shuffle=True)
-
-    def val_dataloader(self) -> DataLoader:  # noqa: D102
-        return self._data_loader(self.dataset(subset=Subset.VAL))
-
-    def test_dataloader(self) -> DataLoader:  # noqa: D102
-        return self._data_loader(self.dataset(subset=Subset.TEST))
