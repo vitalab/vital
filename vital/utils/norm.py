@@ -3,8 +3,8 @@ from typing import Tuple
 import numpy as np
 
 
-def scale(data: np.ndarray, bounds: Tuple[float, float] = None) -> np.ndarray:
-    """Standardizes data w.r.t. predefined min/max bounds, if provided, and its own min/max otherwise.
+def minmax_scaling(data: np.ndarray, bounds: Tuple[float, float] = None) -> np.ndarray:
+    """Standardizes data w.r.t. predefined min/max bounds, if provided, or its own min/max otherwise.
 
     Args:
         data: Data to scale.

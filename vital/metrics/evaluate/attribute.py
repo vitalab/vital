@@ -1,6 +1,6 @@
 import numpy as np
 
-from vital.utils.norm import scale
+from vital.utils.norm import minmax_scaling
 
 
 def check_temporal_consistency_errors(threshold: float, *args, **kwargs) -> np.ndarray:
@@ -29,7 +29,7 @@ def compute_temporal_consistency_metric(attribute: np.ndarray, *args, **kwargs) 
     Returns:
         metric: (n_samples,) Error between attribute values and the interpolation between their previous/next neighbors.
     """
-    attribute = scale(attribute, *args, **kwargs)
+    attribute = minmax_scaling(attribute, *args, **kwargs)
 
     # Compute the temporal consistency metric
     prev_neigh = attribute[:-2]  # Previous neighbors of non-edge instants
