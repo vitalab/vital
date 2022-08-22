@@ -54,8 +54,8 @@ class CamusPredictionWriter(BasePredictionWriter):
                 the predicted segmentation accessible under the `CamusTags.pred` key.
                 The predicted segmentations is in format (N, ``out_channels``, H, W), and its values can either be the
                 raw, unnormalized scores predicted by the model or the segmentation in one-hot format.
-                The other predications must be tensors, and their dataset will be named after their key in the
-                prediction dictionary.
+                The other predictions must be tensors, and their dataset will be named after their key in the prediction
+                dictionary.
             batch_indices: Indices of all the batches whose outputs are provided.
             batch: The current batch used by the model to give its prediction.
             batch_idx: Index of the current batch.
