@@ -33,8 +33,8 @@ class AcdcDataModule(VitalDataModule):
 
     def setup(self, stage: Optional[str] = None) -> None:  # noqa: D102
         if stage == TrainerFn.FITTING:
-            self.subsets[Subset.TRAIN] = Acdc(image_set=Subset.TRAIN, **self._dataset_kwargs)
+            self.datasets[Subset.TRAIN] = Acdc(image_set=Subset.TRAIN, **self._dataset_kwargs)
         if stage in [TrainerFn.FITTING, TrainerFn.VALIDATING]:
-            self.subsets[Subset.VAL] = Acdc(image_set=Subset.VAL, **self._dataset_kwargs)
+            self.datasets[Subset.VAL] = Acdc(image_set=Subset.VAL, **self._dataset_kwargs)
         if stage == TrainerFn.TESTING:
-            self.subsets[Subset.TEST] = Acdc(image_set=Subset.TEST, **self._dataset_kwargs)
+            self.datasets[Subset.TEST] = Acdc(image_set=Subset.TEST, **self._dataset_kwargs)

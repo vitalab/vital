@@ -33,12 +33,12 @@ class VitalDataModule(pl.LightningDataModule, ABC):
         self.data_params = data_params
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.subsets: Dict[Subset, Dataset] = {}
+        self.datasets: Dict[Subset, Dataset] = {}
         self.save_hyperparameters(ignore="data_params")
 
     def _dataloader(self, subset: Subset, shuffle: bool = False) -> DataLoader:
         return DataLoader(
-            self.subsets[subset],
+            self.datasets[subset],
             batch_size=self.batch_size,
             shuffle=shuffle,
             num_workers=self.num_workers,

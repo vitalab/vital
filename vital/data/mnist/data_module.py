@@ -56,10 +56,10 @@ class MnistDataModule(VitalDataModule):
             transforms = self.default_transforms() if self._transforms is None else self._transforms
             dataset_train = MNIST(root=self._root, transform=transforms, train=True)
             # Split
-            self.subsets[Subset.TRAIN] = self._split_dataset(dataset_train)
-            self.subsets[Subset.VAL] = self._split_dataset(dataset_train, train=False)
+            self.datasets[Subset.TRAIN] = self._split_dataset(dataset_train)
+            self.datasets[Subset.VAL] = self._split_dataset(dataset_train, train=False)
         if stage == TrainerFn.TESTING:
-            self.subsets[Subset.TEST] = MNIST(root=self._root, transform=self.default_transforms(), train=False)
+            self.datasets[Subset.TEST] = MNIST(root=self._root, transform=self.default_transforms(), train=False)
 
     def _split_dataset(self, dataset: Dataset, train: bool = True) -> Dataset:
         """Splits the dataset into train and validation set.
