@@ -11,7 +11,9 @@ PATH_ROOT = pathlib.Path(__file__).parent
 builtins.__VITAL_SETUP__ = True
 
 
-def load_requirements(path_dir=PATH_ROOT, file_name="requirements.txt", comment_char="#"):  # noqa: D103
+def load_requirements(
+    path_dir=PATH_ROOT, file_name="requirements.txt", comment_char="#"
+):  # noqa: D103
     with open(os.path.join(path_dir, "requirements", file_name), "r") as file:
         lines = [ln.strip() for ln in file.readlines()]
     reqs = []
@@ -73,5 +75,5 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
     ],
-    include_package_data=True
+    include_package_data=True,
 )
