@@ -3,7 +3,7 @@ import builtins
 import os
 import pathlib
 
-from setuptools import find_packages, setup
+from setuptools import find_namespace_packages, find_packages, setup
 
 # https://packaging.python.org/guides/single-sourcing-package-version/
 # http://blog.ionelmc.ro/2014/05/25/python-packaging/
@@ -55,7 +55,7 @@ setup(
     author_email="nathan.painchaud@usherbrooke.ca",
     url="https://github.com/nathanpainchaud/vital",
     license="Apache-2.0",
-    packages=find_packages(),
+    packages=find_namespace_packages(include=["hydra_plugins.*"]) + find_packages(),
     long_description=load_long_description(),
     long_description_content_type="text/markdown",
     python_requires=">=3.10",
@@ -73,4 +73,5 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
     ],
+    include_package_data=True,
 )

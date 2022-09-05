@@ -43,7 +43,7 @@ class EchoMeasure(Measure):
         others = ~(left_ventricle + myocardium)
         dilated_myocardium = ndimage.binary_dilation(myocardium, structure=EchoMeasure._square_3x3_connectivity)
         dilated_others = ndimage.binary_dilation(others, structure=EchoMeasure._square_3x3_connectivity)
-        y_coords, x_coords = np.where(left_ventricle * dilated_myocardium * dilated_others)
+        y_coords, x_coords = np.nonzero(left_ventricle * dilated_myocardium * dilated_others)
 
         if (num_markers := len(y_coords)) < 2:
             logger.warning(
@@ -52,12 +52,21 @@ class EchoMeasure(Measure):
             )
             return np.nan, np.nan
 
-        left_half_mask = x_coords < x_coords.mean()
-        bottom_left_point_idx = y_coords[left_half_mask].argmax()
-        bottom_right_point_idx = y_coords[~left_half_mask].argmax()
+        if np.all(x_coords == x_coords.mean()):
+            # Edge case where the base points are aligned vertically
+            # Divide frontier into bottom and top halves.
+            coord_mask = y_coords > y_coords.mean()
+            left_point_idx = y_coords[coord_mask].argmin()
+            right_point_idx = y_coords[~coord_mask].argmax()
+        else:
+            # Normal case where there is a clear divide between left and right markers at the base
+            # Divide frontier into left and right halves.
+            coord_mask = x_coords < x_coords.mean()
+            left_point_idx = y_coords[coord_mask].argmax()
+            right_point_idx = y_coords[~coord_mask].argmax()
         return (
-            (y_coords[left_half_mask][bottom_left_point_idx], x_coords[left_half_mask][bottom_left_point_idx]),
-            (y_coords[~left_half_mask][bottom_right_point_idx], x_coords[~left_half_mask][bottom_right_point_idx]),
+            (y_coords[coord_mask][left_point_idx], x_coords[coord_mask][left_point_idx]),
+            (y_coords[~coord_mask][right_point_idx], x_coords[~coord_mask][right_point_idx]),
         )
 
     @staticmethod

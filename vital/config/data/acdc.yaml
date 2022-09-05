@@ -5,7 +5,6 @@ _target_: vital.data.acdc.data_module.AcdcDataModule
 
 dataset_path: ${oc.env:ACDC_DATA_PATH}
 use_da: True
-predict_on_test: True
 
 image_tag: img
 mask_tag: gt

@@ -4,10 +4,10 @@ from torch import Tensor
 from torch.nn import functional as F
 from torchmetrics.functional import accuracy
 
-from vital.tasks.generic import SharedTrainEvalTask
+from vital.tasks.generic import SharedStepsTask
 
 
-class ClassificationTask(SharedTrainEvalTask):
+class ClassificationTask(SharedStepsTask):
     """Generic classification training and inference steps.
 
     Implements generic classification train/val step and inference, assuming the following conditions:
@@ -29,7 +29,7 @@ class ClassificationTask(SharedTrainEvalTask):
     def forward(self, *args, **kwargs):  # noqa: D102
         return self.model(*args, **kwargs)
 
-    def _shared_train_val_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:  # noqa: D102
+    def _shared_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:  # noqa: D102
         x, y = batch[self.hparams.image_tag], batch[self.hparams.label_tag]
 
         # Forward

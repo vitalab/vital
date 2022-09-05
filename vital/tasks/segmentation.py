@@ -7,12 +7,12 @@ from torch.nn import functional as F
 from torchvision.ops import roi_pool
 
 from vital.metrics.train.metric import DifferentiableDiceCoefficient
-from vital.tasks.generic import SharedTrainEvalTask
+from vital.tasks.generic import SharedStepsTask
 from vital.utils.decorators import auto_move_data
 from vital.utils.image.measure import Measure
 
 
-class SegmentationTask(SharedTrainEvalTask):
+class SegmentationTask(SharedStepsTask):
     """Generic segmentation training and inference steps.
 
     Implements generic segmentation train/val step and inference, assuming the following conditions:
@@ -40,7 +40,7 @@ class SegmentationTask(SharedTrainEvalTask):
     def forward(self, *args, **kwargs):  # noqa: D102
         return self.model(*args, **kwargs)
 
-    def _shared_train_val_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:  # noqa: D102
+    def _shared_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:  # noqa: D102
         x, y = batch[self.hparams.image_tag], batch[self.hparams.mask_tag]
 
         # Forward
@@ -113,7 +113,7 @@ class RoiSegmentationTask(SegmentationTask):
             boxes.append(item_box)
         return torch.stack(boxes).to(y.device)
 
-    def _shared_train_val_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:
+    def _shared_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:
         x, y = batch[self.hparams.image_tag], batch[self.hparams.mask_tag]
         roi_bbox = self._compute_normalized_bbox(y)  # Compute the target RoI bbox from the groundtruth
 
