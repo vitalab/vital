@@ -10,11 +10,11 @@ from torchmetrics.utilities.data import to_onehot
 from vital.data.config import Tags
 from vital.metrics.train.functional import kl_div_zmuv
 from vital.metrics.train.metric import DifferentiableDiceCoefficient
-from vital.tasks.generic import SharedTrainEvalTask
+from vital.tasks.generic import SharedStepsTask
 from vital.utils.decorators import auto_move_data
 
 
-class SegmentationAutoencoderTask(SharedTrainEvalTask):
+class SegmentationAutoencoderTask(SharedStepsTask):
     """Generic segmentation autoencoder training and inference steps.
 
     Implements generic segmentation train/val step and inference, assuming the following conditions:
@@ -104,7 +104,7 @@ class SegmentationAutoencoderTask(SharedTrainEvalTask):
         """
         return to_onehot(x, num_classes=len(self.hparams.data_params.labels)).float()
 
-    def _shared_train_val_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:  # noqa: D102
+    def _shared_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:  # noqa: D102
         # Forward
         out = self.model(self._categorical_to_input(batch[self.hparams.segmentation_data_tag]))
 
@@ -144,7 +144,7 @@ class SegmentationAutoencoderTask(SharedTrainEvalTask):
 
         Args:
             metrics: Metrics useful for computing the loss (usually a combination of metrics from
-                ``self._shared_train_val_step`` and ``self._compute_latent_space_metrics``).
+                ``self._shared_step`` and ``self._compute_latent_space_metrics``).
 
         Returns:
             Loss for a train/val step.

@@ -14,6 +14,9 @@ defaults:
   - override /task/model: mlp
   - override /data: mnist
 
+test: True
+predict: False
+
 # Overwrite specific config parameters here. They will be merged with the rest of the config by Hydra.
 trainer:
   max_epochs: 300

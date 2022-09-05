@@ -95,11 +95,11 @@ class DataParameters:
     """Class for defining parameters related to the nature of the data.
 
     Args:
-        in_shape: Shape of the input data (e.g. height, width, channels).
-        out_shape: Shape of the target data (e.g. height, width, channels).
+        in_shape: Shape of the input data, if constant for all items (e.g. channels, height, width).
+        out_shape: Shape of the target data, if constant for all items (e.g. classes, height, width).
         labels: Labels provided with the data, required when using segmentation task APIs.
     """
 
-    in_shape: Tuple[int, ...]
-    out_shape: Tuple[int, ...]
+    in_shape: Optional[Tuple[int, ...]] = None
+    out_shape: Optional[Tuple[int, ...]] = None
     labels: Optional[Tuple[LabelEnum, ...]] = None
