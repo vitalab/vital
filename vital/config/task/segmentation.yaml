@@ -2,5 +2,7 @@ defaults:
   - default
 
 _target_: vital.tasks.segmentation.SegmentationTask
+image_tag: ${data.image_tag}
+mask_tag: ${data.mask_tag}
 ce_weight: 0.1
 dice_weight: 1

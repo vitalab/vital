@@ -2,6 +2,7 @@ defaults:
   - default
 
 _target_: vital.tasks.autoencoder.SegmentationAutoencoderTask
-segmentation_data_tag: gt
+mask_tag: ${data.mask_tag}
+encoding_tag: z
 ce_weight: 0.1
 dice_weight: 1

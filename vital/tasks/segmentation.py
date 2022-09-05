@@ -6,7 +6,6 @@ from torch import Tensor
 from torch.nn import functional as F
 from torchvision.ops import roi_pool
 
-from vital.data.config import Tags
 from vital.metrics.train.metric import DifferentiableDiceCoefficient
 from vital.tasks.generic import SharedStepsTask
 from vital.utils.decorators import auto_move_data
@@ -22,10 +21,12 @@ class SegmentationTask(SharedStepsTask):
         - The loss used is a weighted combination of Dice and cross-entropy.
     """
 
-    def __init__(self, ce_weight: float = 0.1, dice_weight: float = 1, *args, **kwargs):
+    def __init__(self, image_tag: str, mask_tag: str, ce_weight: float = 0.1, dice_weight: float = 1, *args, **kwargs):
         """Initializes the metric objects used repeatedly in the train/eval loop.
 
         Args:
+            image_tag: Key to locate the input image from all the data returned in a batch.
+            mask_tag: Key to locate the target segmentation mask from all the data returned in a batch.
             ce_weight: Weight to give to the cross-entropy factor of the segmentation loss
             dice_weight: Weight to give to the cross-entropy factor of the segmentation loss
             *args: Positional arguments to pass to the parent's constructor.
@@ -40,7 +41,7 @@ class SegmentationTask(SharedStepsTask):
         return self.model(*args, **kwargs)
 
     def _shared_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:  # noqa: D102
-        x, y = batch[Tags.img], batch[Tags.gt]
+        x, y = batch[self.hparams.image_tag], batch[self.hparams.mask_tag]
 
         # Forward
         y_hat = self.model(x)
@@ -57,7 +58,7 @@ class SegmentationTask(SharedStepsTask):
         return {"loss": loss, "ce": ce, "dice": mean_dice, **dices}
 
     def predict_step(self, batch: Dict[str, Tensor], batch_idx: int, dataloader_idx: int = 0) -> Tensor:  # noqa: D102
-        x = batch[Tags.img]
+        x = batch[self.hparams.image_tag]
 
         # Split the sequences in batches, in case the sequences are bigger than the batch size that fits in memory
         y_hat = []
@@ -113,7 +114,7 @@ class RoiSegmentationTask(SegmentationTask):
         return torch.stack(boxes).to(y.device)
 
     def _shared_step(self, batch: Dict[str, Tensor], batch_idx: int) -> Dict[str, Tensor]:
-        x, y = batch[Tags.img], batch[Tags.gt]
+        x, y = batch[self.hparams.image_tag], batch[self.hparams.mask_tag]
         roi_bbox = self._compute_normalized_bbox(y)  # Compute the target RoI bbox from the groundtruth
 
         # Forward
