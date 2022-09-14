@@ -12,9 +12,9 @@ Sherbrooke University, headed by Professor [Pierre-Marc Jodoin](http://info.ushe
 
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![CI: Code Format](https://github.com/nathanpainchaud/vital/actions/workflows/code-format.yml/badge.svg?branch=dev)](https://github.com/nathanpainchaud/vital/actions/workflows/code-format.yml?query=branch%3Adev)
+[![CI: Code Format](https://github.com/vitalab/vital/actions/workflows/code-format.yml/badge.svg?branch=dev)](https://github.com/vitalab/vital/actions/workflows/code-format.yml?query=branch%3Adev)
 
-[![license](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/nathanpainchaud/vital/blob/dev/LICENSE)
+[![license](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/vitalab/vital/blob/dev/LICENSE)
 
 </div>
 
