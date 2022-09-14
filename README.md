@@ -52,8 +52,9 @@ To install the project, run the following command from the project's root direct
 ```shell script
 pip install .
 ```
-> NOTE: This instruction applies when you only want to use the project. If you want to edit the code and contribute to
-> the project, refer to [the section on how to contribute](#how-to-contribute).
+> **Note**
+> These instructions apply when you only want to use the project. If you want to edit the code or contribute to the
+> project, refer to [the section on how to contribute](#how-to-contribute).
 
 ### Configuring a run
 This project uses Hydra to handle the configuration of the [`VitalRunner`](vital/runner.py) entry point. To understand
@@ -86,7 +87,7 @@ file when launching the [VitalRunner](vital/runner.py):
 python vital/runner.py logger=comet/offline ...
 ```
 To configure the Comet API and experiment's metadata, Comet relies on either i) environment variables (which you can set
-in a `.env` that will automatically be loaded using `python-dotenv`) or ii) a [`.comet.config`](.comet.config)` file. For
+in a `.env` that will automatically be loaded using `python-dotenv`) or ii) a [`.comet.config`](.comet.config) file. For
 more information on how to configure Comet using environment variables or the config file, refer to
 [Comet's configuration variables documentation](https://www.comet.ml/docs/python-sdk/advanced/#comet-configuration-variables).
 
@@ -94,20 +95,23 @@ An example of a `.comet.config` file, with the appropriate fields to track exper
 [here](.comet.config). You can simply copy the file to the directory of your choice within your project (be sure
 not to commit your Comet API key!!!) and fill the values with your own Comet credentials and workspace setup.
 
-> NOTE: No change to the code is necessary to change how the `CometLogger` handles the configuration from the
-> `.comet.config` file. The code simply reads the content of the `[comet]` section of the file and uses it to create a
-> `CometLogger` instance. That way, you simply have to ensure that the fields present in your configuration match the
-> behavior you want from the `CometLogger` integration in Lighting, and you're good to go!
+> **Note**
+> No change to the code is necessary to change how the `CometLogger` handles the configuration from the `.comet.config`
+> file. The code simply reads the content of the `[comet]` section of the file and uses it to create a `CometLogger`
+> instance. That way, you simply have to ensure that the fields present in your configuration match the behavior you
+> want from the `CometLogger` integration in Lighting, and you're good to go!
 
 ## How to Contribute
 
 ### Environment Setup
-If you want to contribute to the project, you must include it differently in your python environment. Once again, it is
-recommended to use pip to install the project. However, this time the project should be installed in editable mode, with
-the required additional development dependencies:
+If you want to contribute to the project, you must install it differently in your python environment. This time, it is
+recommended to use an environment where [`poetry`](https://python-poetry.org/) is available, since it is easier to
+install the project in development mode using `poetry`. Assuming you're working in a virtual environment where
+[`poetry` is installed](https://python-poetry.org/docs/#installation), you can simply run the command:
 ```shell script
-pip install -e .[dev]
+poetry install
 ```
+from the project's root directory to install it in editable mode, along with its regular and development dependencies.
 
 ### Version Control Hooks
 Before first trying to commit to the project, it is important to setup the version control hooks, so that commits
@@ -118,7 +122,8 @@ the version control hooks, run the following command:
 pre-commit install
 ```
 
-> NOTE: In case you want to copy the pre-commit hooks configuration to your own project, you're welcome to :)
+> **Note**
+> In case you want to copy the pre-commit hooks configuration to your own project, you're welcome to :)
 > The configuration for each hook is located in the following files:
 > - [isort](https://github.com/timothycrosley/isort): [`pyproject.toml`](./pyproject.toml), `[tool.isort]` section
 > - [black](https://github.com/psf/black): [`pyproject.toml`](./pyproject.toml), `[tool.black]` section

@@ -7,3 +7,6 @@ dataset_path: null
 transforms: null
 download: True
 seed: ${seed}
+
+image_tag: img
+label_tag: gt

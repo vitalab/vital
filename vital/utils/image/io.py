@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Dict, Tuple, Union
 
 import numpy as np
-import SimpleITK
+import SimpleITK as sitk
 from PIL import Image, ImageSequence
 
 
@@ -17,11 +17,11 @@ def sitk_load(filepath: Union[str, Path]) -> Tuple[np.ndarray, Dict[str, Any]]:
         - Collection of metadata.
     """
     # Load image and save info
-    image = SimpleITK.ReadImage(str(filepath))
+    image = sitk.ReadImage(str(filepath))
     info = {"origin": image.GetOrigin(), "spacing": image.GetSpacing(), "direction": image.GetDirection()}
 
     # Extract numpy array from the SimpleITK image object
-    im_array = np.squeeze(SimpleITK.GetArrayFromImage(image))
+    im_array = np.squeeze(sitk.GetArrayFromImage(image))
 
     return im_array, info
 
@@ -39,10 +39,10 @@ def sitk_save(
             because it is not the same as the image array itself.
         dtype: Type of data to save.
     """
-    seg = SimpleITK.GetImageFromArray(im_array.astype(dtype))
+    seg = sitk.GetImageFromArray(im_array.astype(dtype))
     seg.SetOrigin(origin)
     seg.SetSpacing(spacing)
-    SimpleITK.WriteImage(seg, str(output_filepath))
+    sitk.WriteImage(seg, str(output_filepath))
 
 
 def load_gif(filepath: Path) -> np.ndarray:

@@ -1,7 +1,9 @@
 import argparse
-from typing import Type, Union
+from typing import Callable, Tuple, Type, TypeVar, Union
 
 import yaml
+
+T = TypeVar("T")
 
 
 class StoreDictKeyPair(argparse.Action):
@@ -21,6 +23,20 @@ class StoreDictKeyPair(argparse.Action):
         args_map = yaml.safe_load(yaml_str)
 
         setattr(namespace, self.dest, args_map)
+
+
+def dtype_tuple(val: str, dtype: Callable[[str], T] = str, separator: str = ",") -> Tuple[T, ...]:
+    """Parses a string as a tuple of dtypes, separated by `separator`.
+
+    Args:
+        val: String representation of the tuple to parse.
+        dtype: Callable able to parse a value of the expected dtype from a string.
+        separator: Separator to use to split the string.
+
+    Returns:
+        Tuple of dtypes parsed from the string.
+    """
+    return tuple(dtype(x) for x in val.split(separator))
 
 
 def int_or_float(val: str) -> Union[int, float]:
