@@ -62,6 +62,11 @@ class VitalRunner(ABC):
         cfg.seed = seed_everything(cfg.seed, workers=True)
         experiment_logger = VitalRunner.configure_logger(cfg)
 
+        # Instantiate post-processing objects
+        postprocessors = []
+        if isinstance(postprocessing_node := cfg.data.get("postprocessing"), DictConfig):
+            postprocessors = instantiate_config_node_leaves(postprocessing_node, "post-processing")
+
         # Instantiate the different types of callbacks from the configs
         callbacks = []
         if isinstance(callbacks_node := cfg.get("callbacks"), DictConfig):
@@ -73,7 +78,7 @@ class VitalRunner(ABC):
                 )
             )
         if isinstance(predict_node := cfg.data.get("predict"), DictConfig):
-            callbacks.append(hydra.utils.instantiate(predict_node))
+            callbacks.append(hydra.utils.instantiate(predict_node, postprocessors=postprocessors))
 
         if cfg.resume:
             trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=experiment_logger, callbacks=callbacks)

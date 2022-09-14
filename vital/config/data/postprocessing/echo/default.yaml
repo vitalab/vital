@@ -1,0 +1,13 @@
+2d_big_blob:
+  _target_: vital.utils.image.process.morphological.Post2DBigBlob
+  labels: [1, 2]  # [lv, myo]
+
+2d_fill_intra_holes:
+  _target_: vital.utils.image.process.morphological.Post2DFillIntraHoles
+  labels: [2, 1] # [myo, lv] Explicitly process MYO before LV to avoid a closed MYO filling in the LV
+
+2d_fill_inter_holes:
+  _target_: vital.utils.image.process.morphological.Post2DFillInterHoles
+  struct1_label: 1 # lv
+  struct2_label: 2 # myo
+  fill_label: 2 # myo
