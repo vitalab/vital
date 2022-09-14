@@ -1,3 +1,72 @@
+[tool.poetry]
+name = "vital"
+version = "0.1.0"
+description = "Deep Learning Tooling from the Videos & Images Theory and Analytics Laboratory at UdeS"
+authors = ["Nathan Painchaud <nathan.painchaud@usherbrooke.ca>"]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/nathanpainchaud/vital"
+classifiers=[
+    "Environment :: Console",
+    "Natural Language :: English",
+    # Pick your license as you wish
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    # Specify the Python versions you support here. In particular, ensure
+    # that you indicate whether you support Python 2, Python 3 or both.
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+]
+packages = [
+    { include = "vital" },
+    { include = "hydra_plugins" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.10.4"
+torch = "~1.12.0"
+torchvision = "~0.13.0"
+pytorch-lightning = "~1.7.0"
+hydra-core = "~1.2.0"
+torchmetrics = "*"
+torchinfo = "*"
+pathos = "*"
+pillow = "*"
+numpy = "*"
+scipy = "*"
+seaborn = "*"
+matplotlib = "*"
+umap-learn = { version = "*", extras = ["plot"] }
+pandas = "*"
+h5py = "*"
+PyYAML = "*"
+StrEnum = "*"
+tqdm = "*"
+SimpleITK = "*"
+medpy = "*"
+natsort = "*"
+nibabel = "*"
+albumentations = "*"
+comet-ml = "*"
+python-dotenv = "*"
+scikit-image = "*"
+scikit-learn = "*"
+Keras-Preprocessing = "*"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^2.20.0"
+isort = "==5.10.1"
+black = "==22.8.0"
+flake8 = "==5.0.4"
+flake8-docstrings = "==1.6.0"
+
+[tool.poetry.scripts]
+vital-runner = "vital.runner:main"
+bmode-pol2cart = "vital.utils.image.us.bmode:main"
+camus-hdf5 = "vital.data.camus.dataset_generator:main"
+acdc-hdf5 = "vital.data.acdc.dataset_generator:main"
+anatomical-da = "vital.data.augmentation.anatomically_constrained_da:main"
+
 [tool.black]
 line-length = 120
 target-version = ["py310"]
@@ -7,3 +76,7 @@ exclude = "(.eggs|.git|.hg|.mypy_cache|.nox|.tox|.venv|.svn|_build|buck-out|buil
 profile = "black"
 line_length = 120
 src_paths = ["vital"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
