@@ -5,7 +5,7 @@ description = "Deep Learning Tooling from the Videos & Images Theory and Analyti
 authors = ["Nathan Painchaud <nathan.painchaud@usherbrooke.ca>"]
 license = "Apache-2.0"
 readme = "README.md"
-repository = "https://github.com/nathanpainchaud/vital"
+repository = "https://github.com/vitalab/vital"
 classifiers=[
     "Environment :: Console",
     "Natural Language :: English",
