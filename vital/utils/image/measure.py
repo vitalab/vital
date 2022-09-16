@@ -47,7 +47,7 @@ class Measure:
             ([N], [2]), Center of mass of the structure, for a specified axis or across all axes, in each segmentation
             of the batch.
         """
-        center = ndimage.measurements.center_of_mass(np.isin(segmentation, labels))
+        center = ndimage.center_of_mass(np.isin(segmentation, labels))
         if any(np.isnan(center)):  # Default to the center of the image if the center of mass can't be found
             center = np.array(segmentation.shape) // 2
         if axis is not None:
