@@ -190,7 +190,7 @@ class CamusPredictionWriter(BasePredictionWriter):
                 ds = data_group.create_dataset(CamusTags.raw, data=data, **seg_save_options)
                 # Save shape attributes of the segmentation as dataset attributes
                 for attr, attr_val in get_segmentation_attributes(data, pl_module.hparams.data_params.labels).items():
-                    ds.attrs[attr] = attr_val.squeeze()
+                    ds.attrs[attr] = attr_val
 
             # Save auxiliary predictions
             pred_group = view_group[CamusTags.pred]
@@ -252,7 +252,7 @@ class CamusPredictionWriter(BasePredictionWriter):
                 post_ds = view_pred_group.require_dataset(CamusTags.post, shape=post.shape, **seg_save_options)
                 post_ds[...] = post
                 for attr, attr_val in get_segmentation_attributes(post, pl_module.hparams.data_params.labels).items():
-                    post_ds.attrs[attr] = attr_val.squeeze()
+                    post_ds.attrs[attr] = attr_val
 
                 if enc is not None:
                     enc_ds = view_pred_group.require_dataset(CamusTags.encoding, shape=enc.shape, **img_save_options)

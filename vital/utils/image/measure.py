@@ -26,9 +26,9 @@ class Measure:
             labels: Labels of the classes that are part of the structure for which to count the number of pixels.
 
         Returns:
-            ([N], 1), Number of pixels associated to the structure, in each segmentation of the batch.
+            ([N]), Number of pixels associated to the structure, in each segmentation of the batch.
         """
-        return np.isin(segmentation, labels).sum((-2, -1))[..., None]
+        return np.isin(segmentation, labels).sum((-2, -1))
 
     @staticmethod
     @auto_cast_data
@@ -39,15 +39,15 @@ class Measure:
         Args:
             segmentation: ([N], H, W), Segmentation in which to identify the center of mass of the structure.
             labels: Labels of the classes that are part of the structure for which to measure the center of mass.
-            axis: Index of a dimension of interest for which to get the center of mass. If provided, the value of the
+            axis: Index of a dimension of interest, for which to get the center of mass. If provided, the value of the
                 center of mass will only be returned for this axis. If `None`, the center of mass along all axes will be
                 returned.
 
         Returns:
-            ([N], {1|2}), Center of mass of the structure, for a specified axis or across all axes, in each segmentation
+            ([N], [2]), Center of mass of the structure, for a specified axis or across all axes, in each segmentation
             of the batch.
         """
-        center = ndimage.measurements.center_of_mass(np.isin(segmentation, labels))
+        center = ndimage.center_of_mass(np.isin(segmentation, labels))
         if any(np.isnan(center)):  # Default to the center of the image if the center of mass can't be found
             center = np.array(segmentation.shape) // 2
         if axis is not None:
@@ -68,7 +68,7 @@ class Measure:
                 axis.
 
         Returns:
-            ([N], 1), Orientation of the structure w.r.t. the reference orientation, in each segmentation of the batch.
+            ([N]), Orientation of the structure w.r.t. the reference orientation, in each segmentation of the batch.
         """
         structure_mask = np.isin(segmentation, labels)
         if np.any(structure_mask):  # If the structure is present in the segmentation

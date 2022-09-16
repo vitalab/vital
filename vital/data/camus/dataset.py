@@ -371,7 +371,7 @@ def get_segmentation_attributes(
         labels: Labels of the classes included in the segmentation(s).
 
     Returns:
-        Mapping between the attributes and ([N], 1) arrays of their values for each segmentation in the batch.
+        Mapping between the attributes and arrays of shape ([N]) of their values for each segmentation in the batch.
     """
     attrs = {}
     if Label.LV in labels:

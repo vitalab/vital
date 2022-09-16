@@ -84,8 +84,6 @@ def batch_function(item_ndim: int) -> Callable:
                 )
             if data.ndim == item_ndim:  # If the input data is a single item
                 result = np.array(func(*self_or_empty, data, *args, **kwargs))
-                if result.ndim == 0:  # If the function's output is a single number, add a dim of 1 for consistency
-                    result = result[None]
             elif data.ndim == (item_ndim + 1):  # If the input data is a batch of items
                 result = np.array([func(*self_or_empty, item, *args, **kwargs) for item in data])
             else:
