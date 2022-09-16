@@ -82,7 +82,7 @@ class EchoMeasure(Measure):
                 necessary to identify the markers at the base of the left ventricle.
 
         Returns:
-            ([N], 1), Distance between the left and right markers at the base of the left ventricle, or NaNs for the
+            ([N]), Distance between the left and right markers at the base of the left ventricle, or NaNs for the
             images where those 2 points cannot be reliably estimated.
         """
         lv_base_coords = EchoMeasure._lv_base(segmentation, lv_labels=lv_labels, myo_labels=myo_labels)
@@ -105,7 +105,7 @@ class EchoMeasure(Measure):
                 necessary to identify the markers at the base of the left ventricle.
 
         Returns:
-            ([N], 1), Length of the left ventricle, or NaNs for the images where the LV base's midpoint cannot be
+            ([N]), Length of the left ventricle, or NaNs for the images where the LV base's midpoint cannot be
             reliably estimated.
         """
         # Identify the base of the left ventricle

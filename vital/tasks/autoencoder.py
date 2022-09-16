@@ -321,15 +321,15 @@ class SegmentationArVaeTask(SegmentationBetaVaeTask):
 
         for attr_idx, attr in enumerate(self.hparams.attrs):
             # Extract dimension to regularize and target for the current attribute
-            latent_code = out[self.model.encoding_tag][:, attr_idx].unsqueeze(1)
+            latent_code = out[self.model.encoding_tag][:, attr_idx]
             attribute = batch[attr]
 
             # Compute latent distance matrix
-            latent_code = latent_code.repeat(1, latent_code.shape[0])
+            latent_code = latent_code.view(-1, 1).repeat(1, len(latent_code))
             lc_dist_mat = latent_code - latent_code.transpose(1, 0)
 
             # Compute attribute distance matrix
-            attribute = attribute.repeat(1, attribute.shape[0])
+            attribute = attribute.view(-1, 1).repeat(1, len(attribute))
             attribute_dist_mat = attribute - attribute.transpose(1, 0)
 
             # Compute regularization loss
