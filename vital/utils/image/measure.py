@@ -18,17 +18,20 @@ class Measure:
 
     @staticmethod
     @auto_cast_data
-    def structure_area(segmentation: T, labels: SemanticStructureId) -> T:
+    def structure_area(segmentation: T, labels: SemanticStructureId, voxelarea: float = None) -> T:
         """Computes the number of pixels, in a segmentation map, associated to a structure.
 
         Args:
             segmentation: ([N], H, W), Segmentation in which to identify the number of pixels of the structure.
             labels: Labels of the classes that are part of the structure for which to count the number of pixels.
+            voxelarea: Size of the mask's voxels along each (height, width) dimension (in mm).
 
         Returns:
             ([N]), Number of pixels associated to the structure, in each segmentation of the batch.
         """
-        return np.isin(segmentation, labels).sum((-2, -1))
+        if voxelarea is None:
+            voxelarea = 1
+        return np.isin(segmentation, labels).sum((-2, -1)) * voxelarea
 
     @staticmethod
     @auto_cast_data

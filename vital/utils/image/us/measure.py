@@ -72,7 +72,12 @@ class EchoMeasure(Measure):
     @staticmethod
     @auto_cast_data
     @batch_function(item_ndim=2)
-    def lv_base_width(segmentation: T, lv_labels: SemanticStructureId, myo_labels: SemanticStructureId) -> T:
+    def lv_base_width(
+        segmentation: T,
+        lv_labels: SemanticStructureId,
+        myo_labels: SemanticStructureId,
+        voxelspacing: Tuple[float, float] = None,
+    ) -> T:
         """Measures the distance between the left and right markers at the base of the left ventricle.
 
         Args:
@@ -80,22 +85,36 @@ class EchoMeasure(Measure):
             lv_labels: Labels of the classes that are part of the left ventricle.
             myo_labels: Labels of the classes that are part of the myocardium. The location of the myocardium is
                 necessary to identify the markers at the base of the left ventricle.
+            voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
 
         Returns:
             ([N]), Distance between the left and right markers at the base of the left ventricle, or NaNs for the
             images where those 2 points cannot be reliably estimated.
         """
         lv_base_coords = EchoMeasure._lv_base(segmentation, lv_labels=lv_labels, myo_labels=myo_labels)
-        return (
-            np.linalg.norm(np.array(lv_base_coords[0]) - np.array(lv_base_coords[1]))
-            if not np.isnan(lv_base_coords).any()
-            else np.nan
-        )
+        if np.isnan(lv_base_coords).any():
+            # Early return if we couldn't reliably estimate the landmarks at the base of the left ventricle
+            return np.nan
+
+        # Compute the H,W distances between the points at the base
+        lv_base_coords = np.array(lv_base_coords)
+        lv_base_dist = lv_base_coords[0] - lv_base_coords[1]
+
+        # Adjust the H,W distances according to the voxelspacing, if provided
+        if voxelspacing is not None:
+            lv_base_dist *= np.array(voxelspacing)
+
+        return np.linalg.norm(lv_base_dist)
 
     @staticmethod
     @auto_cast_data
     @batch_function(item_ndim=2)
-    def lv_length(segmentation: T, lv_labels: SemanticStructureId, myo_labels: SemanticStructureId) -> T:
+    def lv_length(
+        segmentation: T,
+        lv_labels: SemanticStructureId,
+        myo_labels: SemanticStructureId,
+        voxelspacing: Tuple[float, float] = None,
+    ) -> T:
         """Measures the LV length as the distance between the LV's base midpoint and its furthest point at the apex.
 
         Args:
@@ -103,6 +122,7 @@ class EchoMeasure(Measure):
             lv_labels: Labels of the classes that are part of the left ventricle.
             myo_labels: Labels of the classes that are part of the myocardium. The location of the myocardium is
                 necessary to identify the markers at the base of the left ventricle.
+            voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
 
         Returns:
             ([N]), Length of the left ventricle, or NaNs for the images where the LV base's midpoint cannot be
@@ -126,4 +146,11 @@ class EchoMeasure(Measure):
         left_ventricle = np.isin(segmentation, lv_labels)
         lv_apex_coords = np.unravel_index(np.argmax(dist_to_lv_base_mid * left_ventricle), segmentation.shape)
 
-        return np.linalg.norm(np.array(lv_apex_coords) - lv_base_mid)
+        # Compute the H,w distances between the apex and LV base's midpoint
+        lv_apex_mid_dist = np.array(lv_apex_coords) - lv_base_mid
+
+        # Adjust the H,W distances according to the voxelspacing, if provided
+        if voxelspacing is not None:
+            lv_apex_mid_dist *= np.array(voxelspacing)
+
+        return np.linalg.norm(lv_apex_mid_dist)
