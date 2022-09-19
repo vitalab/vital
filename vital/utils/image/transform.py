@@ -26,6 +26,25 @@ def resize_image(image: np.ndarray, size: Tuple[int, int], resample: Resampling 
     return resized_image
 
 
+@batch_function(item_ndim=2, unpack_return=True)
+def resize_image_to_isotropic(
+    image: np.ndarray, spacing: Tuple[float, float], resample: Resampling = Resampling.NEAREST
+) -> Tuple[np.ndarray, float]:
+    """Resizes the image to attain isotropic spacing, by stretching it along the dimension with the biggest voxel size.
+
+    Args:
+        image: ([N], H, W), Input image to process. Must be in a format supported by PIL.
+        spacing: Size of the image's pixels along each (height, width) dimension.
+        resample: Resampling filter to use.
+
+    Returns:
+        Input image resized so that the spacing is isotropic, and the isotropic value of the new spacing.
+    """
+    scaling = np.array(spacing) / min(spacing)
+    new_height, new_width = (np.array(image.shape) * scaling).round().astype(int)
+    return resize_image(image, (new_width, new_height), resample=resample), min(spacing)
+
+
 def remove_labels(segmentation: np.ndarray, labels_to_remove: Sequence[int], fill_label: int = 0) -> np.ndarray:
     """Removes labels from the segmentation map, reassigning the affected pixels to `fill_label`.
 

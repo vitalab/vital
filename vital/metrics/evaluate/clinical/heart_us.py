@@ -7,7 +7,7 @@ from typing import Tuple
 import numpy as np
 from skimage.measure import find_contours
 
-from vital.utils.image.transform import resize_image
+from vital.utils.image.transform import resize_image_to_isotropic
 
 
 def compute_left_ventricle_volumes(
@@ -102,14 +102,6 @@ def _get_angle_of_lines_to_point(reference_point: np.ndarray, moving_points: np.
     return abs(np.degrees(np.arctan2(diff[:, 0], diff[:, 1])))
 
 
-def _reshape_image_to_isotropic(image: np.ndarray, spacing: Tuple[Real, Real]) -> Tuple[np.ndarray, Real]:
-    real_aspect = (image.shape[0] * spacing[0]) / (image.shape[1] * spacing[1])
-    current_aspect = (image.shape[0]) / (image.shape[1])
-    new_height = int(image.shape[0] * (real_aspect / current_aspect))
-    new_width = image.shape[1]
-    return resize_image(image, (new_width, new_height)), spacing[1]
-
-
 def _compute_diameters(segmentation: np.ndarray, voxelspacing: Tuple[Real, Real]) -> Tuple[np.ndarray, Real]:
     """
 
@@ -122,7 +114,7 @@ def _compute_diameters(segmentation: np.ndarray, voxelspacing: Tuple[Real, Real]
 
     # Make image isotropic, have same spacing in both directions.
     # The spacing can be multiplied by the diameter directly.
-    segmentation, isotropic_spacing = _reshape_image_to_isotropic(segmentation, voxelspacing)
+    segmentation, isotropic_spacing = resize_image_to_isotropic(segmentation, voxelspacing)
 
     # Go through entire contour to find AV plane
     contour = find_contours(segmentation, 0.5)[0]
