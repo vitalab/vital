@@ -83,7 +83,7 @@ class AutoencoderPostprocessing(PostProcessor):
         else:
             # Resize the image to fit as input for the AE (reverse the shape order to fit resize fn convention)
             ae_input_shape = self.autoencoder.hparams.data_params.out_shape[1:]
-            batch = np.array([resize_image(frame, ae_input_shape[::-1]) for frame in batch])
+            batch = resize_image(batch, ae_input_shape[::-1])
 
         proc_encoding, reconstruction = self._process(batch)
 
@@ -92,7 +92,7 @@ class AutoencoderPostprocessing(PostProcessor):
             proc_batch = self.registering_transformer.undo_batch_registering(reconstruction, reg_params)
         else:
             # Revert image to its original shape (reverse the shape order to fit resize fn convention)
-            proc_batch = np.array([resize_image(frame, shape[::-1]) for frame in reconstruction.astype(np.uint8)])
+            proc_batch = resize_image(reconstruction.astype(np.uint8), shape[::-1])
 
         return {
             self.post_tag: proc_batch,

@@ -161,10 +161,8 @@ class CrossValidationDatasetGenerator:
                     data_y, data_x
                 )
             else:
-                data_x_proc = np.array(
-                    [resize_image(x, self.target_image_size, resample=Resampling.BILINEAR) for x in data_x]
-                )
-                data_y_proc = np.array([resize_image(y, self.target_image_size) for y in data_y])
+                data_x_proc = resize_image(data_x, self.target_image_size, resample=Resampling.BILINEAR)
+                data_y_proc = resize_image(data_y, self.target_image_size)
 
             # Write image and groundtruth data
             patient_view_group = patient_group.create_group(view)
