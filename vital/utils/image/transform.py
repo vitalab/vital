@@ -7,17 +7,20 @@ from PIL.Image import Resampling
 from skimage.util import crop
 from torch import Tensor
 
+from vital.utils.decorators import batch_function
 
+
+@batch_function(item_ndim=2)
 def resize_image(image: np.ndarray, size: Tuple[int, int], resample: Resampling = Resampling.NEAREST) -> np.ndarray:
     """Resizes the image to the specified dimensions.
 
     Args:
-        image: Input image to process. Must be in a format supported by PIL.
-        size: Width and height dimensions of the processed image to output.
+        image: ([N], H, W), Input image to process. Must be in a format supported by PIL.
+        size: Width (W') and height (H') dimensions of the processed image to output.
         resample: Resampling filter to use.
 
     Returns:
-        Input image resized to the specified dimensions.
+        ([N], H', W'), Input image resized to the specified dimensions.
     """
     resized_image = np.array(Image.fromarray(image).resize(size, resample=resample))
     return resized_image
