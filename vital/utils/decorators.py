@@ -57,16 +57,31 @@ def squeeze(fn: Callable[..., Sequence[Item]]) -> Callable[..., Union[Item, Sequ
     return unpack_single_item_return
 
 
-def batch_function(item_ndim: int) -> Callable:
+def batch_function(item_ndim: int, unpack_return: bool = False) -> Callable:
     """Decorator that allows to compute item-by-item measures on a batch of items by looping over the batch.
 
     Args:
         item_ndim: Dimensionality of the items expected by the function. Allows to detect if the function's input is a
             single item, or a batch of items.
+        unpack_return: Whether the return value of the function is a tuple of multiple elements that should be unpacked
+            before being stacked along the batch dimension.
 
     Returns:
         Function that accepts batch of items as well as individual items.
     """
+    if unpack_return:
+
+        def collate_fn(func_return, is_batch: bool):
+            if is_batch:
+                # Aggregate multiple values returned by the function over all the items in the batch and create an array
+                # for each batch of values
+                return tuple(np.array(return_vals) for return_vals in zip(*func_return))
+            else:
+                # Cast multiple values returned by the function on a single data item to individual numpy arrays
+                return tuple(np.array(return_val) for return_val in func_return)
+
+    else:
+        collate_fn = np.array
 
     def batch_function_decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -82,10 +97,13 @@ def batch_function(item_ndim: int) -> Callable:
                     f"The first argument provided to '{func.__name__}' was not the input data, as a numpy array, "
                     f"expected by the function. The first argument of the function was rather of type '{type(data)}'."
                 )
+            collate_fn_kwargs = {}
+            if unpack_return:
+                collate_fn_kwargs["is_batch"] = bool(data.ndim - item_ndim)
             if data.ndim == item_ndim:  # If the input data is a single item
-                result = np.array(func(*self_or_empty, data, *args, **kwargs))
+                result = collate_fn(func(*self_or_empty, data, *args, **kwargs), **collate_fn_kwargs)
             elif data.ndim == (item_ndim + 1):  # If the input data is a batch of items
-                result = np.array([func(*self_or_empty, item, *args, **kwargs) for item in data])
+                result = collate_fn([func(*self_or_empty, item, *args, **kwargs) for item in data], **collate_fn_kwargs)
             else:
                 raise RuntimeError(
                     f"Couldn't apply '{func.__name__}', either in batch or one-shot, over the input data. The use of"
