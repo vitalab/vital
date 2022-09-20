@@ -44,7 +44,7 @@ def resize_image_to_voxelspacing(
         Input image resized so that its spacing equals `target_spacing`.
     """
     scaling = np.array(spacing) / np.array(target_spacing)
-    new_height, new_width = (np.array(image.shape) * scaling).round().astype(int)
+    new_height, new_width = (np.array(image.shape[-2:]) * scaling).round().astype(int)
     return resize_image(image, (new_width, new_height), resample=resample)
 
 
