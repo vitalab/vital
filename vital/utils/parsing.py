@@ -1,5 +1,5 @@
 import argparse
-from typing import Callable, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Tuple, Type, TypeVar, Union
 
 import yaml
 
@@ -19,10 +19,26 @@ class StoreDictKeyPair(argparse.Action):
             option_string: Option flag.
         """
         # Hack converting `values` to a YAML document to use the YAML parser's type inference
-        yaml_str = values.replace("=", ": ").replace(",", "\n")
-        args_map = yaml.safe_load(yaml_str)
-
+        args_map = yaml_flow_collection(values, mapping_separator="=")
         setattr(namespace, self.dest, args_map)
+
+
+def yaml_flow_collection(val: str, collection_entries_separator: str = ",", mapping_separator: str = ":") -> Any:
+    """Parses a string as a YAML flow collection.
+
+    References:
+        - YAML flow collection specification, for more details: https://yaml.org/spec/1.2.2/#74-flow-collection-styles
+
+    Args:
+        val: String representation of the flow collection to parse.
+        collection_entries_separator: Separator to use to split collection entries.
+        mapping_separator: Separator to use to split key-value pairs in flow mappings.
+
+    Returns:
+        Native Python data structure representation of the YAML flow collection parsed from the string.
+    """
+    yaml_str = val.replace(collection_entries_separator, ",").replace(mapping_separator, ": ")
+    return yaml.safe_load(yaml_str)
 
 
 def dtype_tuple(val: str, dtype: Callable[[str], T] = str, separator: str = ",") -> Tuple[T, ...]:
