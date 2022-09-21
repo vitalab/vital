@@ -1,4 +1,3 @@
-import importlib
 import logging
 import shutil
 from pathlib import Path
@@ -10,6 +9,7 @@ from packaging.version import InvalidVersion, Version
 from pytorch_lightning.core.saving import ModelIO
 
 from vital import get_vital_home
+from vital.importlib import import_from_module
 from vital.system import VitalSystem
 
 logger = logging.getLogger(__name__)
@@ -124,8 +124,7 @@ def load_from_checkpoint(
 
     # Extract which class to load from the hyperparameters saved in the checkpoint
     ckpt_hparams = torch.load(ckpt_path)[ModelIO.CHECKPOINT_HYPER_PARAMS_KEY]
-    model_mod, model_cls_name = ckpt_hparams["task"]["_target_"].rsplit(".", 1)
-    model_cls = getattr(importlib.import_module(model_mod), model_cls_name)
+    model_cls = import_from_module(ckpt_hparams["task"]["_target_"])
 
     # Restore the model from the checkpoint
     model = model_cls.load_from_checkpoint(str(ckpt_path), ckpt=checkpoint)
