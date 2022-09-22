@@ -3,7 +3,7 @@ import functools
 import numpy as np
 import torch
 import torchvision.transforms.functional as F
-from scipy import signal
+from scipy import interpolate, signal
 from torch import Tensor
 
 from vital.utils.image.transform import segmentation_to_tensor
@@ -72,26 +72,54 @@ class GrayscaleToRGB(torch.nn.Module):
 
 
 class Resample(torch.nn.Module):
-    """Resamples a tensor to reach a target number of data points in the signal."""
+    """Resamples a signal to reach a target number of data points."""
 
     def __init__(self, num: int, **resample_kwargs):
         """Initializes class instance.
 
         Args:
             num: Required parameter to pass along to ``scipy.signal.resample``, indicating the number of samples in the
-                resampled signal
+                resampled signal.
             **resample_kwargs: Additional parameters to pass along to ``scipy.signal.resample``.
         """
         super().__init__()
         self.partial_resample = functools.partial(signal.resample, num=num, **resample_kwargs)
 
-    def __call__(self, tensor: torch.Tensor) -> Tensor:
-        """Resamples input tensor.
+    def __call__(self, signal: np.ndarray) -> np.ndarray:
+        """Resamples input signal.
 
         Args:
-            tensor: ([N], S), Tensor to resample.
+            signal: (M), Signal to resample.
 
         Returns:
-            ([N], T), Resampled signal.
+            (N), Resampled signal.
         """
-        return self.partial_resample(tensor)
+        return self.partial_resample(signal)
+
+
+class Interp1d(torch.nn.Module):
+    """Interpolates data points in a signal to reach a target number of data points."""
+
+    def __init__(self, num: int, **interp1d_kwargs):
+        """Initializes class instance.
+
+        Args:
+            num: Number of samples to interpolate from the original signal.
+            **interp1d_kwargs: Additional parameters to pass along to ``scipy.signal.resample``.
+        """
+        super().__init__()
+        self.interp_x_coords = np.linspace(0, 1, num=num)
+        self.interp1d_kwargs = interp1d_kwargs
+
+    def __call__(self, signal: np.ndarray) -> np.ndarray:
+        """Interpolates input signal.
+
+        Args:
+            signal: (M), Signal to interpolate.
+
+        Returns:
+            (N), Interpolated signal.
+        """
+        signal_x_coords = np.linspace(0, 1, num=len(signal))
+        f = interpolate.interp1d(signal_x_coords, signal, **self.interp1d_kwargs)
+        return f(self.interp_x_coords)
