@@ -70,6 +70,7 @@ cardinal-anonymise = "vital.data.cardinal.anonymise_files:main"
 cardinal-ge2nifti = "vital.data.cardinal.ge2nifti:main"
 cardinal-process-masks = "vital.data.cardinal.process_masks:main"
 cardinal-clip-cycle = "vital.data.cardinal.clip_cycle:main"
+cardinal-seq2pairs = "vital.data.cardinal.seq2pairs:main"
 
 [tool.black]
 line-length = 120
