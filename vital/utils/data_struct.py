@@ -4,6 +4,25 @@ from typing import Dict, List, Mapping, Union
 import h5py
 import numpy as np
 
+
+class LazyDict(dict):
+    """Dictionary allowing callable values that are evaluated lazily upon first access."""
+
+    def __getitem__(self, k):
+        """Accessor that tests if the requested value is callable, evaluating and saving the result if it is."""
+        v = super().__getitem__(k)
+        if callable(v):
+            v = v()
+        self[k] = v
+        return v
+
+    def get(self, k, default=None):
+        """Necessary override of `get` to call `__getitem__` to trigger the evaluation of the value."""
+        if k in self:
+            return self.__getitem__(k)
+        return default
+
+
 Attributes = Mapping[str, np.ndarray]  # Data structure that mimics an h5py.AttributeManager
 
 
