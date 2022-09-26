@@ -18,30 +18,37 @@ class Measure:
 
     @staticmethod
     @auto_cast_data
-    def structure_area(segmentation: T, labels: SemanticStructureId, voxelarea: float = None) -> T:
+    def structure_area(segmentation: T, labels: SemanticStructureId = None, voxelarea: float = None) -> T:
         """Computes the number of pixels, in a segmentation map, associated to a structure.
 
         Args:
             segmentation: ([N], H, W), Segmentation in which to identify the number of pixels of the structure.
-            labels: Labels of the classes that are part of the structure for which to count the number of pixels.
+            labels: Labels of the classes that are part of the structure for which to count the number of pixels. If
+                `None`, all truthy values will be considered part of the structure.
             voxelarea: Size of the mask's voxels along each (height, width) dimension (in mm).
 
         Returns:
             ([N]), Number of pixels associated to the structure, in each segmentation of the batch.
         """
+        if labels:
+            mask = np.isin(segmentation, labels)
+        else:
+            mask = segmentation.astype(bool)
+
         if voxelarea is None:
             voxelarea = 1
-        return np.isin(segmentation, labels).sum((-2, -1)) * voxelarea
+        return mask.sum((-2, -1)) * voxelarea
 
     @staticmethod
     @auto_cast_data
     @batch_function(item_ndim=2)
-    def structure_center(segmentation: T, labels: SemanticStructureId, axis: int = None) -> T:
+    def structure_center(segmentation: T, labels: SemanticStructureId = None, axis: int = None) -> T:
         """Computes the center of mass of a structure in a segmentation map.
 
         Args:
             segmentation: ([N], H, W), Segmentation in which to identify the center of mass of the structure.
-            labels: Labels of the classes that are part of the structure for which to measure the center of mass.
+            labels: Labels of the classes that are part of the structure for which to measure the center of mass. If
+                `None`, all truthy values will be considered part of the structure.
             axis: Index of a dimension of interest, for which to get the center of mass. If provided, the value of the
                 center of mass will only be returned for this axis. If `None`, the center of mass along all axes will be
                 returned.
@@ -50,7 +57,12 @@ class Measure:
             ([N], [2]), Center of mass of the structure, for a specified axis or across all axes, in each segmentation
             of the batch.
         """
-        center = ndimage.center_of_mass(np.isin(segmentation, labels))
+        if labels:
+            mask = np.isin(segmentation, labels)
+        else:
+            mask = segmentation.astype(bool)
+
+        center = ndimage.center_of_mass(mask)
         if any(np.isnan(center)):  # Default to the center of the image if the center of mass can't be found
             center = np.array(segmentation.shape) // 2
         if axis is not None:
@@ -60,12 +72,13 @@ class Measure:
     @staticmethod
     @auto_cast_data
     @batch_function(item_ndim=2)
-    def structure_orientation(segmentation: T, labels: SemanticStructureId, reference_orientation: int = 0) -> T:
+    def structure_orientation(segmentation: T, labels: SemanticStructureId = None, reference_orientation: int = 0) -> T:
         """Computes the angle w.r.t. a reference orientation of a structure in a segmentation map.
 
         Args:
             segmentation: ([N], H, W), Segmentation in which to identify the orientation of the structure.
-            labels: Labels of the classes that are part of the structure for which to measure orientation.
+            labels: Labels of the classes that are part of the structure for which to measure orientation. If `None`,
+                all truthy values will be considered part of the structure.
             reference_orientation: Reference orientation, that would correspond to a returned orientation of `0` if the
                 structure where aligned on it perfectly. By default, this orientation corresponds to the positive x
                 axis.
@@ -73,7 +86,11 @@ class Measure:
         Returns:
             ([N]), Orientation of the structure w.r.t. the reference orientation, in each segmentation of the batch.
         """
-        structure_mask = np.isin(segmentation, labels)
+        if labels:
+            structure_mask = np.isin(segmentation, labels)
+        else:
+            structure_mask = segmentation.astype(bool)
+
         if np.any(structure_mask):  # If the structure is present in the segmentation
             # Get the right eigenvectors of the structure's mass
             structure_inertia_tensors = measure.inertia_tensor(structure_mask)
@@ -91,12 +108,15 @@ class Measure:
 
     @staticmethod
     @auto_cast_data
-    def bbox(segmentation: T, labels: SemanticStructureId, bbox_margin: Real = 0.05, normalize: bool = False) -> T:
+    def bbox(
+        segmentation: T, labels: SemanticStructureId = None, bbox_margin: Real = 0.05, normalize: bool = False
+    ) -> T:
         """Computes the coordinates of a bounding box (bbox) around a region of interest (ROI).
 
         Args:
             segmentation: ([N], H, W), Segmentation in which to identify the coordinates of the bbox.
-            labels: Labels of the classes that are part of the ROI.
+            labels: Labels of the classes that are part of the ROI. If `None`, all truthy values will be considered part
+                of the ROI.
             bbox_margin: Ratio by which to enlarge the bbox from the closest possible fit, so as to leave a slight
                 margin at the edges of the bbox.
             normalize: If ``True``, normalizes the bbox coordinates from between 0 and H or W to between 0 and 1.
@@ -104,8 +124,10 @@ class Measure:
         Returns:
             ([N], 4), Coordinates of the bbox, in (y1, x1, y2, x2) format.
         """
-        # Only keep ROI from the groundtruth
-        roi_mask = np.isin(segmentation, labels)
+        if labels:
+            roi_mask = np.isin(segmentation, labels)
+        else:
+            roi_mask = segmentation.astype(bool)
 
         # Find the coordinates of the bounding box around the ROI
         rows = roi_mask.any(1)

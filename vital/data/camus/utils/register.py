@@ -37,7 +37,7 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
 
         # Find the center of mass of the epicardium (union of the left ventricle and myocardium)
         segmentation_center = segmentation.shape[0] // 2, segmentation.shape[1] // 2
-        epicardium_center = Measure.structure_center(to_categorical(segmentation), [Label.LV, Label.MYO])
+        epicardium_center = Measure.structure_center(to_categorical(segmentation), labels=[Label.LV, Label.MYO])
 
         # Center the image as closely as possible around the epicardium without cutting off the left atrium
         rows_shift = max(epicardium_center[0] - segmentation_center[0], -distance_from_left_atrium_to_border)
@@ -53,7 +53,9 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
         Returns:
             Angle of the rotation to align the major axis of the left ventricle with the vertical axis.
         """
-        return Measure.structure_orientation(to_categorical(segmentation), Label.LV, reference_orientation=90).item()
+        return Measure.structure_orientation(
+            to_categorical(segmentation), labels=Label.LV, reference_orientation=90
+        ).item()
 
     def _compute_crop_parameters(self, segmentation: np.ndarray, margin: float = 0.05) -> Crop:
         """Computes the coordinates of an isotropic bounding box around all segmented classes.
@@ -68,7 +70,7 @@ class CamusRegisteringTransformer(AffineRegisteringTransformer):
             height, width, row_min, col_min, row_max, col_max.
         """
         # Get the best fitting bbox around the segmented structures
-        bbox_coord = Measure.bbox(segmentation, list(range(1, self.num_classes)), bbox_margin=margin)
+        bbox_coord = Measure.bbox(segmentation, labels=list(range(1, self.num_classes)), bbox_margin=margin)
         bbox_shape = (bbox_coord[2] - bbox_coord[0], bbox_coord[3] - bbox_coord[1])
 
         # Find the parameters to get a square bbox from the current, best fit, rectangular bbox
