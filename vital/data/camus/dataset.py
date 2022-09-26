@@ -377,23 +377,27 @@ def get_segmentation_attributes(
     if Label.LV in labels:
         attrs.update(
             {
-                CamusTags.lv_area: EchoMeasure.structure_area(segmentation, Label.LV),
+                CamusTags.lv_area: EchoMeasure.structure_area(segmentation, labels=Label.LV),
                 CamusTags.lv_orientation: EchoMeasure.structure_orientation(
-                    segmentation, Label.LV, reference_orientation=90
+                    segmentation, labels=Label.LV, reference_orientation=90
                 ),
             }
         )
     if Label.MYO in labels:
-        attrs.update({CamusTags.myo_area: EchoMeasure.structure_area(segmentation, Label.MYO)})
+        attrs.update({CamusTags.myo_area: EchoMeasure.structure_area(segmentation, labels=Label.MYO)})
     if Label.LV in labels and Label.MYO in labels:
         attrs.update(
             {
                 CamusTags.lv_base_width: EchoMeasure.lv_base_width(segmentation, Label.LV, Label.MYO),
                 CamusTags.lv_length: EchoMeasure.lv_length(segmentation, Label.LV, Label.MYO),
-                CamusTags.epi_center_x: EchoMeasure.structure_center(segmentation, [Label.LV, Label.MYO], axis=1),
-                CamusTags.epi_center_y: EchoMeasure.structure_center(segmentation, [Label.LV, Label.MYO], axis=0),
+                CamusTags.epi_center_x: EchoMeasure.structure_center(
+                    segmentation, labels=[Label.LV, Label.MYO], axis=1
+                ),
+                CamusTags.epi_center_y: EchoMeasure.structure_center(
+                    segmentation, labels=[Label.LV, Label.MYO], axis=0
+                ),
             }
         )
     if Label.ATRIUM in labels:
-        attrs.update({CamusTags.atrium_area: EchoMeasure.structure_area(segmentation, Label.ATRIUM)})
+        attrs.update({CamusTags.atrium_area: EchoMeasure.structure_area(segmentation, labels=Label.ATRIUM)})
     return attrs

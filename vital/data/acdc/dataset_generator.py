@@ -90,7 +90,7 @@ def generate_probability_map(dataset: h5py.File, group: h5py.Group, data_augment
 
     images = [group[k][:] for k in image_keys]
 
-    images_center = [Measure.structure_center(img, 3).astype(np.int16) for img in images]
+    images_center = [Measure.structure_center(img, labels=3).astype(np.int16) for img in images]
 
     prior_shape = np.array([15, PRIOR_SIZE, PRIOR_SIZE, 1])
 

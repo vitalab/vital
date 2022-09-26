@@ -106,7 +106,7 @@ class RoiSegmentationTask(SegmentationTask):
         """
         boxes = []
         for y_item in y:
-            item_box = Measure.bbox(y_item, range(1, len(self.hparams.data_params.labels)), normalize=True)
+            item_box = Measure.bbox(y_item, labels=range(1, len(self.hparams.data_params.labels)), normalize=True)
             # Convert between the (y1, x1, y2, x2) format from the `Measure` API and
             # the (x1, y1, x2, y2) format used by torchvision's RoI
             item_box = item_box[[1, 0, 3, 2]]
