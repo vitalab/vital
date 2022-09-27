@@ -8,12 +8,12 @@ DEFAULT_CACHE_DIR = "~/.cache"
 
 
 def get_vital_root() -> Path:
-    """Resolves the root directory for the `vital` library.
+    """Resolves the root directory for the `vital` package.
 
     Returns:
-        Path to the root directory for the `vital` library.
+        Path to the root directory for the `vital` package.
     """
-    return Path(__file__).resolve().parents[1]
+    return Path(__file__).resolve().parent
 
 
 def get_vital_home() -> Path:

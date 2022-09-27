@@ -15,5 +15,5 @@ temporal_regularization:
   max_iterations: 10_000
   convergence_eps: ${sys.eps.np:float32}
   attr_smoothness_constraint: dlr
-  attr_thresholds: ${vital.root:}/vital/data/camus/statistics/attr_thresholds.yaml
+  attr_thresholds: ${vital.root:}/data/camus/statistics/attr_thresholds.yaml
   constraint_mode_kwargs: null
