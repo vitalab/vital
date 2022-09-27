@@ -9,8 +9,8 @@ from packaging.version import InvalidVersion, Version
 from pytorch_lightning.core.saving import ModelIO
 
 from vital import get_vital_home
-from vital.importlib import import_from_module
 from vital.system import VitalSystem
+from vital.utils.importlib import import_from_module
 
 logger = logging.getLogger(__name__)
 
