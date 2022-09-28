@@ -96,6 +96,10 @@ class ResultsProcessor:
         results_collection_kwargs = {**self.results_collection_kwargs, **results_collection_kwargs}
 
         results = self.ResultsCollection(**results_collection_kwargs)
+        num_results, results_desc = len(results), results.desc
+        if isinstance(results, Mapping):
+            results = results.values()
+
         log_msg = f"Processing results through {self.desc}"
         if self.ProcessingOutput is None:
             # If the processor only writes to logs as a side effect as it iterates over the results
@@ -108,7 +112,7 @@ class ResultsProcessor:
             result_processing_jobs = (self.process_result(result) for result in results)
 
         if self.progress_bar:
-            result_processing_jobs = tqdm(result_processing_jobs, total=len(results), unit=results.desc, desc=log_msg)
+            result_processing_jobs = tqdm(result_processing_jobs, total=num_results, unit=results_desc, desc=log_msg)
         else:
             logger.info(log_msg)
 
