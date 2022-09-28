@@ -1,3 +1,5 @@
+import itertools
+from collections import OrderedDict
 from functools import reduce
 from operator import mul
 from typing import Tuple, Union
@@ -5,7 +7,7 @@ from typing import Tuple, Union
 import torch
 from torch import Tensor, nn
 
-from vital.models.layers import conv2d_activation, conv2d_activation_bn
+from vital.models.layers import conv2d_activation, conv2d_activation_bn, get_nn_module
 
 
 class Encoder(nn.Module):
@@ -91,7 +93,83 @@ class Encoder(nn.Module):
         """Defines the computation performed at every call.
 
         Args:
-            x: (N, ``channels``, H, W), Input to reconstruct.
+            x: (N, ``in_channels``, H, W), Input to reconstruct.
+
+        Returns:
+            if not ``output_distribution``:
+                - (N, ``latent_dim``), Encoding of the input in the latent space.
+            if ``output_distribution``:
+                - (N, ``latent_dim``), Mean of the predicted distribution of the input in the latent space.
+                - (N, ``latent_dim``), Log variance of the predicted distribution of the input in the latent space.
+        """
+        features = self.input2features(x)
+        features = torch.flatten(features, 1)
+        out = self.mu_head(features)
+        if self.output_distribution:
+            out = (out, self.logvar_head(features))
+        return out
+
+
+class Encoder1d(nn.Module):
+    """Module making up the encoder half of a convolutional 1D autoencoder."""
+
+    def __init__(
+        self,
+        in_length: int,
+        in_channels: int,
+        blocks: int,
+        init_channels: int,
+        latent_dim: int,
+        activation: str = "ELU",
+        output_distribution: bool = False,
+    ):
+        """Initializes class instance.
+
+        Args:
+            in_length: Length of the 1D channels in the input.
+            in_channels: Number of channels of 1D signals to reconstruct.
+            blocks: Number of downsampling convolution blocks to use.
+            init_channels: Number of output channels from the first layer, used to compute the number of channels in
+                following layers.
+            latent_dim: Number of dimensions in the latent space.
+            activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use across the
+                network.
+            output_distribution: Whether to add a second head at the end to output ``logvar`` along with the default
+                ``mu`` head.
+        """
+        super().__init__()
+        self.output_distribution = output_distribution
+        channels = [in_channels] + [init_channels * 2**block_idx for block_idx in range(blocks)]
+
+        def _downsampling_block(block_in_channels: int, block_out_channels: int) -> nn.Module:
+            return nn.Sequential(
+                OrderedDict(
+                    [
+                        ("pad", nn.ReflectionPad1d(1)),
+                        ("conv", nn.Conv1d(block_in_channels, block_out_channels, kernel_size=3, stride=2)),
+                        (activation.lower(), get_nn_module(activation)),
+                    ]
+                )
+            )
+
+        # Downsampling convolution blocks
+        self.input2features = nn.Sequential()
+        for block_idx, (block_in_channels, block_out_channels) in enumerate(itertools.pairwise(channels), start=1):
+            self.input2features.add_module(
+                f"downsampling_block_{block_idx}", _downsampling_block(block_in_channels, block_out_channels)
+            )
+
+        # Fully-connected heads to output mu (and possibly logvar) from the shared feature encoder
+        features_shape = (channels[-1], in_length // 2**blocks)
+        self.mu_head = nn.Linear(reduce(mul, features_shape), latent_dim)
+        if self.output_distribution:
+            self.logvar_head = nn.Linear(reduce(mul, features_shape), latent_dim)
+
+    def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
+        """Defines the computation performed at every call.
+
+        Args:
+            x: (N, ``in_channels``, ``in_length``), Input to reconstruct.
 
         Returns:
             if not ``output_distribution``:

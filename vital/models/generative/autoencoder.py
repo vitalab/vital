@@ -3,8 +3,8 @@ from typing import Dict, Sequence, Tuple
 import torch
 from torch import Tensor, nn
 
-from vital.models.generative.decoder import Decoder
-from vital.models.generative.encoder import Encoder
+from vital.models.generative.decoder import Decoder, Decoder1d
+from vital.models.generative.encoder import Encoder, Encoder1d
 from vital.models.layers import reparameterize
 
 
@@ -121,3 +121,91 @@ class VariationalAutoencoder(Autoencoder):
             self.distr_mean_tag: mu,
             self.distr_logvar_tag: logvar,
         }
+
+
+class Autoencoder1d(nn.Module):
+    """Module making up a fully convolutional 1D autoencoder."""
+
+    # Tags used as keys in the dict returned by the forward pass
+    x_hat_tag: str = "x_hat"
+    z_tag: str = "z"
+
+    #:  Whether the encoder has a second head to output the ``logvar`` along with the default ``mu`` head
+    output_distribution: bool = False
+
+    def __init__(
+        self, length: int, channels: int, blocks: int, init_channels: int, latent_dim: int, activation: str = "ELU"
+    ):
+        """Initializes class instance.
+
+        Args:
+            length: Length of the 1D channels in the data.
+            channels: Number of channels of 1D signals to reconstruct.
+            blocks: Number of downsampling convolution blocks to use.
+            init_channels: Number of output channels from the first layer, used to compute the number of channels in
+                following layers.
+            latent_dim: Number of dimensions in the latent space.
+            activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use across the
+                network.
+        """
+        super().__init__()
+        self.encoder = Encoder1d(
+            in_length=length,
+            in_channels=channels,
+            blocks=blocks,
+            init_channels=init_channels,
+            latent_dim=latent_dim,
+            activation=activation,
+            output_distribution=self.output_distribution,
+        )
+        self.decoder = Decoder1d(
+            out_length=length,
+            out_channels=channels,
+            blocks=blocks,
+            init_channels=init_channels,
+            latent_dim=latent_dim,
+            activation=activation,
+        )
+
+    def forward(self, x: Tensor) -> Dict[str, Tensor]:
+        """Defines the computation performed at every call.
+
+        Args:
+            x: (N, ``channels``, ``length``), Input to reconstruct.
+
+        Returns:
+            Dict with values:
+            - (N, ``channels``, ``length``), Reconstructed input.
+            - (N, ``latent_dim``), Encoding of the input in the latent space.
+        """
+        z = self.encoder(x)
+        x_hat = self.decoder(z)
+        return {self.x_hat_tag: x_hat, self.z_tag: z}
+
+
+class VariationalAutoencoder1d(Autoencoder1d):
+    """Module making up a fully convolutional variational 1D autoencoder."""
+
+    # Tags used as keys in the dict returned by the forward pass
+    mu_tag: str = "mu"
+    logvar_tag: str = "logvar"
+
+    output_distribution = True
+
+    def forward(self, x: Tensor) -> Dict[str, Tensor]:
+        """Defines the computation performed at every call.
+
+        Args:
+            x: (N, ``channels``, ``length``), Input to reconstruct.
+
+        Returns:
+            Dict with values:
+            - (N, ``channels``, ``length``), Reconstructed input.
+            - (N, ``latent_dim``), Encoding of the input in the latent space.
+            - (N, ``latent_dim``), Mean of the predicted distribution of the input in the latent space.
+            - (N, ``latent_dim``), Log variance of the predicted distribution of the input in the latent space.
+        """
+        mu, logvar = self.encoder(x)
+        z = reparameterize(mu, logvar)
+        x_hat = self.decoder(z)
+        return {self.x_hat_tag: x_hat, self.z_tag: z, self.mu_tag: mu, self.logvar_tag: logvar}
