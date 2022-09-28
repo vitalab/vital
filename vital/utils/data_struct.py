@@ -1,14 +1,17 @@
 from dataclasses import dataclass
-from typing import Dict, List, Mapping, Union
+from typing import Dict, ItemsView, List, Mapping, Optional, TypeVar, Union, ValuesView
 
 import h5py
 import numpy as np
 
+_KT = TypeVar("_KT")
+_VT = TypeVar("_VT")
 
-class LazyDict(dict):
+
+class LazyDict(Dict[_KT, _VT]):
     """Dictionary allowing callable values that are evaluated lazily upon first access."""
 
-    def __getitem__(self, k):
+    def __getitem__(self, k: _KT) -> _VT:
         """Accessor that tests if the requested value is callable, evaluating and saving the result if it is."""
         v = super().__getitem__(k)
         if callable(v):
@@ -16,11 +19,19 @@ class LazyDict(dict):
         self[k] = v
         return v
 
-    def get(self, k, default=None):
+    def get(self, k: _KT, default: Optional[_VT] = None) -> Optional[_VT]:
         """Necessary override of `get` to call `__getitem__` to trigger the evaluation of the value."""
         if k in self:
             return self.__getitem__(k)
         return default
+
+    def items(self) -> ItemsView[_KT, _VT]:
+        """Necessary override of default `dict_items` with a structure that triggers the evaluation of the values."""
+        return ItemsView(self)
+
+    def values(self) -> ValuesView[_VT]:
+        """Necessary override of default `dict_values` with a structure that triggers the evaluation of the values."""
+        return ValuesView(self)
 
 
 Attributes = Mapping[str, np.ndarray]  # Data structure that mimics an h5py.AttributeManager
