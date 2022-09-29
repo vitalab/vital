@@ -6,7 +6,7 @@ import torch
 from torch import Tensor, nn
 
 
-def _get_nn_module(module: str, *module_args, **module_kwargs) -> nn.Module:
+def get_nn_module(module: str, *module_args, **module_kwargs) -> nn.Module:
     """Instantiates an ``nn.Module`` with the requested parameters.
 
     Args:
@@ -53,7 +53,7 @@ def linear_activation(
         activation_kwargs = {}
     layers = [
         ("lin", nn.Linear(in_features, out_features, **lin_kwargs)),
-        (activation.lower(), _get_nn_module(activation, **activation_kwargs)),
+        (activation.lower(), get_nn_module(activation, **activation_kwargs)),
     ]
     if dropout:
         layers.append(("dropout", nn.Dropout(dropout)))
@@ -80,7 +80,7 @@ def conv_transpose2d_activation(
             "conv_transpose",
             nn.ConvTranspose2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, **conv_kwargs),
         ),
-        (activation.lower(), _get_nn_module(activation, **activation_kwargs)),
+        (activation.lower(), get_nn_module(activation, **activation_kwargs)),
     ]
 
 
@@ -127,7 +127,7 @@ def conv2d_activation(
         activation_kwargs = {}
     return [
         ("conv", nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, **conv_kwargs)),
-        (activation.lower(), _get_nn_module(activation, **activation_kwargs)),
+        (activation.lower(), get_nn_module(activation, **activation_kwargs)),
     ]
 
 
