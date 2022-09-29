@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import IntEnum, auto, unique
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 
 from strenum import LowercaseStrEnum
 
@@ -90,16 +90,20 @@ class Tags:
     encoding: str = "z"
 
 
-@dataclass(frozen=True)
-class DataParameters:
+_Size = Tuple[int, ...]
+
+
+class DataParameters(NamedTuple):
     """Class for defining parameters related to the nature of the data.
 
     Args:
-        in_shape: Shape of the input data, if constant for all items (e.g. channels, height, width).
-        out_shape: Shape of the target data, if constant for all items (e.g. classes, height, width).
+        in_shape: Shape of the input data, if constant for all items (e.g. channels, height, width). It can be a dict of
+            multiple shapes in the case of multi-modal data.
+        out_shape: Shape of the target data, if constant for all items (e.g. classes, height, width). It can be a dict
+            of multiple shapes in the case of multi-modal data.
         labels: Labels provided with the data, required when using segmentation task APIs.
     """
 
-    in_shape: Optional[Tuple[int, ...]] = None
-    out_shape: Optional[Tuple[int, ...]] = None
+    in_shape: Optional[Union[_Size, Dict[str, _Size]]] = None
+    out_shape: Optional[Union[_Size, Dict[str, _Size]]] = None
     labels: Optional[Tuple[LabelEnum, ...]] = None

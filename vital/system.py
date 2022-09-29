@@ -41,8 +41,19 @@ class VitalSystem(pl.LightningModule, ABC):
         # Also save the classpath of the system to be able to load a checkpoint w/o knowing it's type beforehand
         self.save_hyperparameters({"task": {"_target_": f"{self.__class__.__module__}.{self.__class__.__name__}"}})
 
-        # By default, assumes the provided data shape is in channel-first format
-        self.example_input_array = torch.randn((2, *self.hparams.data_params.in_shape))
+    @property
+    def example_input_array(self) -> torch.Tensor:
+        """Tensor of random data, passed to `forward` during setup to determine the model's architecture."""
+        in_shape = self.hparams.data_params.in_shape
+        if isinstance(in_shape, tuple):
+            # By default, assumes the provided data shape is in the same format (e.g. channel-first) as the tensors
+            return torch.randn((2, *self.hparams.data_params.in_shape))
+        else:
+            raise NotImplementedError(
+                "A default implementation of `example_input_array` is only provided for tuple input data shapes, since "
+                "it is the only case when a sensible default can be determined, but the input data shape of the "
+                f"provided dataset is of type: '{type(in_shape)}'."
+            )
 
     def configure_model(self) -> nn.Module:
         """Configure the network architecture used by the system."""

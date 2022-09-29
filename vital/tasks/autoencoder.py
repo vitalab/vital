@@ -40,7 +40,6 @@ class SegmentationAutoencoderTask(SharedStepsTask):
         """
         super().__init__(*args, **kwargs)
         self.model = self.configure_model()
-        self.example_input_array = torch.randn((2, *self.hparams.data_params.out_shape))
 
         # Configure metric objects used repeatedly in the train/eval loop
         self._dice = DifferentiableDiceCoefficient(include_background=False, reduction="none")
@@ -57,6 +56,11 @@ class SegmentationAutoencoderTask(SharedStepsTask):
         }
         for stat, init_tensor in self._init_latent_stats.items():
             self.register_buffer(stat, init_tensor)
+
+    @property
+    def example_input_array(self) -> Tensor:
+        """Redefine example input array since segmentation autoencoders are based on the datasets' output shapes."""
+        return torch.randn((2, *self.hparams.data_params.out_shape))
 
     def configure_model(self) -> nn.Module:  # noqa: D102
         return hydra.utils.instantiate(
