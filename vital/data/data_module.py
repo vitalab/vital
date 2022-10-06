@@ -43,6 +43,7 @@ class VitalDataModule(pl.LightningDataModule, ABC):
             shuffle=shuffle,
             num_workers=self.num_workers,
             pin_memory=True,
+            persistent_workers=bool(self.num_workers),
         )
 
     def train_dataloader(self) -> DataLoader:  # noqa: D102
