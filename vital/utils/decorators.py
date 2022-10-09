@@ -154,8 +154,7 @@ def auto_cast_data(func: Callable) -> Callable:
 def auto_move_data(fn: Callable) -> Callable:
     """Decorator for ``LightningModule`` methods for which input args should be moved to the correct device.
 
-    It as no effect if applied to a method of an object that is not an instance of ``LightningModule`` and is typically
-    applied to ``__call__`` or ``forward``.
+    Typically, applied to ``__call__`` or ``forward``.
 
     Args:
         fn: A LightningModule method for which the arguments should be moved to the device the parameters are on.
@@ -183,11 +182,6 @@ def auto_move_data(fn: Callable) -> Callable:
 
     @wraps(fn)
     def auto_transfer_args(self, *args, **kwargs):
-        from pytorch_lightning.core.lightning import LightningModule
-
-        if not isinstance(self, LightningModule):
-            return fn(self, *args, **kwargs)
-
         args, kwargs = move_data_to_device((args, kwargs), self.device)
         return fn(self, *args, **kwargs)
 
