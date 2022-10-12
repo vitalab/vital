@@ -19,3 +19,17 @@ def minmax_scaling(data: np.ndarray, bounds: Tuple[float, float] = None) -> np.n
     else:
         min, max = bounds
     return (data - min) / (max - min)
+
+
+def scale(data: np.ndarray, bounds: Tuple[float, float]) -> np.ndarray:
+    """Scales data that was previously normalized back to its original range, defined by min and max values in `bounds`.
+
+    Args:
+        data: Data to scale.
+        bounds: Prior min and max bounds used to normalize the data originally.
+
+    Returns:
+        Data scaled w.r.t. the predefined bounds.
+    """
+    min, max = bounds
+    return (data * (max - min)) + min
