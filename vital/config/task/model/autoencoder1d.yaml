@@ -1,0 +1,6 @@
+_target_: vital.models.generative.autoencoder.Autoencoder1d
+
+blocks: 6
+init_channels: 32
+latent_dim: 2
+activation: ELU

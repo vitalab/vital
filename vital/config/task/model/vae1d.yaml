@@ -1,0 +1,4 @@
+defaults:
+  - autoencoder1d
+
+_target_: vital.models.generative.autoencoder.VariationalAutoencoder1d

@@ -63,11 +63,7 @@ class SegmentationAutoencoderTask(SharedStepsTask):
         return torch.randn((2, *self.hparams.data_params.out_shape))
 
     def configure_model(self) -> nn.Module:  # noqa: D102
-        return hydra.utils.instantiate(
-            self.hparams.model,
-            image_size=self.hparams.data_params.out_shape[1:],
-            channels=self.hparams.data_params.out_shape[0],
-        )
+        return hydra.utils.instantiate(self.hparams.model, input_shape=self.hparams.data_params.out_shape)
 
     def on_train_epoch_start(self) -> None:  # noqa: D102
         super().on_epoch_start()

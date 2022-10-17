@@ -1,4 +1,4 @@
-_target_: vital.models.generative.autoencoder.Autoencoder
+_target_: vital.models.generative.autoencoder.Autoencoder2d
 
 blocks: 4
 init_channels: 48
