@@ -15,13 +15,12 @@ from vital.models.layers import (
 )
 
 
-class Decoder(nn.Module):
-    """Module making up the decoder half of a convolutional autoencoder."""
+class Decoder2d(nn.Module):
+    """Module making up the decoder half of a convolutional 2D autoencoder."""
 
     def __init__(
         self,
-        image_size: Tuple[int, int],
-        out_channels: int,
+        output_shape: Tuple[int, int, int],
         blocks: int,
         init_channels: int,
         latent_dim: int,
@@ -31,8 +30,7 @@ class Decoder(nn.Module):
         """Initializes class instance.
 
         Args:
-            image_size: Size of the output segmentation groundtruth for each axis.
-            out_channels: Number of channels of the image to reconstruct.
+            output_shape: (C, H, W), Shape of the data to reconstruct.
             blocks: Number of upsampling transposed convolution blocks to use.
             init_channels: Number of output feature maps from the last layer before the classifier, used to compute the
                 number of feature maps in preceding layers.
@@ -53,7 +51,7 @@ class Decoder(nn.Module):
             batchnorm_desc = ""
 
         # Projection from encoding to bottleneck
-        self.feature_shape = (init_channels, image_size[0] // 2 ** (blocks + 1), image_size[1] // 2 ** (blocks + 1))
+        self.feature_shape = (init_channels, output_shape[1] // 2 ** (blocks + 1), output_shape[2] // 2 ** (blocks + 1))
         self.encoding2features = nn.Sequential(
             OrderedDict(
                 [
@@ -86,7 +84,7 @@ class Decoder(nn.Module):
         )
 
         # Classifier
-        self.classifier = nn.Conv2d(block_in_channels, out_channels, kernel_size=3, padding=1)
+        self.classifier = nn.Conv2d(block_in_channels, output_shape[0], kernel_size=3, padding=1)
 
     def forward(self, z: Tensor) -> Tensor:
         """Defines the computation performed at every call.
@@ -108,8 +106,7 @@ class Decoder1d(nn.Module):
 
     def __init__(
         self,
-        out_length: int,
-        out_channels: int,
+        output_shape: Tuple[int, int],
         blocks: int,
         init_channels: int,
         latent_dim: int,
@@ -118,8 +115,7 @@ class Decoder1d(nn.Module):
         """Initializes class instance.
 
         Args:
-            out_length: Length of the 1D channels in the output.
-            out_channels: Number of channels of 1D signals to reconstruct.
+            output_shape: (C, L), Shape of the data to reconstruct.
             blocks: Number of upsampling transposed convolution blocks to use.
             init_channels: Number of output channels from the last layer before the regressor, used to compute the
                 number of channels in preceding layers.
@@ -131,7 +127,7 @@ class Decoder1d(nn.Module):
         channels = [init_channels * 2**block_idx for block_idx in range(blocks - 1, -1, -1)]
 
         # Projection from encoding to bottleneck
-        self.feature_shape = (channels[0], out_length // 2**blocks)
+        self.feature_shape = (channels[0], output_shape[1] // 2**blocks)
         self.encoding2features = nn.Sequential(
             OrderedDict(
                 [
@@ -164,7 +160,7 @@ class Decoder1d(nn.Module):
 
         # Regressor
         self.regressor = nn.Sequential(
-            nn.ReflectionPad1d(1), nn.Conv1d(channels[-1], out_channels, kernel_size=3, stride=1)
+            nn.ReflectionPad1d(1), nn.Conv1d(channels[-1], output_shape[0], kernel_size=3, stride=1)
         )
 
     def forward(self, z: Tensor) -> Tensor:

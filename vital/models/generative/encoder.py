@@ -10,13 +10,12 @@ from torch import Tensor, nn
 from vital.models.layers import conv2d_activation, conv2d_activation_bn, get_nn_module
 
 
-class Encoder(nn.Module):
-    """Module making up the encoder half of a convolutional autoencoder."""
+class Encoder2d(nn.Module):
+    """Module making up the encoder half of a convolutional 2D autoencoder."""
 
     def __init__(
         self,
-        image_size: Tuple[int, int],
-        in_channels: int,
+        input_shape: Tuple[int, int, int],
         blocks: int,
         init_channels: int,
         latent_dim: int,
@@ -27,8 +26,7 @@ class Encoder(nn.Module):
         """Initializes class instance.
 
         Args:
-            image_size: Size of the input segmentation groundtruth for each axis.
-            in_channels: Number of channels of the image to reconstruct.
+            input_shape: (C, H, W), Shape of the inputs to encode.
             blocks: Number of downsampling convolution blocks to use.
             init_channels: Number of output feature maps from the first layer, used to compute the number of feature
                 maps in following layers.
@@ -52,7 +50,7 @@ class Encoder(nn.Module):
 
         # Downsampling convolution blocks
         self.input2features = nn.Sequential()
-        block_in_channels = in_channels
+        block_in_channels = input_shape[0]
         for block_idx in range(blocks):
             block_out_channels = init_channels * 2**block_idx
 
@@ -84,7 +82,7 @@ class Encoder(nn.Module):
         )
 
         # Fully-connected mapping to encoding
-        feature_shape = (init_channels, image_size[0] // 2 ** (blocks + 1), image_size[1] // 2 ** (blocks + 1))
+        feature_shape = (init_channels, input_shape[1] // 2 ** (blocks + 1), input_shape[2] // 2 ** (blocks + 1))
         self.mu_head = nn.Linear(reduce(mul, feature_shape), latent_dim)
         if self.output_distribution:
             self.logvar_head = nn.Linear(reduce(mul, feature_shape), latent_dim)
@@ -115,8 +113,7 @@ class Encoder1d(nn.Module):
 
     def __init__(
         self,
-        in_length: int,
-        in_channels: int,
+        input_shape: Tuple[int, int],
         blocks: int,
         init_channels: int,
         latent_dim: int,
@@ -126,8 +123,7 @@ class Encoder1d(nn.Module):
         """Initializes class instance.
 
         Args:
-            in_length: Length of the 1D channels in the input.
-            in_channels: Number of channels of 1D signals to reconstruct.
+            input_shape: (C, L), Shape of the inputs to encode.
             blocks: Number of downsampling convolution blocks to use.
             init_channels: Number of output channels from the first layer, used to compute the number of channels in
                 following layers.
@@ -139,7 +135,7 @@ class Encoder1d(nn.Module):
         """
         super().__init__()
         self.output_distribution = output_distribution
-        channels = [in_channels] + [init_channels * 2**block_idx for block_idx in range(blocks)]
+        channels = [input_shape[0]] + [init_channels * 2**block_idx for block_idx in range(blocks)]
 
         def _downsampling_block(block_in_channels: int, block_out_channels: int) -> nn.Module:
             return nn.Sequential(
@@ -160,7 +156,7 @@ class Encoder1d(nn.Module):
             )
 
         # Fully-connected heads to output mu (and possibly logvar) from the shared feature encoder
-        features_shape = (channels[-1], in_length // 2**blocks)
+        features_shape = (channels[-1], input_shape[1] // 2**blocks)
         self.mu_head = nn.Linear(reduce(mul, features_shape), latent_dim)
         if self.output_distribution:
             self.logvar_head = nn.Linear(reduce(mul, features_shape), latent_dim)
