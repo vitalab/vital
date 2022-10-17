@@ -1,0 +1,7 @@
+_target_: vital.models.generative.autoencoder.MLPAutoencoder
+
+latent_dim: 2
+encoder_hidden: []
+activation: ReLU
+encoder_activation: PReLU
+dropout: 0
