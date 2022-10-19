@@ -4,6 +4,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from vital.models.layers import get_nn_module
+
 
 class MLP(nn.Module):
     """Standard multilayer perceptron model.
@@ -15,7 +17,10 @@ class MLP(nn.Module):
             reshaped at the end of the forward pass.
         hidden: Number of neurons at each hidden layer of the MLP. If None or empty, the MLP will correspond to a linear
             model between the input and output.
-        output_activation: Activation function of the last layer.
+        activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use in the MLP's
+            hidden layers.
+        output_activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use at the
+            MLP's last layer.
         dropout: Rate for dropout layers.
     """
 
@@ -24,7 +29,8 @@ class MLP(nn.Module):
         input_shape: Tuple[int, ...],
         output_shape: Tuple[int, ...],
         hidden: Optional[Sequence[int]] = (128,),
-        output_activation: Optional[nn.Module] = None,
+        activation: str = "ReLU",
+        output_activation: Optional[str] = None,
         dropout: float = 0.25,
     ):
         super().__init__()
@@ -43,13 +49,14 @@ class MLP(nn.Module):
 
         # Hidden layers
         for i in range(0, len(layers) - 1):
-            self.net.add_module(f"relu_{i}", nn.ReLU())
-            self.net.add_module(f"drop_{i}", nn.Dropout(p=dropout))
+            self.net.add_module(f"{activation.lower()}_{i}", get_nn_module(activation))
+            if dropout:
+                self.net.add_module(f"drop_{i}", nn.Dropout(p=dropout))
             self.net.add_module(f"layer_{i+1}", nn.Linear(layers[i], layers[i + 1]))
 
         # Output layers
         if output_activation:
-            self.net.add_module(f"{output_activation.__class__.__name__.lower()}_out", output_activation)
+            self.net.add_module(f"{output_activation.lower()}_out", get_nn_module(output_activation))
 
     def forward(self, x: torch.Tensor):  # noqa D102
         x = torch.flatten(x, start_dim=1)

@@ -1,11 +1,85 @@
-from typing import Dict, Sequence, Tuple
+from typing import Dict, Optional, Sequence, Tuple
 
 import torch
 from torch import Tensor, nn
 
+from vital.models.classification.mlp import MLP
 from vital.models.generative.decoder import Decoder1d, Decoder2d
 from vital.models.generative.encoder import Encoder1d, Encoder2d
 from vital.models.layers import reparameterize
+
+
+class MLPAutoencoder(nn.Module):
+    """Module making up a fully connected N-D autoencoder."""
+
+    # Tags used as keys in the dict returned by the forward pass
+    x_hat_tag: str = "x_hat"
+    z_tag: str = "z"
+
+    def __init__(
+        self,
+        input_shape: Tuple[int, ...],
+        latent_dim: int,
+        encoder_hidden: Optional[Tuple[int, ...]] = None,
+        decoder_hidden: Optional[Tuple[int, ...]] = None,
+        activation: str = "ReLU",
+        encoder_activation: Optional[str] = None,
+        dropout: float = 0,
+    ):
+        """Initializes class instance.
+
+        Args:
+            input_shape: Shape of the inputs to reconstruct. If this does not specify a single dim, the input will be
+                automatically flattened at the start of the forward pass.
+            latent_dim: Number of dimensions in the latent space.
+            encoder_hidden: Number of neurons at each hidden layer of the encoder. If None or empty, the MLP will
+                correspond to a linear model between the input and encoding.
+            decoder_hidden: Number of neurons at each hidden layer of the decoder. If None, the decoder's hidden layers
+                will automatically be determined to mirror the encoder. If empty, the decoder will correspond to a
+                linear model between the encoding and reconstruction.
+            activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use across the
+                encoder and decoder's hidden layers.
+            encoder_activation: Name of the activation (as it is named in PyTorch's ``nn.Module`` package) to use at the
+                output of the encoder.
+            dropout: Rate for dropout layers.
+        """
+        super().__init__()
+
+        if encoder_hidden is None:
+            encoder_hidden = []
+        if decoder_hidden is None:
+            decoder_hidden = encoder_hidden[::-1]
+
+        self.encoder = MLP(
+            input_shape=input_shape,
+            output_shape=(latent_dim,),
+            hidden=encoder_hidden,
+            activation=activation,
+            output_activation=encoder_activation,
+            dropout=dropout,
+        )
+        self.decoder = MLP(
+            input_shape=(latent_dim,),
+            output_shape=input_shape,
+            hidden=decoder_hidden,
+            activation=activation,
+            dropout=dropout,
+        )
+
+    def forward(self, x: Tensor) -> Dict[str, Tensor]:
+        """Defines the computation performed at every call.
+
+        Args:
+            x: (N, ...), Input to reconstruct.
+
+        Returns:
+            Dict with values:
+            - (N, ...), Reconstructed input.
+            - (N, ``latent_dim``), Encoding of the input in the latent space.
+        """
+        z = self.encoder(x)
+        x_hat = self.decoder(z)
+        return {self.x_hat_tag: x_hat, self.z_tag: z}
 
 
 class Autoencoder2d(nn.Module):
