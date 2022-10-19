@@ -23,7 +23,13 @@ class StoreDictKeyPair(argparse.Action):
         setattr(namespace, self.dest, args_map)
 
 
-def yaml_flow_collection(val: str, collection_entries_separator: str = ",", mapping_separator: str = ":") -> Any:
+def yaml_flow_collection(
+    val: str,
+    collection_entries_separator: str = ",",
+    mapping_separator: str = ":",
+    sequence_markers: Tuple[str, str] = ("[", "]"),
+    mapping_markers: Tuple[str, str] = ("{", "}"),
+) -> Any:
     """Parses a string as a YAML flow collection.
 
     References:
@@ -33,11 +39,20 @@ def yaml_flow_collection(val: str, collection_entries_separator: str = ",", mapp
         val: String representation of the flow collection to parse.
         collection_entries_separator: Separator to use to split collection entries.
         mapping_separator: Separator to use to split key-value pairs in flow mappings.
+        sequence_markers: Characters denoting the beginning/end of a flow sequence.
+        mapping_markers: Characters denoting the beginning/end of a flow mapping.
 
     Returns:
         Native Python data structure representation of the YAML flow collection parsed from the string.
     """
-    yaml_str = val.replace(collection_entries_separator, ",").replace(mapping_separator, ": ")
+    yaml_str = (
+        val.replace(collection_entries_separator, ",")
+        .replace(mapping_separator, ": ")
+        .replace(sequence_markers[0], "[")
+        .replace(sequence_markers[1], "]")
+        .replace(mapping_markers[0], "{")
+        .replace(mapping_markers[1], "}")
+    )
     return yaml.safe_load(yaml_str)
 
 
