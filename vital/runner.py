@@ -40,7 +40,7 @@ class VitalRunner(ABC):
         """Sets-up the environment before running the training/testing."""
         # Load environment variables from `.env` file if it exists
         # Load before hydra main to allow for setting environment variables with ${oc.env:ENV_NAME}
-        load_dotenv(override=True)
+        load_dotenv()
 
         register_omegaconf_resolvers()
 
