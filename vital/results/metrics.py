@@ -12,7 +12,7 @@ class Metrics(ResultsProcessor):
     """Abstract class that computes metrics on the results and saves them to csv."""
 
     ProcessingOutput = Mapping[str, Real]
-    input_choices: Sequence[str]  #: Tags of the data on which it is possible to compute the metrics
+    input_choices: Sequence[str] = None  #: Tags of the data on which it is possible to compute the metrics
     target_choices: Sequence[str] = None  #: Tags of reference data that can serve as target when computing the metrics
 
     def __init__(self, input: str, target: str = None, **kwargs):
@@ -24,7 +24,7 @@ class Metrics(ResultsProcessor):
             **kwargs: Additional parameters to pass along to ``super().__init__()``.
         """
         super().__init__(output_name=f"{input.replace('/', '-')}_{self.desc}.csv", **kwargs)
-        if input not in self.input_choices:
+        if self.input_choices and input not in self.input_choices:
             raise ValueError(
                 f"The `input` parameter should be chosen from one of the supported values: {self.input_choices}. "
                 f"You passed '{input}' as value for `input`."
@@ -74,13 +74,10 @@ class Metrics(ResultsProcessor):
             Parser object with support for generic metrics and collection arguments.
         """
         parser = super().build_parser()
-        parser.add_argument(
-            "--input",
-            type=str,
-            default=cls.input_choices[0],
-            choices=cls.input_choices,
-            help="Data for which to compute the metrics",
-        )
+        input_kwargs = {}
+        if cls.input_choices:
+            input_kwargs.update({"default": cls.input_choices[0], "choices": cls.input_choices})
+        parser.add_argument("--input", type=str, **input_kwargs, help="Data for which to compute the metrics")
         if cls.target_choices is not None:
             parser.add_argument(
                 "--target",
