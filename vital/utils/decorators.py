@@ -131,7 +131,13 @@ def auto_cast_data(func: Callable) -> Callable:
     dtypes = [np.ndarray, *cast_types]
 
     @wraps(func)
-    def _call_func_with_cast_data(data, *args, **kwargs):
+    def _call_func_with_cast_data(*args, **kwargs):
+        if _has_method(args[0], func.__name__):
+            # If `func` is a method, pass over the implicit `self` as first argument
+            self_or_empty, data, args = args[0:1], args[1], args[2:]
+        else:
+            self_or_empty, data, args = (), args[0], args[1:]
+
         dtype = type(data)
         if dtype not in dtypes:
             raise ValueError(
@@ -143,7 +149,7 @@ def auto_cast_data(func: Callable) -> Callable:
         if dtype == Tensor:
             data_device = data.device
             data = data.detach().cpu().numpy()
-        result = func(data, *args, **kwargs)
+        result = func(*self_or_empty, data, *args, **kwargs)
         if dtype == Tensor:
             result = torch.tensor(result, device=data_device)
         return result
