@@ -1,9 +1,12 @@
-from typing import Tuple
+from typing import Tuple, TypeVar, Union
 
 import numpy as np
+from torch import Tensor
+
+T = TypeVar("T", np.ndarray, Tensor)
 
 
-def minmax_scaling(data: np.ndarray, bounds: Tuple[float, float] = None) -> np.ndarray:
+def minmax_scaling(data: T, bounds: Tuple[Union[float, T], Union[float, T]] = None) -> T:
     """Standardizes data w.r.t. predefined min/max bounds, if provided, or its own min/max otherwise.
 
     Args:
@@ -21,7 +24,7 @@ def minmax_scaling(data: np.ndarray, bounds: Tuple[float, float] = None) -> np.n
     return (data - min) / (max - min)
 
 
-def scale(data: np.ndarray, bounds: Tuple[float, float]) -> np.ndarray:
+def scale(data: T, bounds: Tuple[Union[float, T], Union[float, T]]) -> T:
     """Scales data that was previously normalized back to its original range, defined by min and max values in `bounds`.
 
     Args:
