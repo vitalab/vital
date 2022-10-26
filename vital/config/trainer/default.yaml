@@ -2,3 +2,4 @@ _target_: pytorch_lightning.Trainer
 accelerator: "auto"
 devices: null
 enable_progress_bar: True
+enable_model_summary: True
