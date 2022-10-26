@@ -4,7 +4,7 @@ defaults:
   - results_processors@_global_.results_processors: null
 
 _target_: ???
-enable_model_summary: True
+enable_model_summary: ${oc.select:trainer.enable_model_summary,True}
 
 train_log_kwargs:
   prog_bar: False
