@@ -21,6 +21,7 @@ def register_omegaconf_resolvers() -> None:
     OmegaConf.register_new_resolver("sys.getcwd", lambda x=None: os.getcwd())
     OmegaConf.register_new_resolver("sys.eps.np", lambda dtype: np.finfo(np.dtype(dtype)).eps)
     OmegaConf.register_new_resolver("vital.root", lambda x=None: str(get_vital_root()))
+    OmegaConf.register_new_resolver("builtin.len", lambda cfg: len(cfg))
 
 
 def read_ini_config(ini_config: Path) -> ConfigParser:
