@@ -7,6 +7,7 @@ import comet_ml
 import torch
 from packaging.version import InvalidVersion, Version
 from pytorch_lightning.core.saving import ModelIO
+from torch.types import Device
 
 from vital import get_vital_home
 from vital.system import VitalSystem
@@ -98,7 +99,7 @@ def resolve_model_checkpoint_path(checkpoint: Union[str, Path]) -> Path:
 def load_from_checkpoint(
     checkpoint: Union[str, Path],
     train_mode: bool = False,
-    device_type: str = None,
+    device: Device | str = None,
     expected_checkpoint_type: Type[VitalSystem] = None,
 ) -> VitalSystem:
     """Loads a Lightning module checkpoint, casting it to the appropriate type.
@@ -111,8 +112,8 @@ def load_from_checkpoint(
                 - For the latest version of the model: 'my_workspace/my_model'
                 - Using a specific version/stage: 'my_workspace/my_model/0.1.0' or 'my_workspace/my_model/prod'
         train_mode: Whether the model should be in 'train' mode (`True`) or 'eval' mode (`False`).
-        device_type: Device on which to move the Lightning module after it's been loaded. Defaults to using 'cuda' if
-            it is available, and 'cpu' otherwise.
+        device: Device on which to move the Lightning module after it's been loaded. Defaults to using 'cuda' if it is
+            available, and 'cpu' otherwise.
         expected_checkpoint_type: Type of model expected to be loaded from the checkpoint. Used to perform a runtime
             check, and raise an error if the expected model type does not match the loaded model.
 
@@ -139,6 +140,6 @@ def load_from_checkpoint(
 
     # Set the mode of the model according to the caller's requirements
     model.train(mode=train_mode)
-    if not device_type:
-        device_type = "cuda" if torch.cuda.is_available() else "cpu"
-    return model.to(device=torch.device(device_type))
+    if not device:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    return model.to(device=torch.device(device))
