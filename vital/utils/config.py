@@ -1,15 +1,27 @@
 import logging
+import os
 from configparser import ConfigParser
 from pathlib import Path
 from typing import Any, Callable, List
 
 import hydra
-from omegaconf import DictConfig
+import numpy as np
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Callback
 
+from vital import get_vital_root
 from vital.results.processor import ResultsProcessor, ResultsProcessorCallback
 
 logger = logging.getLogger(__name__)
+
+
+def register_omegaconf_resolvers() -> None:
+    """Registers various OmegaConf resolvers useful to query system/repository/config info."""
+    OmegaConf.register_new_resolver("sys.num_workers", lambda x=None: os.cpu_count() - 1)
+    OmegaConf.register_new_resolver("sys.getcwd", lambda x=None: os.getcwd())
+    OmegaConf.register_new_resolver("sys.eps.np", lambda dtype: np.finfo(np.dtype(dtype)).eps)
+    OmegaConf.register_new_resolver("vital.root", lambda x=None: str(get_vital_root()))
+    OmegaConf.register_new_resolver("builtin.len", lambda cfg: len(cfg))
 
 
 def read_ini_config(ini_config: Path) -> ConfigParser:
