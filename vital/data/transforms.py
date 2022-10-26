@@ -71,7 +71,7 @@ class GrayscaleToRGB(torch.nn.Module):
         return img
 
 
-class Resample(torch.nn.Module):
+class Resample:
     """Resamples a signal to reach a target number of data points."""
 
     def __init__(self, num: int, **resample_kwargs):
@@ -97,7 +97,7 @@ class Resample(torch.nn.Module):
         return self.partial_resample(signal)
 
 
-class Interp1d(torch.nn.Module):
+class Interp1d:
     """Interpolates data points in a signal to reach a target number of data points."""
 
     def __init__(self, num: int, **interp1d_kwargs):
