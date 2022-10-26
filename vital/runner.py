@@ -82,7 +82,10 @@ class VitalRunner(ABC):
             )
         if isinstance(predict_node := cfg.data.get("predict"), DictConfig):
             logger.info("Instantiating prediction writer")
-            callbacks.append(hydra.utils.instantiate(predict_node, postprocessors=postprocessors))
+            prediction_writer_kwargs = {}
+            if postprocessors:
+                prediction_writer_kwargs["postprocessors"] = postprocessors
+            callbacks.append(hydra.utils.instantiate(predict_node, **prediction_writer_kwargs))
 
         if cfg.resume:
             trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=experiment_logger, callbacks=callbacks)
