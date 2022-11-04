@@ -1,14 +1,13 @@
 import sys
 from abc import ABC
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Iterable, Literal, Optional, Union
 
 import hydra
 import pytorch_lightning as pl
 import torch
 from omegaconf import DictConfig
-from torch import nn
-from torch.optim.optimizer import Optimizer
+from torch import Tensor, nn
 from torchinfo import summary
 
 from vital.data.config import DataParameters
@@ -63,8 +62,40 @@ class VitalSystem(pl.LightningModule, ABC):
             output_shape=self.hparams.data_params.out_shape,
         )
 
-    def configure_optimizers(self) -> Optimizer:  # noqa: D102
-        return hydra.utils.instantiate(self.hparams.optim, params=self.parameters())
+    def configure_optimizers(
+        self, params: Union[Iterable[Tensor], Iterable[dict]] = None
+    ) -> Dict[Literal["optimizer", "lr_scheduler"], Any]:
+        """Configures optimizers/LR schedulers based on hydra config.
+
+        Supports 2 configuration schemes:
+        1) an optimizer configured alone at the root of the `optim` config node, or
+        2) an optimizer configured in an `optim.optimizer` node, along with an (optional) LR scheduler configured in an
+           `optim.lr_scheduler` node.
+
+        Args:
+            params: Model parameters with which to initialize the optimizer.
+
+        Returns:
+            A dict with an `optimizer` key, and an optional `lr_scheduler` if a scheduler is used.
+        """
+        if params is None:
+            params = self.parameters()
+
+        # Extract the optimizer and scheduler configs
+        scheduler_cfg = None
+        if optimizer_cfg := self.hparams.optim.get("optimizer"):
+            scheduler_cfg = self.hparams.optim.get("lr_scheduler")
+        else:
+            optimizer_cfg = self.hparams.optim
+
+        # Instantiate the optimizer and scheduler
+        configured_optimizer = {"optimizer": hydra.utils.instantiate(optimizer_cfg, params=params)}
+        if scheduler_cfg:
+            configured_optimizer["lr_scheduler"] = hydra.utils.instantiate(
+                scheduler_cfg, optimizer=configured_optimizer["optimizer"]
+            )
+
+        return configured_optimizer
 
     def setup(self, stage: Optional[str] = None) -> None:  # noqa: D102
         self.log_dir.mkdir(parents=True, exist_ok=True)  # Ensure output directory exists
