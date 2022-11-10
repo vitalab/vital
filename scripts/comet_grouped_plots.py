@@ -9,6 +9,7 @@ import pandas as pd
 import seaborn as sns
 from comet_ml import get_config
 from comet_ml.api import API, APIExperiment
+from dotenv import load_dotenv
 from tqdm import tqdm
 
 from vital.utils.format.native import filter_excluded
@@ -40,6 +41,17 @@ def get_workspace_experiment_keys(
     # Get all the experiments in workspace
     config = get_config()
     workspace, project = config["comet.workspace"], config["comet.project_name"]
+    if not workspace:
+        raise RuntimeError(
+            "The Comet config specified no workspace from which to query experiments. Specify in the Comet config "
+            "which workspace to use."
+        )
+    if not project:
+        raise RuntimeError(
+            f"The Comet config specified no project from workspace '{workspace}' from which to query experiments. "
+            f"Specify in the Comet config which project to use from the following list of projets in '{workspace}': "
+            f"{API().get(workspace)}."
+        )
     workspace_experiments = API().get(workspace, project)
 
     def experiment_has_tag(experiment: APIExperiment, tag: str) -> bool:
@@ -151,7 +163,9 @@ def plot_mean_std_curve(
         if scale is not None:
             ax.set(yscale=scale)
 
-    output_file = output_dir / f"{metric}_{group_by}.png"
+    pathified_metric = metric.lower().replace("/", "_").replace(" ", "_")
+    pathified_group_by = group_by.lower().replace("/", "_").replace(" ", "_")
+    output_file = output_dir / f"{pathified_metric}_{pathified_group_by}.png"
     plt.savefig(output_file)
     plt.close()  # Close the figure in case the function is called multiple times
 
@@ -161,6 +175,7 @@ def plot_mean_std_curve(
 def main():
     """Run the script."""
     configure_logging(log_to_console=True, console_level=logging.INFO)
+    load_dotenv()  # Load environment variables from `.env` file if it exists
 
     parser = ArgumentParser()
     parser.add_argument(
