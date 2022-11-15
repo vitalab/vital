@@ -115,6 +115,9 @@ class VitalRunner(ABC):
                 logger.info(f"Loading model from {ckpt_path}")
                 model = model.load_from_checkpoint(ckpt_path, data_params=datamodule.data_params, strict=cfg.strict)
 
+        if cfg.tune:
+            trainer.tune(model, datamodule=datamodule)
+
         if cfg.train:
             trainer.fit(model, datamodule=datamodule)
 
