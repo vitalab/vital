@@ -102,7 +102,7 @@ def load_from_checkpoint(
     device: Device | str = None,
     expected_checkpoint_type: Type[VitalSystem] = None,
 ) -> VitalSystem:
-    """Loads a Lightning module checkpoint, casting it to the appropriate type.
+    """Loads a vital checkpoint, casting it to the appropriate instantiable type.
 
     The module's class is automatically determined based on the hyperparameters saved in the checkpoint.
 
@@ -114,32 +114,33 @@ def load_from_checkpoint(
         train_mode: Whether the model should be in 'train' mode (`True`) or 'eval' mode (`False`).
         device: Device on which to move the Lightning module after it's been loaded. Defaults to using 'cuda' if it is
             available, and 'cpu' otherwise.
-        expected_checkpoint_type: Type of model expected to be loaded from the checkpoint. Used to perform a runtime
-            check, and raise an error if the expected model type does not match the loaded model.
+        expected_checkpoint_type: Type of system expected to be loaded from the checkpoint. Used to perform a runtime
+            check, and raise an error if the expected system type does not match the loaded system.
 
     Returns:
-        Lightning module loaded from the checkpoint, casted to its original type.
+        Lightning module (specifically a subclass of VitalSystem) loaded from the checkpoint, casted to its original
+        type.
     """
     # Resolve the local path of the checkpoint
     ckpt_path = resolve_model_checkpoint_path(checkpoint)
 
     # Extract which class to load from the hyperparameters saved in the checkpoint
     ckpt_hparams = torch.load(ckpt_path)[ModelIO.CHECKPOINT_HYPER_PARAMS_KEY]
-    model_cls = import_from_module(ckpt_hparams["task"]["_target_"])
+    system_cls = import_from_module(ckpt_hparams["task"]["_target_"])
 
     # Restore the model from the checkpoint
-    model = model_cls.load_from_checkpoint(str(ckpt_path), ckpt=checkpoint)
+    system = system_cls.load_from_checkpoint(str(ckpt_path), ckpt=checkpoint)
 
     # Perform runtime check on the type of the loaded model
-    if expected_checkpoint_type and not isinstance(model, expected_checkpoint_type):
+    if expected_checkpoint_type and not isinstance(system, expected_checkpoint_type):
         raise RuntimeError(
             f"Type of the model loaded from the checkpoint does not correspond to the model's expected type. "
-            f"Type of the model loaded from checkpoint: {type(model)} "
+            f"Type of the model loaded from checkpoint: {type(system)} "
             f"Expected type of the model: {expected_checkpoint_type}"
         )
 
     # Set the mode of the model according to the caller's requirements
-    model.train(mode=train_mode)
+    system.train(mode=train_mode)
     if not device:
         device = "cuda" if torch.cuda.is_available() else "cpu"
-    return model.to(device=torch.device(device))
+    return system.to(device=torch.device(device))
