@@ -118,7 +118,7 @@ def load_from_checkpoint(
             check, and raise an error if the expected system type does not match the loaded system.
 
     Returns:
-        Lightning module (specifically a subclass of VitalSystem) loaded from the checkpoint, casted to its original
+        Lightning module (specifically a subclass of VitalSystem) loaded from the checkpoint, cast to its original
         type.
     """
     # Resolve the local path of the checkpoint
