@@ -54,7 +54,7 @@ class VitalSystem(pl.LightningModule, ABC):
                 f"system class when loading the checkpoint."
             )
         else:
-            super().load_from_checkpoint(*args, **kwargs)
+            return super().load_from_checkpoint(*args, **kwargs)
 
     @property
     def example_input_array(self) -> torch.Tensor:
