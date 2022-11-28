@@ -40,6 +40,22 @@ class VitalSystem(pl.LightningModule, ABC):
         # Also save the classpath of the system to be able to load a checkpoint w/o knowing it's type beforehand
         self.save_hyperparameters({"task": {"_target_": f"{self.__class__.__module__}.{self.__class__.__name__}"}})
 
+    @classmethod
+    def load_from_checkpoint(cls, *args, **kwargs):  # noqa: D102
+        if ABC in cls.__bases__:
+            # We use this method to determine if the class is abstract because Lightning does not use the
+            # `@abstractmethod` decorator to mark abstract methods (e.g. `train_step`), rather relying on runtime
+            # warnings. Because of this, we cannot rely on Python's canonical function for detecting abstract classes,
+            # `inspect.isabstract`, which expects abstract classes to have explicitly defined abstract methods.
+            raise NotImplementedError(
+                f"Class '{cls.__name__}' does not support being loaded from a checkpoint because it is an ABC. Either "
+                f"call `load_from_checkpoint` on the specific class of the system you want to load, or use the utility "
+                f"function `load_from_checkpoint` provided in `vital.utils.saving` that will automatically detect the "
+                f"system class when loading the checkpoint."
+            )
+        else:
+            return super().load_from_checkpoint(*args, **kwargs)
+
     @property
     def example_input_array(self) -> torch.Tensor:
         """Tensor of random data, passed to `forward` during setup to determine the model's architecture."""
