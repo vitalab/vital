@@ -7,6 +7,7 @@ import hydra
 import pytorch_lightning as pl
 import torch
 from omegaconf import DictConfig
+from pytorch_lightning.trainer.states import TrainerFn
 from torch import Tensor, nn
 from torchinfo import summary
 
@@ -119,7 +120,7 @@ class VitalSystem(pl.LightningModule, ABC):
         # Save Keras-style summary to a ``summary.txt`` file, inside the output directory
         # Option to disable the summary if PL model's summary is disabled to avoid possible device incompatibilities
         # (e.g. in clusters).
-        if self.hparams.enable_model_summary and self.global_rank == 0:
+        if stage == TrainerFn.FITTING and self.hparams.enable_model_summary and self.global_rank == 0:
             model_summary = summary(
                 self,
                 input_data=self.example_input_array,
