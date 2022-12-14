@@ -1,9 +1,11 @@
-from typing import Tuple
+from typing import Tuple, Union
 
 import numpy as np
 
 
-def cart2pol(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def cart2pol(
+    x: np.ndarray, y: np.ndarray, sort_by_theta: bool = False
+) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """Converts (x,y) cartesian coordinates to (theta,rho) polar coordinates.
 
     Notes:
@@ -12,9 +14,12 @@ def cart2pol(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     Args:
         x: x component of cartesian coordinates.
         y: y component of cartesian coordinates.
+        sort_by_theta: Whether to sort the output coordinates by ascending theta.
 
     Returns:
         (theta,rho) polar coordinates corresponding to the input cartesian coordinates.
+        If `sort_by_theta==True`, also returns a list of indices of the corresponding points in the input
+        (because in that case the outputs coordinates are ordered differently than the input coordinates).
 
     Example:
         >>> x = np.array([5, 3.5355, 0, -10])
@@ -24,7 +29,14 @@ def cart2pol(x: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     rho = np.sqrt(x**2 + y**2)
     theta = np.arctan2(y, x)
-    return theta, rho
+
+    if sort_by_theta:
+        # Sort theta and rho arrays
+        sort_indices = theta.argsort()
+        theta, rho = theta[sort_indices], rho[sort_indices]
+        return theta, rho, sort_indices
+    else:
+        return theta, rho
 
 
 def pol2cart(theta: np.ndarray, rho: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
