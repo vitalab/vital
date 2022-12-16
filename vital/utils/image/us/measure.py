@@ -97,7 +97,7 @@ class EchoMeasure(Measure):
             base_highest_peaks = base_peak_heights.argsort()[-2:]
             # Sort the indices of the 2 highest peaks to make sure they stay ordered by descending theta
             # (so that the peak of the left corner comes first) regardless of their heights
-            base_highest_peaks = list(sorted(base_highest_peaks, reverse=True))
+            base_highest_peaks = sorted(base_highest_peaks, reverse=True)
 
             landmarks_polar_indices.extend(base_peaks[base_highest_peaks])
 
