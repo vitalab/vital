@@ -1,0 +1,4 @@
+defaults:
+  - cardinal/default@_here_
+
+_target_: vital.data.cardinal.utils.itertools.Patients

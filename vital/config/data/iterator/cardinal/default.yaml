@@ -1,0 +1,9 @@
+_target_: ???
+data_roots:
+  - ${oc.env:CARDINAL_DATA_PATH}
+include_patients: null
+exclude_patients: null
+patient_attrs_filter: []
+views: null
+handle_attrs_errors: null
+fast_dev_patients: null
