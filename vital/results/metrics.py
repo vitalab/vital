@@ -29,7 +29,7 @@ class Metrics(ResultsProcessor):
                 f"The `input` parameter should be chosen from one of the supported values: {self.input_choices}. "
                 f"You passed '{input}' as value for `input`."
             )
-        if self.target_choices is not None and target not in self.target_choices:
+        if self.target_choices and target not in self.target_choices:
             raise ValueError(
                 f"The `target` parameter should be chosen from one of the supported values: {self.target_choices}. "
                 f"You passed '{target}' as value for `target`."
@@ -79,11 +79,10 @@ class Metrics(ResultsProcessor):
             input_kwargs.update({"default": cls.input_choices[0], "choices": cls.input_choices})
         parser.add_argument("--input", type=str, **input_kwargs, help="Data for which to compute the metrics")
         if cls.target_choices is not None:
+            target_kwargs = {}
+            if cls.target_choices:
+                target_kwargs.update({"default": cls.target_choices[0], "choices": cls.target_choices})
             parser.add_argument(
-                "--target",
-                type=str,
-                default=cls.target_choices[0],
-                choices=cls.target_choices,
-                help="Reference data to use as target when computing metrics",
+                "--target", type=str, **target_kwargs, help="Reference data to use as target when computing metrics"
             )
         return parser
