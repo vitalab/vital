@@ -63,11 +63,11 @@ flake8-docstrings = "==1.7.0"
 
 [tool.poetry.scripts]
 vital-runner = "vital.runner:main"
-bmode-pol2cart = "vital.utils.image.us.bmode:main"
 camus-hdf5 = "vital.data.camus.dataset_generator:main"
 acdc-hdf5 = "vital.data.acdc.dataset_generator:main"
 anatomical-da = "vital.data.augmentation.anatomically_constrained_da:main"
 cardinal-anonymise = "vital.data.cardinal.anonymise_files:main"
+cardinal-ge2nifti = "vital.data.cardinal.ge2nifti:main"
 
 [tool.black]
 line-length = 120
