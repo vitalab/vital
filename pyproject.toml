@@ -68,6 +68,7 @@ acdc-hdf5 = "vital.data.acdc.dataset_generator:main"
 anatomical-da = "vital.data.augmentation.anatomically_constrained_da:main"
 cardinal-anonymise = "vital.data.cardinal.anonymise_files:main"
 cardinal-ge2nifti = "vital.data.cardinal.ge2nifti:main"
+cardinal-process-masks = "vital.data.cardinal.process_masks:main"
 
 [tool.black]
 line-length = 120

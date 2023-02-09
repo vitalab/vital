@@ -1,0 +1,15 @@
+# @package _global_
+defaults:
+  - /data/postprocessing@postprocess_ops: echo/temporal_regularization
+  - /data/iterator@views: cardinal/views
+
+views:
+  data_roots: ???
+
+morphological_preprocessing: True
+mask_tag: mask
+progress_bar: True
+
+hydra:
+  run:
+    dir: ${sys.getcwd:}/processed_${mask_tag}
