@@ -114,6 +114,7 @@ class AnatomicallyConstrainedDataAugmenter(ABC):
             The second is an K x D array, where K is the number of latent space samples projecting to segmentation maps
             with anatomical errors.
         """
+
         # A generator that decodes latent space samples by batch (to efficiently process batches at each call)
         # but returns the decoded samples one at a time
         def _decoded_latent_samples_generator():

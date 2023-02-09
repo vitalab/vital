@@ -181,7 +181,6 @@ class Segmentation2DMetrics:
         binary_struct = binary_fill_holes(self.binary_structs[struct_label]).astype(dtype=np.uint8)
 
         if np.amax(binary_struct):  # If the structure is present in the image
-
             # Get convex hull of the segmented area
             convex_hull = morphology.convex_hull_image(binary_struct)
 
@@ -321,7 +320,6 @@ class Segmentation2DMetrics:
         """
         binary_struct = self.binary_structs[struct_label]
         if np.amax(binary_struct):  # If the structure is present in the image
-
             # Compute maximum thickness of the structure (pixel with maximum distance to nearest background pixel)
             struct_dist_to_background = distance_transform_edt(binary_struct)
             max_struct_dist_to_background = np.max(struct_dist_to_background)

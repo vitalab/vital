@@ -130,7 +130,6 @@ def _compute_diameters(segmentation: np.ndarray, voxelspacing: Tuple[Real, Real]
         angles_to_previous_points = _get_angle_of_lines_to_point(contour[point_idx], previous_points)
 
         for acute_angle_idx in np.nonzero(angles_to_previous_points <= 45)[0]:
-
             intermediate_points = contour[acute_angle_idx + 1 : point_idx]
             distance_to_intermediate_points = _distance_line_to_points(
                 contour[point_idx], contour[acute_angle_idx], intermediate_points

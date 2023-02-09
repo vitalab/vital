@@ -169,7 +169,6 @@ class CamusPredictionWriter(BasePredictionWriter):
             full_resolution_prediction = np.empty_like(view_metadata.gt)
             pred_view_seg = to_categorical(pred_view_seg.detach().cpu().numpy(), channel_axis=1)
             for instant, pred_instant_seg in enumerate(pred_view_seg):
-
                 # Format the predictions to fit with the groundtruth
                 if view_metadata.registering:  # Undo registering on predictions
                     registering_parameters = {
@@ -237,10 +236,8 @@ class CamusPredictionWriter(BasePredictionWriter):
 
         # Initialize the file to write to as a copy of the predictions already saved
         with h5py.File(self._write_path, "a") as dataset:
-
             # For each group of results
             for view_result in patient_views_iter:
-
                 # Post-process the raw predictions
                 post_dict = self.postprocess_prediction(
                     trainer, pl_module, view_result[f"{CamusTags.pred}/{CamusTags.raw}"].data

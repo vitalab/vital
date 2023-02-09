@@ -315,7 +315,6 @@ def generate_dataset(data_path: Path, output_path: Path, data_augmentation: bool
         test_paths = np.array([np.insert(i, 2, [None, None]).tolist() for i in test_paths])
 
     with h5py.File(output_path, "w") as output_dataset:
-
         output_dataset.attrs[AcdcTags.registered] = registering
 
         # Training samples ###
