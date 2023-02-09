@@ -37,7 +37,6 @@ class MhdImages(ResultsProcessor):
             result: Data structure holding all the data arrays to save as images for a single patient.
         """
         for view in result.views.values():
-
             view_folder = self.output_path / view.id
             view_folder.mkdir(parents=True, exist_ok=True)
 

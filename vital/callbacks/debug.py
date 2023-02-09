@@ -34,7 +34,6 @@ def _log_layers_histograms(
             raise NotImplementedError(f"Logging histogram not implemented for '{logger.__class__.__name__}' logger.")
 
     for layer_name, layer in layers.items():
-
         # Extract the relevant parameters from the current layer
         match layer:
             case nn.MultiheadAttention():
