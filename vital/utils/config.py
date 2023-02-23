@@ -6,7 +6,7 @@ from typing import Any, Callable, List
 
 import hydra
 import numpy as np
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf
 from pytorch_lightning import Callback
 
 from vital import get_vital_root
@@ -25,7 +25,9 @@ def register_omegaconf_resolvers() -> None:
     OmegaConf.register_new_resolver(
         "list.remove",
         lambda cfg, to_remove: [
-            val for val in cfg if (val not in to_remove if isinstance(to_remove, (tuple, list)) else val != to_remove)
+            val
+            for val in cfg
+            if (val not in to_remove if isinstance(to_remove, (tuple, list, ListConfig)) else val != to_remove)
         ],
     )
 
