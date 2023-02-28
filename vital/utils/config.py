@@ -24,11 +24,13 @@ def register_omegaconf_resolvers() -> None:
     OmegaConf.register_new_resolver("builtin.len", lambda cfg: len(cfg))
     OmegaConf.register_new_resolver(
         "list.remove",
-        lambda cfg, to_remove: [
-            val
-            for val in cfg
-            if (val not in to_remove if isinstance(to_remove, (tuple, list, ListConfig)) else val != to_remove)
-        ],
+        lambda cfg, to_remove: ListConfig(
+            [
+                val
+                for val in cfg
+                if (val not in to_remove if isinstance(to_remove, (tuple, list, ListConfig)) else val != to_remove)
+            ]
+        ),
     )
 
 
