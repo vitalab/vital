@@ -132,7 +132,16 @@ class VitalRunner(ABC):
                     trainer.save_checkpoint(best_model_path)
 
                 if isinstance(trainer.logger, CometLogger):
-                    trainer.logger.experiment.log_model("model", trainer.checkpoint_callback.best_model_path)
+                    last_model_path = None
+                    if trainer.checkpoint_callback is not None:
+                        best_model_path = trainer.checkpoint_callback.best_model_path
+                        last_model_path = trainer.checkpoint_callback.last_model_path
+
+                    trainer.logger.experiment.log_model("best-model", best_model_path)
+
+                    # Also log the `ModelCheckpoint`'s last checkpoint, if it is configured to save one
+                    if last_model_path:
+                        trainer.logger.experiment.log_model("last-model", last_model_path)
 
         if cfg.test:
             trainer.test(model, datamodule=datamodule)
