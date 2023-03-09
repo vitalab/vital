@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 from argparse import ArgumentParser
@@ -165,7 +166,7 @@ def plot_mean_std_curve(
 
     pathified_metric = metric.lower().replace("/", "_").replace(" ", "_")
     pathified_group_by = group_by.lower().replace("/", "_").replace(" ", "_")
-    output_file = output_dir / f"{pathified_metric}_{pathified_group_by}.png"
+    output_file = output_dir / f"{pathified_metric}_wrt_{pathified_group_by}.png"
     plt.savefig(output_file)
     plt.close()  # Close the figure in case the function is called multiple times
 
@@ -215,7 +216,9 @@ def main():
         help="Scale to use for a metric. By default, metrics are plotted on a linear scale. Here, you can specify "
         "custom scales for each metric.",
     )
-    parser.add_argument("--group_by", type=str, help="Hyperparameter by which to group experiments", required=True)
+    parser.add_argument(
+        "--group_by", type=str, nargs="*", help="Hyperparameter by which to group experiments", required=True
+    )
     parser.add_argument("--out_dir", type=Path, help="Output directory where to save the figures", required=True)
     args = parser.parse_args()
 
@@ -245,8 +248,8 @@ def main():
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     experiments_data = get_experiments_data(experiment_keys, args.metric)
-    for metric in args.metric:
-        plot_mean_std_curve(experiments_data, metric, args.group_by, args.out_dir, scale=args.scale.get(metric))
+    for metric, group_by in itertools.product(args.metric, args.group_by):
+        plot_mean_std_curve(experiments_data, metric, group_by, args.out_dir, scale=args.scale.get(metric))
 
 
 if __name__ == "__main__":
