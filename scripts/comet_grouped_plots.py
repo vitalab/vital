@@ -158,7 +158,9 @@ def plot_mean_std_curve(
     data = experiments_data.loc[experiments_data.metricName == metric]
 
     with sns.axes_style("darkgrid"):
-        ax = sns.lineplot(data=data, x="epoch", y="metricValue", hue=group_by)
+        ax = sns.lineplot(
+            data=data, x="epoch", y="metricValue", hue=group_by, hue_order=sorted(data[group_by].unique())
+        )
         ax.set_title(plot_title)
         ax.set_ylabel(metric)
         if scale is not None:
