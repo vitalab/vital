@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 from argparse import ArgumentParser
@@ -23,6 +24,7 @@ def get_workspace_experiment_keys(
     include_tags: Sequence[str] = None,
     exclude_tags: Sequence[str] = None,
     to_exclude: Sequence[Union[str, Path]] = None,
+    include_archive: bool = False,
 ) -> List[str]:
     """Retrieves the keys of all the experiments in the workspace/project defined in the `.comet.config` file.
 
@@ -31,6 +33,7 @@ def get_workspace_experiment_keys(
         exclude_tags: Tag that experiments should NOTE have to be listed.
         to_exclude: Individual experiment keys, or files listing multiple experiment keys, of specific experiments to
             exclude.
+        include_archive: Whether to also look for matching experiments in the archived experiments.
 
     Returns:
         Keys of some experiments from the workspace/project.
@@ -53,6 +56,8 @@ def get_workspace_experiment_keys(
             f"{API().get(workspace)}."
         )
     workspace_experiments = API().get(workspace, project)
+    if include_archive:
+        workspace_experiments += API().get_archived_experiments(workspace, project)
 
     def experiment_has_tag(experiment: APIExperiment, tag: str) -> bool:
         return any(tag == experiment_tag for experiment_tag in experiment.get_tags())
@@ -87,17 +92,21 @@ def get_experiment_available_metrics(experiment: APIExperiment) -> List[str]:
     return [metric_summary["name"] for metric_summary in experiment.get_metrics_summary()]
 
 
-def get_experiments_data(experiment_keys: Sequence[str], metrics: Sequence[str]) -> pd.DataFrame:
+def get_experiments_data(
+    experiment_keys: Sequence[str], metrics: Sequence[str], parameters: Sequence[str] = None
+) -> pd.DataFrame:
     """Retrieves sampled metrics for experiments by querying the Comet API.
 
     Args:
         experiment_keys: Keys of the experiments to plot.
         metrics: Metrics for which retrieve the sampled data.
+        parameters: To reduce the memory footprint of the collected data, subset of parameters to include in the
+            collected data. If not provided, all available parameters will be included.
 
     Returns:
         Sampled metrics from all experiments.
     """
-    # Initialize the data structure that will contain all of the experiments' data
+    # Initialize the data structure that will contain all the experiments' data
     experiments_data = []
 
     desc_template = "Fetching data from experiment {}"
@@ -108,10 +117,28 @@ def get_experiments_data(experiment_keys: Sequence[str], metrics: Sequence[str])
         # Fetch the current experiment's metadata
         exp = APIExperiment(previous_experiment=experiment_key)
         exp_avail_metrics = get_experiment_available_metrics(exp)
-        exp_params = {param["name"]: param["valueCurrent"] for param in exp.get_parameters_summary()}
+        exp_params = {
+            param["name"]: param["valueCurrent"]
+            for param in exp.get_parameters_summary()
+            if parameters is None or param["name"] in parameters
+        }
+
+        if missing_metrics := sorted(set(metrics) - set(exp_avail_metrics), key=lambda metric: metrics.index(metric)):
+            logger.warning(
+                f"The following metrics to be collected are missing from the metrics available for experiment "
+                f"'{experiment_key}': {missing_metrics}."
+            )
+
+        if parameters is not None and (
+            missing_params := sorted(set(parameters) - set(exp_params), key=lambda param: parameters.index(param))
+        ):
+            logger.warning(
+                f"The following parameters to be collected are missing from the parameters available for experiment "
+                f"'{experiment_key}': {missing_params}."
+            )
 
         # Collect the experiment's data
-        for metric_name in (metric_name for metric_name in metrics if metric_name in exp_avail_metrics):
+        for metric_name in set(exp_avail_metrics).intersection(metrics):
             exp_metric_entries = exp.get_metrics(metric_name)
 
             # Add the experiment's parameters to each metric entry,
@@ -157,7 +184,9 @@ def plot_mean_std_curve(
     data = experiments_data.loc[experiments_data.metricName == metric]
 
     with sns.axes_style("darkgrid"):
-        ax = sns.lineplot(data=data, x="epoch", y="metricValue", hue=group_by)
+        ax = sns.lineplot(
+            data=data, x="epoch", y="metricValue", hue=group_by, hue_order=sorted(data[group_by].unique())
+        )
         ax.set_title(plot_title)
         ax.set_ylabel(metric)
         if scale is not None:
@@ -165,7 +194,7 @@ def plot_mean_std_curve(
 
     pathified_metric = metric.lower().replace("/", "_").replace(" ", "_")
     pathified_group_by = group_by.lower().replace("/", "_").replace(" ", "_")
-    output_file = output_dir / f"{pathified_metric}_{pathified_group_by}.png"
+    output_file = output_dir / f"{pathified_metric}_wrt_{pathified_group_by}.png"
     plt.savefig(output_file)
     plt.close()  # Close the figure in case the function is called multiple times
 
@@ -205,6 +234,11 @@ def main():
         help="Key of the experiment to plot, or path to a file listing key of experiments to exclude from the plots",
     )
     parser.add_argument(
+        "--include_archive",
+        action="store_true",
+        help="Whether to also look for matching experiments in the archived experiments",
+    )
+    parser.add_argument(
         "--metric", type=str, nargs="+", help="Metric for which to plot each group's curve", required=True
     )
     parser.add_argument(
@@ -215,7 +249,9 @@ def main():
         help="Scale to use for a metric. By default, metrics are plotted on a linear scale. Here, you can specify "
         "custom scales for each metric.",
     )
-    parser.add_argument("--group_by", type=str, help="Hyperparameter by which to group experiments", required=True)
+    parser.add_argument(
+        "--group_by", type=str, nargs="*", help="Hyperparameter by which to group experiments", required=True
+    )
     parser.add_argument("--out_dir", type=Path, help="Output directory where to save the figures", required=True)
     args = parser.parse_args()
 
@@ -233,7 +269,10 @@ def main():
     experiment_keys = args.experiment_key
     if not experiment_keys:
         experiment_keys = get_workspace_experiment_keys(
-            include_tags=args.include_tag, exclude_tags=args.exclude_tag, to_exclude=excluded_experiments
+            include_tags=args.include_tag,
+            exclude_tags=args.exclude_tag,
+            to_exclude=excluded_experiments,
+            include_archive=args.include_archive,
         )
 
     if not (num_experiments := len(experiment_keys)) > 1:
@@ -244,9 +283,9 @@ def main():
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    experiments_data = get_experiments_data(experiment_keys, args.metric)
-    for metric in args.metric:
-        plot_mean_std_curve(experiments_data, metric, args.group_by, args.out_dir, scale=args.scale.get(metric))
+    experiments_data = get_experiments_data(experiment_keys, args.metric, parameters=args.group_by)
+    for metric, group_by in itertools.product(args.metric, args.group_by):
+        plot_mean_std_curve(experiments_data, metric, group_by, args.out_dir, scale=args.scale.get(metric))
 
 
 if __name__ == "__main__":
