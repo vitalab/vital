@@ -24,6 +24,7 @@ def get_workspace_experiment_keys(
     include_tags: Sequence[str] = None,
     exclude_tags: Sequence[str] = None,
     to_exclude: Sequence[Union[str, Path]] = None,
+    include_archive: bool = False,
 ) -> List[str]:
     """Retrieves the keys of all the experiments in the workspace/project defined in the `.comet.config` file.
 
@@ -32,6 +33,7 @@ def get_workspace_experiment_keys(
         exclude_tags: Tag that experiments should NOTE have to be listed.
         to_exclude: Individual experiment keys, or files listing multiple experiment keys, of specific experiments to
             exclude.
+        include_archive: Whether to also look for matching experiments in the archived experiments.
 
     Returns:
         Keys of some experiments from the workspace/project.
@@ -54,6 +56,8 @@ def get_workspace_experiment_keys(
             f"{API().get(workspace)}."
         )
     workspace_experiments = API().get(workspace, project)
+    if include_archive:
+        workspace_experiments += API().get_archived_experiments(workspace, project)
 
     def experiment_has_tag(experiment: APIExperiment, tag: str) -> bool:
         return any(tag == experiment_tag for experiment_tag in experiment.get_tags())
@@ -208,6 +212,11 @@ def main():
         help="Key of the experiment to plot, or path to a file listing key of experiments to exclude from the plots",
     )
     parser.add_argument(
+        "--include_archive",
+        action="store_true",
+        help="Whether to also look for matching experiments in the archived experiments",
+    )
+    parser.add_argument(
         "--metric", type=str, nargs="+", help="Metric for which to plot each group's curve", required=True
     )
     parser.add_argument(
@@ -238,7 +247,10 @@ def main():
     experiment_keys = args.experiment_key
     if not experiment_keys:
         experiment_keys = get_workspace_experiment_keys(
-            include_tags=args.include_tag, exclude_tags=args.exclude_tag, to_exclude=excluded_experiments
+            include_tags=args.include_tag,
+            exclude_tags=args.exclude_tag,
+            to_exclude=excluded_experiments,
+            include_archive=args.include_archive,
         )
 
     if not (num_experiments := len(experiment_keys)) > 1:
