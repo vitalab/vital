@@ -10,8 +10,6 @@ import comet_ml  # noqa
 import hydra
 import torch
 from dotenv import load_dotenv
-from hydra.core.hydra_config import HydraConfig
-from hydra_plugins.hydra_submitit_launcher.config import LocalQueueConf, SlurmQueueConf
 from omegaconf import DictConfig, open_dict
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
@@ -156,19 +154,6 @@ class VitalRunner(ABC):
         if not cfg.trainer.get("default_root_dir", None):
             with open_dict(cfg):
                 cfg.trainer.default_root_dir = os.getcwd()
-
-        # If using the submitit launcher
-        if (hydra_launcher_cfg := HydraConfig.get().launcher)._target_ in [
-            SlurmQueueConf._target_,
-            LocalQueueConf._target_,
-        ]:
-            # Test if custom additional required parameters are set
-            for required_option in ["venv", "dir_to_copy"]:
-                if required_option not in hydra_launcher_cfg.additional_parameters:
-                    raise ValueError(
-                        f"You must specify 'hydra.launcher.additional_parameters.{required_option}', "
-                        f"e.g, hydra.launcher.additional_parameters.{required_option}=<OPTION>"
-                    )
 
         return cfg
 
