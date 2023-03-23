@@ -1,0 +1,12 @@
+defaults:
+  - submitit_slurm
+
+timeout_min: ${oc.select:run_time_min,60}
+setup:
+  - "module load httpproxy" # load module allowing to connect to whitelisted domains
+  - "source ${venv}/bin/activate" # activate the pre-installed virtual environment
+  - "rsync -a ${data_dir_to_copy} $SLURM_TMPDIR" # copy the dataset to the compute node
+
+additional_parameters:
+  mail-user: ${oc.env:SLURM_MAIL_USER,null}
+  mail-type: ALL

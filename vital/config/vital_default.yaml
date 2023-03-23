@@ -6,6 +6,7 @@ defaults:
       - model_checkpoint
   - logger: comet/online
   - _self_
+  - optional launcher: null # List custom launcher after trainer/task/data, so that it can override their configs
 
 seed: null
 
