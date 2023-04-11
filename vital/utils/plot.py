@@ -1,9 +1,11 @@
 import logging
-from typing import Any, Dict, Iterable, Iterator
+from typing import Any, Dict, Iterable, Iterator, Union
 
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import umap
+from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 
 logger = logging.getLogger(__name__)
@@ -54,3 +56,23 @@ def embedding_scatterplot(
         scatterplot.set(title=plot_title)
 
         yield scatterplot
+
+
+def plot_attention_map(attention_map: Union[np.ndarray, pd.DataFrame], rescale_above_n_elems: int = 10) -> Axes:
+    """Generates a heat map of the attention.
+
+    Args:
+        attention_map: Attention map.
+        rescale_above_n_elems: If the number of rows/columns in the attention map is higher than this threshold, the
+            size of the figure along that dimension is scaled so that the tick labels and annotations become visibly
+            smaller, instead of overlapping and becoming unreadable.
+
+    Returns:
+        The generated attention heat map.
+    """
+    x_scaling = max(1.0, attention_map.shape[1] / rescale_above_n_elems)
+    y_scaling = max(1.0, attention_map.shape[0] / rescale_above_n_elems)
+    with sns.axes_style("darkgrid"):
+        fig, ax = plt.subplots(figsize=(6.8 * x_scaling, 4.8 * y_scaling))
+        sns.heatmap(data=attention_map, annot=True, fmt=".2f", square=True, cmap="viridis", ax=ax)
+    return ax
