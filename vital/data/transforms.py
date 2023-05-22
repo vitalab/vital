@@ -123,3 +123,46 @@ class Interp1d:
         signal_x_coords = np.linspace(0, 1, num=len(signal))
         f = interpolate.interp1d(signal_x_coords, signal, **self.interp1d_kwargs)
         return f(self.interp_x_coords)
+
+
+class PadShift1d:
+    """Shift the signal forward/backward after padding in the direction of the shift."""
+
+    def __init__(self, shift: int, before_shift_prob: float = 0.5, **pad_kwargs):
+        """Initializes class instance.
+
+        Args:
+            shift: Number of values by which to shift the signal.
+            before_shift_prob: Probability to shift the signal backward (to include values padded before the signal).
+            **pad_kwargs: Additional parameters to pass along to ``np.pad``.
+        """
+        super().__init__()
+        self.shift = shift
+        self.pad_kwargs = pad_kwargs
+        self.before_shift_prob = before_shift_prob
+
+    def __call__(self, signal: np.ndarray) -> np.ndarray:
+        """Shifts input signal.
+
+        Args:
+            signal: (N), Signal to shift.
+
+        Returns:
+            (N), Shifted signal.
+        """
+        if signal.ndim != 1:
+            raise ValueError(
+                f"The provided data on which to apply the '{self.__class__.__name__}' transform does not match the "
+                f"configured shift. The '{self.shift}' shift is configured for 1D signal, but the provided data is "
+                f"{signal.ndim}D with a shape of {signal.shape}."
+            )
+
+        padded_signal = np.pad(signal, (self.shift, self.shift), **self.pad_kwargs)
+
+        shift_before = np.random.binomial(1, self.before_shift_prob)
+        if shift_before:  # Start from the values padded before `data` and exclude the last values of `data`
+            shifted_signal = padded_signal[: len(signal)]
+        else:  # Shift to include values padded after `data`
+            shifted_signal = padded_signal[-len(signal) :]
+
+        return shifted_signal
