@@ -109,3 +109,41 @@ def kl_div_zmuv(mu: Tensor, logvar: Tensor) -> Tensor:
     """
     kl_div_by_samples = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1)
     return reduce(kl_div_by_samples, reduction="elementwise_mean")
+
+
+def ntxent_loss(z_i: Tensor, z_j: Tensor, temperature: float = 1) -> Tensor:
+    """Computes the NT-Xent loss for contrastive learning.
+
+    References:
+        - Inspired by the implementation from https://github.com/clabrugere/pytorch-scarf/blob/09281499d7c15dff3b1c49ba3d0957580e324641/scarf/loss.py#L6-L44
+
+    Args:
+        z_i: (N, E), Embedding of one view of the input data.
+        z_j: (N, E), Embedding of the other view of the input data.
+        temperature: Scaling factor of the similarity metric.
+
+    Returns:
+        (1,), Calculated NT-Xent loss.
+    """
+    batch_size = z_i.size(0)
+
+    # compute similarity between the embeddings of both views of the data
+    z = torch.cat([z_i, z_j], dim=0)
+    similarity = F.cosine_similarity(z.unsqueeze(1), z.unsqueeze(0), dim=2)  # (N * 2, N * 2)
+
+    # Create a mask for the positive samples, i.e. the corresponding samples in each view
+    sim_ij = torch.diag(similarity, batch_size)
+    sim_ji = torch.diag(similarity, -batch_size)
+    positives_mask = torch.cat([sim_ij, sim_ji], dim=0)
+
+    # For the denominator, we need to include both the positive and negative samples, so we use the inverse of the
+    # identity matrix, so that we only exclude the similarities between each embedding and itself
+    pairwise_mask = (~torch.eye(batch_size * 2, batch_size * 2, dtype=torch.bool, device=z_i.device)).float()
+
+    numerator = torch.exp(positives_mask / temperature)
+    denominator = pairwise_mask * torch.exp(similarity / temperature)
+
+    all_losses = -torch.log(numerator / torch.sum(denominator, dim=1))
+    loss = torch.sum(all_losses) / (2 * batch_size)
+
+    return loss
