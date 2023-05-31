@@ -1,6 +1,6 @@
 from torch import Tensor, nn
 
-from vital.metrics.train.functional import differentiable_dice_score
+from vital.metrics.train.functional import differentiable_dice_score, ntxent_loss
 
 
 class DifferentiableDiceCoefficient(nn.Module):
@@ -50,3 +50,28 @@ class DifferentiableDiceCoefficient(nn.Module):
             no_fg_score=self.no_fg_score,
             reduction=self.reduction,
         )
+
+
+class NTXent(nn.Module):
+    """Computes the NT-Xent loss for contrastive learning."""
+
+    def __init__(self, temperature=1.0):
+        """Initializes class instance.
+
+        Args:
+            temperature: Scaling factor of the similarity metric.
+        """
+        super().__init__()
+        self.temperature = temperature
+
+    def forward(self, z_i: Tensor, z_j: Tensor):
+        """Actual metric calculation.
+
+        Args:
+            z_i: (N, E), Embedding of one view of the input data.
+            z_j: (N, E), Embedding of the other view of the input data.
+
+        Return:
+            (1,), Calculated NT-Xent loss.
+        """
+        return ntxent_loss(z_i, z_j, temperature=self.temperature)
