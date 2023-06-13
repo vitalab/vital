@@ -21,6 +21,9 @@ def register_omegaconf_resolvers() -> None:
     OmegaConf.register_new_resolver("sys.getcwd", lambda x=None: os.getcwd())
     OmegaConf.register_new_resolver("sys.eps.np", lambda dtype: np.finfo(np.dtype(dtype)).eps)
     OmegaConf.register_new_resolver("vital.root", lambda x=None: str(get_vital_root()))
+    OmegaConf.register_new_resolver("op.add", lambda x, y: x + y)
+    OmegaConf.register_new_resolver("op.sub", lambda x, y: x - y)
+    OmegaConf.register_new_resolver("op.mul", lambda x, y: x * y)
     OmegaConf.register_new_resolver("builtin.len", lambda cfg: len(cfg))
     OmegaConf.register_new_resolver(
         "list.remove",
