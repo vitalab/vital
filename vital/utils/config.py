@@ -1,4 +1,6 @@
+import builtins
 import logging
+import operator
 import os
 from configparser import ConfigParser
 from pathlib import Path
@@ -21,9 +23,18 @@ def register_omegaconf_resolvers() -> None:
     OmegaConf.register_new_resolver("sys.getcwd", lambda x=None: os.getcwd())
     OmegaConf.register_new_resolver("sys.eps.np", lambda dtype: np.finfo(np.dtype(dtype)).eps)
     OmegaConf.register_new_resolver("vital.root", lambda x=None: str(get_vital_root()))
-    OmegaConf.register_new_resolver("op.add", lambda x, y: x + y)
-    OmegaConf.register_new_resolver("op.sub", lambda x, y: x - y)
-    OmegaConf.register_new_resolver("op.mul", lambda x, y: x * y)
+
+    # Define wrapper for basic math operators, with the option to cast result to arbitrary type
+    def _cast_op(op, x, y, type_of: str = None) -> Any:
+        res = op(x, y)
+        if type_of is not None:
+            res = getattr(builtins, type_of)(res)
+        return res
+
+    OmegaConf.register_new_resolver("op.add", lambda x, y, type_of=None: _cast_op(operator.add, x, y, type_of=type_of))
+    OmegaConf.register_new_resolver("op.sub", lambda x, y, type_of=None: _cast_op(operator.sub, x, y, type_of=type_of))
+    OmegaConf.register_new_resolver("op.mul", lambda x, y, type_of=None: _cast_op(operator.mul, x, y, type_of=type_of))
+
     OmegaConf.register_new_resolver("builtin.len", lambda cfg: len(cfg))
     OmegaConf.register_new_resolver(
         "list.remove",
