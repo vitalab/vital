@@ -225,9 +225,9 @@ class AutoencoderSnake(_AutoencoderFiltering):
     def __init__(
         self,
         grad_step: float = 1e-2,
-        smoothness_weight: float = 10,
+        smoothness_weight: float = 50,
         num_neighbors: int = 1,
-        neighbors_pad_mode: str = None,
+        neighbors_pad_mode: str = "edge",
         max_iterations: int = int(1e5),
         convergence_eps: float = np.finfo(np.float32).eps,
         **kwargs,
@@ -280,21 +280,21 @@ class ConstrainedAutoencoderSnake(AutoencoderSnake):
 
     def __init__(
         self,
-        attr_smoothness_constraint: Literal["dlr", "penalty"],
         attr_thresholds: Union[str, Path],
+        attr_smoothness_constraint: Literal["dlr", "penalty"] = "dlr",
         constraint_mode_kwargs: Mapping[str, Any] = None,
         **kwargs,
     ):
         """Initializes class instance.
 
         Args:
+            attr_thresholds: File containing pre-computed thresholds on the acceptable temporal consistency metrics'
+                values for each attribute.
             attr_smoothness_constraint: How to handle the hard constraint on the attributes' smoothness.
                 - ``'dlr'``: optimizes the global smoothness' weight in a dual lagrangian relaxation process to enforce
                   the smoothness constraint on the attributes' temporal signal;
                 - ``'penalty'``: adds the constraint as a penalty function that enforces the smoothness constraint on
                   the attributes' temporal signal.
-            attr_thresholds: File containing pre-computed thresholds on the acceptable temporal consistency metrics'
-                values for each attribute.
             constraint_mode_kwargs: Additional parameters for the specific snake configuration dictated by
                 ``attr_smoothness_constraint``, passed along to the ``Snake``'s ``init``.
             **kwargs: Additional parameters to pass along to ``super().__init__()``.
