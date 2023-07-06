@@ -4,7 +4,6 @@ from argparse import ArgumentParser
 from typing import Dict
 
 import pytorch_lightning as pl
-from pytorch_lightning.utilities.argparse import add_argparse_args
 from torch.utils.data import DataLoader, Dataset
 
 from vital.data.config import DataParameters, Subset
@@ -20,14 +19,14 @@ class VitalDataModule(pl.LightningDataModule, ABC):
         """Initializes class instance.
 
         References:
-            - ``workers`` documentation, for more detail:
-              https://pytorch-lightning.readthedocs.io/en/stable/benchmarking/performance.html#num-workers
+            - ``num_workers`` documentation, for more detail:
+              https://lightning.ai/docs/pytorch/stable/advanced/speed.html#num-workers
 
         Args:
             data_params: Parameters related to the data necessary to initialize networks working with this dataset.
             batch_size: Size of batches.
-            num_workers: Number of subprocesses to use for data loading.
-                ``workers=0`` means that the data will be loaded in the main process.
+            num_workers: Number of subprocesses to use for data loading. ``num_workers=0`` means that the data will be
+                loaded in the main process.
         """
         super().__init__()
         self.data_params = data_params
@@ -57,4 +56,13 @@ class VitalDataModule(pl.LightningDataModule, ABC):
 
     @classmethod
     def add_argparse_args(cls, parent_parser: ArgumentParser, **kwargs) -> ArgumentParser:  # noqa: D102
-        return add_argparse_args(cls, add_argparse_args(VitalDataModule, parent_parser))
+        parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        parser.add_argument("--batch_size", type=int, required=True, help="Size of batches")
+        parser.add_argument(
+            "--num_workers",
+            type=int,
+            default=os.cpu_count() - 1,
+            help="Number of subprocesses to use for data loading. ``workers=0`` means that the data will be loaded in "
+            "the main process",
+        )
+        return parser

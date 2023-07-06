@@ -96,7 +96,7 @@ class CamusDataModule(StructuredDataMixin, VitalDataModule):
     @classmethod
     def add_argparse_args(cls, parent_parser: ArgumentParser, **kwargs) -> ArgumentParser:
         """Override of generic ``add_argparse_args`` to manually add parser for arguments of custom types."""
-        parser = super().add_argparse_args(parent_parser)
+        parser = super().add_argparse_args(parent_parser, **kwargs)
 
         # Hack to fetch the argument group created specifically for the data module's arguments
         dm_arg_group = [
