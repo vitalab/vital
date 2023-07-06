@@ -31,7 +31,7 @@ class PostProcessor2DStructure(PostProcessor):
         Returns:
             ([N], H, W), Processed segmentation.
         """
-        if seg.dtype != np.bool:  # If it is a categorical image containing multiple structures
+        if seg.dtype != bool:  # If it is a categorical image containing multiple structures
             post_img = np.zeros_like(seg)
             for class_label in self._labels:
                 label_image = self._process_structure(np.isin(seg, class_label))
