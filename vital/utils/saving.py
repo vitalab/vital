@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Type, Union
 
 import comet_ml
+import pytorch_lightning as pl
 import torch
 from packaging.version import InvalidVersion, Version
-from pytorch_lightning.core.saving import ModelIO
 from torch.types import Device
 
 from vital import get_vital_home
@@ -125,7 +125,7 @@ def load_from_checkpoint(
     ckpt_path = resolve_model_checkpoint_path(checkpoint)
 
     # Extract which class to load from the hyperparameters saved in the checkpoint
-    ckpt_hparams = torch.load(ckpt_path)[ModelIO.CHECKPOINT_HYPER_PARAMS_KEY]
+    ckpt_hparams = torch.load(ckpt_path)[pl.LightningModule.CHECKPOINT_HYPER_PARAMS_KEY]
     system_cls = import_from_module(ckpt_hparams["task"]["_target_"])
 
     # Restore the model from the checkpoint

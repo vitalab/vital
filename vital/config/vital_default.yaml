@@ -20,7 +20,6 @@ ckpt: null
 weights_only: False
 strict: True
 
-tune: False
 train: True
 test: False
 predict: True

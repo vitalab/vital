@@ -12,7 +12,7 @@ import torch
 from dotenv import load_dotenv
 from omegaconf import DictConfig, open_dict
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning.loggers import CometLogger, LightningLoggerBase
+from pytorch_lightning.loggers import CometLogger, Logger
 
 from vital.data.data_module import VitalDataModule
 from vital.system import VitalSystem
@@ -92,12 +92,8 @@ class VitalRunner(ABC):
                 prediction_writer_kwargs["postprocessors"] = postprocessors
             callbacks.append(hydra.utils.instantiate(predict_node, **prediction_writer_kwargs))
 
-        if cfg.resume:
-            trainer = Trainer(resume_from_checkpoint=cfg.ckpt_path, logger=experiment_logger, callbacks=callbacks)
-        else:
-            trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=experiment_logger, callbacks=callbacks)
-
-            trainer.logger.log_hyperparams(Namespace(**cfg))  # Save config to logger.
+        trainer: Trainer = hydra.utils.instantiate(cfg.trainer, logger=experiment_logger, callbacks=callbacks)
+        trainer.logger.log_hyperparams(Namespace(**cfg))  # Save config to logger.
 
         if isinstance(trainer.logger, CometLogger):
             experiment_logger.experiment.log_asset_folder(".hydra", log_file_name=True)
@@ -120,11 +116,11 @@ class VitalRunner(ABC):
                 logger.info(f"Loading model from {ckpt_path}")
                 model = model.load_from_checkpoint(ckpt_path, data_params=datamodule.data_params, strict=cfg.strict)
 
-        if cfg.tune:
-            trainer.tune(model, datamodule=datamodule)
-
         if cfg.train:
-            trainer.fit(model, datamodule=datamodule)
+            if cfg.resume:
+                trainer.fit(model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
+            else:
+                trainer.fit(model, datamodule=datamodule)
 
             if not cfg.trainer.get("fast_dev_run", False):
                 # Copy best model checkpoint to a predictable path + online tracker (if used)
@@ -172,7 +168,7 @@ class VitalRunner(ABC):
         return cfg
 
     @staticmethod
-    def configure_logger(cfg: DictConfig) -> Union[bool, LightningLoggerBase]:
+    def configure_logger(cfg: DictConfig) -> Union[bool, Logger]:
         """Initializes Lightning logger.
 
         Args:
