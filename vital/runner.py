@@ -59,6 +59,11 @@ class VitalRunner(ABC):
         """
         cfg = VitalRunner._check_cfg(cfg)
 
+        # Global torch config making it possible to use performant matrix multiplications on Ampere and newer CUDA GPUs
+        # `vital` default value of is `high`, the middle-ground between performance and precision. For more details:
+        # https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+        torch.set_float32_matmul_precision(cfg.float32_matmul_precision)
+
         if cfg.ckpt:
             ckpt_path = resolve_model_checkpoint_path(cfg.ckpt)
 
