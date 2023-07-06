@@ -8,6 +8,7 @@ defaults:
   - _self_
 
 seed: null
+float32_matmul_precision: high
 
 resume: False
 
