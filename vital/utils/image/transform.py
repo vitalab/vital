@@ -41,7 +41,7 @@ def resize_image_to_voxelspacing(
         resample: Resampling filter to use.
 
     Returns:
-        Input image resized so that its spacing equals `target_spacing`.
+        ([N], H', W'), Input image resized so that its spacing equals `target_spacing`.
     """
     scaling = np.array(spacing) / np.array(target_spacing)
     new_height, new_width = (np.array(image.shape[-2:]) * scaling).round().astype(int)
@@ -52,7 +52,7 @@ def resize_image_to_voxelspacing(
 def resize_image_to_isotropic(
     image: np.ndarray, spacing: Tuple[float, float], resample: Resampling = Resampling.NEAREST
 ) -> Tuple[np.ndarray, float]:
-    """Resizes the image to attain isotropic spacing, by stretching it along the dimension with the biggest voxel size.
+    """Resizes the image to attain isotropic spacing, by resampling the dimension with the biggest voxel size.
 
     Args:
         image: ([N], H, W), Input image to resize. Must be in a format supported by PIL.
@@ -60,7 +60,7 @@ def resize_image_to_isotropic(
         resample: Resampling filter to use.
 
     Returns:
-        Input image resized so that the spacing is isotropic, and the isotropic value of the new spacing.
+        ([N], H', W'), Input image resized so that the spacing is isotropic, and the isotropic value of the new spacing.
     """
     return resize_image_to_voxelspacing(image, spacing, (min(spacing), min(spacing)), resample=resample), min(spacing)
 
