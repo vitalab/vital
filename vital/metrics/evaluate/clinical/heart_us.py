@@ -1,6 +1,7 @@
 # Disable flak8 entirely because this file was mostly copied over from external sources and
 # the quality of the codebase and documentation is not up to par with the project's standards
 # flake8: noqa
+import logging
 from numbers import Real
 from typing import Tuple
 
@@ -8,6 +9,8 @@ import numpy as np
 from skimage.measure import find_contours
 
 from vital.utils.image.transform import resize_image_to_isotropic
+
+logger = logging.getLogger(__name__)
 
 
 def compute_left_ventricle_volumes(
@@ -35,6 +38,15 @@ def compute_left_ventricle_volumes(
     Returns:
         Left ventricle ED and ES volumes.
     """
+    for mask_name, mask in [("a2c_ed", a2c_ed), ("a2c_es", a2c_es), ("a4c_ed", a4c_ed), ("a4c_es", a4c_es)]:
+        if mask.max() > 1:
+            logger.warning(
+                f"`compute_left_ventricle_volumes` expects binary segmentation masks of the left ventricle (LV). "
+                f"However, the `{mask_name}` segmentation contains a label greater than '1/True'. If this was done "
+                f"voluntarily, you can safely ignore this warning. However, the most likely cause is that you forgot "
+                f"to extract the binary LV segmentation from a multi-class segmentation mask."
+            )
+
     a2c_ed_diameters, a2c_ed_step_size = _compute_diameters(a2c_ed, a2c_voxelspacing)
     a2c_es_diameters, a2c_es_step_size = _compute_diameters(a2c_es, a2c_voxelspacing)
     a4c_ed_diameters, a4c_ed_step_size = _compute_diameters(a4c_ed, a4c_voxelspacing)
