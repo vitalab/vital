@@ -127,6 +127,7 @@ class VitalSystem(pl.LightningModule, ABC):
                 col_names=["input_size", "output_size", "kernel_size", "num_params"],
                 depth=sys.maxsize,
                 device=self.device,
+                mode=self.hparams.model_summary_mode,
                 verbose=0,
             )
             (self.log_dir / "summary.txt").write_text(str(model_summary), encoding="utf-8")
