@@ -5,6 +5,7 @@ defaults:
 
 _target_: ???
 enable_model_summary: ${oc.select:trainer.enable_model_summary,True}
+model_summary_mode: eval
 
 train_log_kwargs:
   prog_bar: False
