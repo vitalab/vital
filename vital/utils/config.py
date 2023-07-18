@@ -36,6 +36,7 @@ def register_omegaconf_resolvers() -> None:
     OmegaConf.register_new_resolver("op.mul", lambda x, y, type_of=None: _cast_op(operator.mul, x, y, type_of=type_of))
 
     OmegaConf.register_new_resolver("builtin.len", lambda cfg: len(cfg))
+    OmegaConf.register_new_resolver("builtin.range", lambda start, stop, step=1: list(range(start, stop, step)))
     OmegaConf.register_new_resolver(
         "list.remove",
         lambda cfg, to_remove: ListConfig(
