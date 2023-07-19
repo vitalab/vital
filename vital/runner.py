@@ -16,11 +16,7 @@ from pytorch_lightning.loggers import CometLogger, Logger
 
 from vital.data.data_module import VitalDataModule
 from vital.system import VitalSystem
-from vital.utils.config import (
-    instantiate_config_node_leaves,
-    instantiate_results_processor,
-    register_omegaconf_resolvers,
-)
+from vital.utils.config import instantiate_config_node_leaves, instantiate_results_processor
 from vital.utils.saving import resolve_model_checkpoint_path
 
 logger = logging.getLogger(__name__)
@@ -44,8 +40,6 @@ class VitalRunner(ABC):
         # Load environment variables from `.env` file if it exists
         # Load before hydra main to allow for setting environment variables with ${oc.env:ENV_NAME}
         load_dotenv()
-
-        register_omegaconf_resolvers()
 
     @staticmethod
     @hydra.main(version_base=None, config_path="config", config_name="vital_default")
