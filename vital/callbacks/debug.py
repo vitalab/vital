@@ -51,7 +51,8 @@ def _log_layers_histograms(
 
             if include_weight:
                 _log_histogram(f"{name}_weight", params.detach().cpu().numpy())
-            if include_grad:
+            if include_grad and params.grad is not None:
+                # Log grad if they're available. They might not be available in some cases, e.g. un-trainable layers
                 _log_histogram(f"{name}_grad", params.grad.cpu().numpy())
 
 
