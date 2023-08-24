@@ -8,7 +8,7 @@ from torch.nn import functional as F
 from torchmetrics.utilities.data import to_onehot
 
 from vital.metrics.train.functional import kl_div_zmuv
-from vital.metrics.train.metric import DifferentiableDiceCoefficient
+from vital.metrics.train.metric import DifferentiableDiceCoefficient, MonotonicRegularizationLoss
 from vital.tasks.generic import SharedStepsTask
 from vital.utils.decorators import auto_move_data
 
@@ -298,6 +298,7 @@ class SegmentationArVaeTask(SegmentationBetaVaeTask):
             **kwargs: Additional parameters to pass along to ``super().__init__()``.
         """
         super().__init__(**kwargs)
+        self._attr_reg_loss = MonotonicRegularizationLoss(delta)
 
     def _compute_latent_space_metrics(self, out: Dict[str, Tensor], batch: Dict[str, Tensor]) -> Dict[str, Tensor]:
         """Computes metrics on the input's encoding in the latent space.
@@ -323,19 +324,7 @@ class SegmentationArVaeTask(SegmentationBetaVaeTask):
             # Extract dimension to regularize and target for the current attribute
             latent_code = out[self.model.encoding_tag][:, attr_idx]
             attribute = batch[attr]
-
-            # Compute latent distance matrix
-            latent_code = latent_code.view(-1, 1).repeat(1, len(latent_code))
-            lc_dist_mat = latent_code - latent_code.transpose(1, 0)
-
-            # Compute attribute distance matrix
-            attribute = attribute.view(-1, 1).repeat(1, len(attribute))
-            attribute_dist_mat = attribute - attribute.transpose(1, 0)
-
-            # Compute regularization loss
-            lc_tanh = torch.tanh(lc_dist_mat * self.hparams.delta)
-            attribute_sign = torch.sign(attribute_dist_mat)
-            metrics[f"attr_reg/{attr}"] = F.l1_loss(lc_tanh, attribute_sign)
+            metrics[f"attr_reg/{attr}"] = self._attr_reg_loss(latent_code, attribute)
 
         return metrics
 
