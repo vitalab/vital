@@ -1,7 +1,7 @@
 import sys
 from abc import ABC
 from pathlib import Path
-from typing import Any, Dict, Iterable, Literal, Optional, Union
+from typing import Any, Dict, Iterable, Literal, Union
 
 import hydra
 import pytorch_lightning as pl
@@ -114,7 +114,7 @@ class VitalSystem(pl.LightningModule, ABC):
 
         return configured_optimizer
 
-    def setup(self, stage: Optional[str] = None) -> None:  # noqa: D102
+    def setup(self, stage: str) -> None:  # noqa: D102
         self.log_dir.mkdir(parents=True, exist_ok=True)  # Ensure output directory exists
 
         # Save Keras-style summary to a ``summary.txt`` file, inside the output directory
