@@ -111,6 +111,37 @@ def kl_div_zmuv(mu: Tensor, logvar: Tensor) -> Tensor:
     return reduce(kl_div_by_samples, reduction="elementwise_mean")
 
 
+def monotonic_regularization_loss(input: Tensor, target: Tensor, delta: float) -> Tensor:
+    """Computes a regularization loss that enforces a monotonic relationship between the input and target.
+
+    Notes:
+        - This is a generalization of the attribute regularization loss proposed by the AR-VAE
+          (link to the paper: https://arxiv.org/pdf/2004.05485.pdf)
+
+    Args:
+        input: Input values to regularize so that they have a monotonic relationship with the `target` values.
+        target: Values used to determine the target monotonic ordering of the values.
+        delta: Hyperparameter that decides the spread of the posterior distribution.
+
+    Returns:
+        (1,), Monotonic regularization term for aligning the input to the target.
+    """
+    # Compute input distance matrix
+    broad_input = input.view(-1, 1).repeat(1, len(input))
+    input_dist_mat = broad_input - broad_input.transpose(1, 0)
+
+    # Compute target distance matrix
+    broad_target = target.view(-1, 1).repeat(1, len(target))
+    target_dist_mat = broad_target - broad_target.transpose(1, 0)
+
+    # Compute regularization loss
+    input_tanh = torch.tanh(input_dist_mat * delta)
+    target_sign = torch.sign(target_dist_mat)
+    loss = F.l1_loss(input_tanh, target_sign)
+
+    return loss
+
+
 def ntxent_loss(z_i: Tensor, z_j: Tensor, temperature: float = 1) -> Tensor:
     """Computes the NT-Xent loss for contrastive learning.
 

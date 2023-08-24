@@ -1,6 +1,6 @@
 from torch import Tensor, nn
 
-from vital.metrics.train.functional import differentiable_dice_score, ntxent_loss
+from vital.metrics.train.functional import differentiable_dice_score, monotonic_regularization_loss, ntxent_loss
 
 
 class DifferentiableDiceCoefficient(nn.Module):
@@ -50,6 +50,36 @@ class DifferentiableDiceCoefficient(nn.Module):
             no_fg_score=self.no_fg_score,
             reduction=self.reduction,
         )
+
+
+class MonotonicRegularizationLoss(nn.Module):
+    """Computes a regularization loss that enforces a monotonic relationship between the input and target.
+
+    Notes:
+        - This is a generalization of the attribute regularization loss proposed by the AR-VAE
+          (link to the paper: https://arxiv.org/pdf/2004.05485.pdf)
+    """
+
+    def __init__(self, delta: float):
+        """Initializes class instance.
+
+        Args:
+            delta: Hyperparameter that decides the spread of the posterior distribution.
+        """
+        super().__init__()
+        self.delta = delta
+
+    def forward(self, input: Tensor, target: Tensor) -> Tensor:
+        """Actual metric calculation.
+
+        Args:
+            input: Input values to regularize so that they have a monotonic relationship with the `target` values.
+            target: Values used to determine the target monotonic ordering of the values.
+
+        Returns:
+            (1,), Calculated monotonic regularization loss.
+        """
+        return monotonic_regularization_loss(input, target, self.delta)
 
 
 class NTXent(nn.Module):
