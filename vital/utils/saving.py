@@ -27,7 +27,7 @@ def resolve_model_checkpoint_path(checkpoint: Union[str, Path]) -> Path:
         checkpoint: Location of the checkpoint. This can be either a local path, or the fields of a query to a Comet
             model registry. Examples of different queries:
                 - For the latest version of the model: 'my_workspace/my_model'
-                - Using a specific version/stage: 'my_workspace/my_model/0.1.0' or 'my_workspace/my_model/prod'
+                - Using a specific version/stage: 'my_workspace/my_model@0.1.0' or 'my_workspace/my_model@prod'
 
     Returns:
         Path to the model's checkpoint file on the local computer. This can either be the `ckpt` already provided, if it
@@ -47,26 +47,26 @@ def resolve_model_checkpoint_path(checkpoint: Union[str, Path]) -> Path:
             )
 
         # Parse the provided checkpoint path as a query for a Comet model registry
-        version_or_stage, version, stage = None, None, None
         if len(checkpoint.parts) == 2:
-            workspace, registry_name = checkpoint.parts
-        elif len(checkpoint.parts) == 3:
-            workspace, registry_name, version_or_stage = checkpoint.parts
-            try:
-                Version(version_or_stage)  # Will fail if `version_or_stage` cannot be parsed as a version
-                version = version_or_stage
-            except InvalidVersion:
-                stage = version_or_stage
+            workspace, model_str = checkpoint.parts
         else:
             raise ValueError(f"Failed to interpret checkpoint '{checkpoint}' as a query for a Comet model registry.")
 
-        # If neither version nor stage were provided, use latest version available
-        if not version_or_stage:
-            version_or_stage = version = comet_api.get_registry_model_versions(workspace, registry_name)[-1]
+        registry_name, _, version_constraint = model_str.partition("@")
+        version, stage = None, None
+        if version_constraint:
+            try:
+                Version(version_constraint)  # Will fail if `version_or_stage` cannot be parsed as a version
+                version = version_constraint
+            except InvalidVersion:
+                stage = version_constraint
+        else:
+            # If neither version nor stage were provided, use latest version available
+            version_constraint = version = comet_api.get_registry_model_versions(workspace, registry_name)[-1]
 
         # Determine where to download the checkpoint locally
         cache_dir = get_vital_home()
-        model_cached_path = cache_dir / workspace / registry_name / version_or_stage
+        model_cached_path = cache_dir / workspace / registry_name / version_constraint
 
         # When using stage, delete cached versions and force re-downloading the registry model,
         # because stage tags can be changed
