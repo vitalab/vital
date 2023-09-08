@@ -178,3 +178,31 @@ def ntxent_loss(z_i: Tensor, z_j: Tensor, temperature: float = 1) -> Tensor:
     loss = torch.sum(all_losses) / (2 * batch_size)
 
     return loss
+
+
+def cdist(x1: Tensor, x2: Tensor, **kwargs) -> Tensor:
+    """Wrapper around torch's native `cdist` function to use it on non-batched inputs.
+
+    Args:
+        x1: ([B,]P,M), Input collection of row tensors.
+        x2: ([B,]R,M), Input collection of row tensors.
+        **kwargs: Additional parameters to pass along to torch's native `cdist`.
+
+    Returns:
+        ([B,]P,R), Pairwise p-norm distances between the row tensors.
+    """
+    if x1.ndim != x2.ndim:
+        raise ValueError(
+            f"Wrapper around torch's `cdist` only supports when both input tensors are identically batched or not. "
+            f"However, the current shapes do not match: {x1.shape=} and {x2.shape=}."
+        )
+
+    if no_batch := x1.ndim < 3:
+        x1 = x1[None, ...]
+        x2 = x2[None, ...]
+
+    dist = torch.cdist(x1, x2, **kwargs)
+    if no_batch:
+        dist = dist[0]
+
+    return dist
