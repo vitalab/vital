@@ -1,3 +1,5 @@
+from typing import Sequence
+
 import torch
 from torch import Tensor
 from torch.nn import functional as F
@@ -206,3 +208,35 @@ def cdist(x1: Tensor, x2: Tensor, **kwargs) -> Tensor:
         dist = dist[0]
 
     return dist
+
+
+def rbf_kernel(x1: Tensor, x2: Tensor = None, length_scale: float | Sequence[float] | Tensor = 1) -> Tensor:
+    """Computes the Radial Basis Function kernel (aka Gaussian kernel).
+
+    Args:
+        x1: (M, E), Left argument of the returned kernel k(x1,x2).
+        x2: (N, E), Right argument of the returned kernel k(x1,x2). If None, uses `x2=x1`.
+        length_scale: (1,) or (E,), The length-scale of the kernel. If a float, an isotropic kernel is used.
+            If a Sequence or Tensor, an anisotropic kernel is used to define the length-scale of each feature dimension.
+            If None, use Silverman's rule-of-thumb to compute an estimate of the optimal (anisotropic) length-scale.
+
+    Returns:
+        (M, N), The kernel k(x1,x2).
+    """
+    if isinstance(length_scale, Sequence):
+        # Make sure that if the length-scale is specified for each feature dimension, it is in tensor format
+        length_scale = torch.tensor(length_scale, device=x1.device)
+
+    if x2 is None:
+        x2 = x1.clone()
+
+    # Use the trick of distributing `length_scale` on the inputs to minimize computations
+    x1, x2 = x1 / length_scale, x2 / length_scale
+    # Reshape inputs so that the squared Euclidean distance can be easily computed using simple broadcasting
+    x1 = x1[:, None, :]  # (N, D) -> (N, 1, D)
+    x2 = x2[None, :, :]  # (N, D) -> (1, N, D)
+
+    # Compute the RBF kernel
+    sq_dist = torch.sum((x1 - x2) ** 2, -1)  # sq_dist = |x1 - x2|^2 / l^2
+    k = torch.exp(-0.5 * sq_dist)  # exp( - sq_dist / 2 )
+    return k
