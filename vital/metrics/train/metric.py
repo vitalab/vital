@@ -1,6 +1,13 @@
+from typing import Sequence
+
 from torch import Tensor, nn
 
-from vital.metrics.train.functional import differentiable_dice_score, monotonic_regularization_loss, ntxent_loss
+from vital.metrics.train.functional import (
+    differentiable_dice_score,
+    monotonic_regularization_loss,
+    ntxent_loss,
+    rbf_kernel,
+)
 
 
 class DifferentiableDiceCoefficient(nn.Module):
@@ -105,3 +112,31 @@ class NTXent(nn.Module):
             (1,), Calculated NT-Xent loss.
         """
         return ntxent_loss(z_i, z_j, temperature=self.temperature)
+
+
+class RBFKernel(nn.Module):
+    """Computes the Radial Basis Function kernel (aka Gaussian kernel)."""
+
+    def __init__(self, length_scale: float | Sequence[float] | Tensor = 1):
+        """Initializes class instance.
+
+        Args:
+            length_scale: length_scale: (1,) or (E,), The length-scale of the kernel. If a float, an isotropic kernel is
+                used. If a Sequence or Tensor, an anisotropic kernel is used to define the length-scale of each feature
+                dimension.
+        """
+        super().__init__()
+        self.length_scale = length_scale
+
+    def forward(self, x1: Tensor, x2: Tensor = None) -> Tensor:
+        """Actual kernel calculation.
+
+        Args:
+            x1: (M, E), Left argument of the returned kernel k(x1,x2).
+            x2: (N, E), Right argument of the returned kernel k(x1,x2). If None, uses `x2=x1`,
+                which ends up evaluating k(x1,x1).
+
+        Returns:
+            (N, M), The kernel k(x1,x2).
+        """
+        return rbf_kernel(x1, x2=x2, length_scale=self.length_scale)
