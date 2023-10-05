@@ -2,7 +2,7 @@ import logging
 import re
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Iterator, List, Literal, Mapping, Optional, Sequence, Union
+from typing import Dict, Iterator, List, Literal, Mapping, Optional, Sequence, Union
 
 import pandas as pd
 from pandas.api.types import CategoricalDtype
@@ -162,6 +162,21 @@ class Patients(Collection, Mapping[Patient.Id, Patient]):
             for patient_id in patient_ids
         }
 
+    @classmethod
+    def from_dict(cls, patients: Dict[Patient.Id, Patient]) -> "Patients":
+        """Builds an instance of the custom `Patients` collection from a builtin dictionary of patient IDs/data.
+
+        Args:
+            patients: Mapping between patient IDs and their data.
+
+        Returns:
+            `Patients` instance wrapped around the provided dict of `Patient`s.
+        """
+        # Use `__new__` to avoid having to provide an alternative path using a pre-built dict in `__init__`
+        self = cls.__new__(cls)
+        self._patients = patients
+        return self
+
     def __getitem__(self, key: Patient.Id) -> Patient:  # noqa: D105
         return self._patients[key]
 
@@ -213,9 +228,7 @@ class Patients(Collection, Mapping[Patient.Id, Patient]):
             patients_df = patients_df.astype(cat_dtypes)
 
             # Manually convert integer columns to use pandas' `Int64` type, which supports missing values unlike the
-            # native int. We cannot rely on `read_csv`'s `dtype` param to the casting because it results in an unsafe
-            # cast exception, # which pandas seems unwilling to fix
-            # (see this issue: https://github.com/pandas-dev/pandas/issues/37429)
+            # native int
             for int_attr in (num_attr for num_attr in avail_num_attrs if CLINICAL_ATTR_UNITS[num_attr][1] == int):
                 patients_df[int_attr] = patients_df[int_attr].astype("Int64")
 
@@ -307,6 +320,25 @@ class Views(Collection, Mapping[View.Id, View]):
         self._view_ids = [
             View.Id(patient.id, view_id) for patient in self._patients.values() for view_id in patient.views
         ]
+
+    @classmethod
+    def from_patients(cls, patients: Patients) -> "Views":
+        """Builds an instance of the custom `Views` collection from a custom `Patients` collection.
+
+        Args:
+            patients: Mapping between patient IDs and their data.
+
+        Returns:
+            `Views` instance wrapped around the provided `Patients` collection.
+        """
+        # Use `__new__` to avoid having to provide an alternative path using a pre-built `Patients` in `__init__`
+        self = cls.__new__(cls)
+        self._patients = patients
+        # Filter views to only include those that have been explicitly requested
+        self._view_ids = [
+            View.Id(patient.id, view_id) for patient in self._patients.values() for view_id in patient.views
+        ]
+        return self
 
     def __getitem__(self, key: View.Id) -> View:  # noqa: D105
         return self._patients[key.patient].views[key.view]
