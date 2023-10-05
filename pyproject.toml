@@ -74,6 +74,7 @@ cardinal-clip-cycle = "vital.data.cardinal.clip_cycle:main"
 cardinal-seq2pairs = "vital.data.cardinal.seq2pairs:main"
 cardinal-split-data = "vital.data.cardinal.split_data:main"
 cardinal-plot-data-dis = "vital.data.cardinal.plot_data_dis:main"
+cardinal-records2yaml = "vital.data.cardinal.records2yaml:main"
 
 [tool.black]
 line-length = 120
