@@ -98,6 +98,25 @@ CLINICAL_ATTR_UNITS = {
 }
 
 
+def get_attr_sort_key(attr: ClinicalAttribute, label: str = None) -> int:
+    """Sorts the attributes/labels in the order they appear in their respective enumerations.
+
+    Args:
+        attr: Name of the attribute to sort.
+        label: Name of the label to sort, if the attribute is a categorical attribute.
+
+    Returns:
+        Integer key to sort the attributes and labels, in the order the attributes appear in `ClinicalAttribute` first,
+        and then in the order the labels appear in `CLINICAL_CAT_ATTR_LABELS`.
+    """
+    # Multiply the sorting key for the attribute by 10 to give it priority over the label
+    sort_attr = list(ClinicalAttribute).index(attr) * 10
+    # Check if label is `str` (rather than not being None) because nan (pandas NA marker) is not None
+    # but is also considered being not defined
+    sort_label = CLINICAL_CAT_ATTR_LABELS[attr].index(label) if isinstance(label, str) else 0
+    return sort_attr + sort_label
+
+
 def compute_mask_attributes(mask: T, voxelspacing: Tuple[float, float]) -> Dict[ImageAttribute, T]:
     """Measures a variety of attributes on a (batch of) mask(s).
 
