@@ -1,5 +1,5 @@
 import itertools
-from typing import Dict, Hashable, Iterator, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Hashable, Iterator, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -18,6 +18,83 @@ IMAGE_ATTR_LABELS = {
     **dict.fromkeys([ImageAttribute.lv_length, ImageAttribute.lv_base_width], "length (in mm)"),
     **dict.fromkeys([ImageAttribute.lv_orientation], "angle (in degrees)"),
     **dict.fromkeys([ImageAttribute.epi_center_x, ImageAttribute.epi_center_y], "position (in pixels)"),
+}
+CLINICAL_CAT_ATTR_LABELS = {
+    ClinicalAttribute.sex: ["M", "W"],
+    ClinicalAttribute.hf: [False, True],
+    ClinicalAttribute.cad: [False, True],
+    ClinicalAttribute.pad: [False, True],
+    ClinicalAttribute.stroke: [False, True],
+    ClinicalAttribute.tobacco: ["none", "ceased", "active"],
+    ClinicalAttribute.diabetes: [False, True],
+    ClinicalAttribute.dyslipidemia: [False, True],
+    ClinicalAttribute.etiology: ["essential", "secondary", "pa"],
+    ClinicalAttribute.bradycardic: [False, True],
+    ClinicalAttribute.ace_inhibitor: [False, True],
+    ClinicalAttribute.arb: [False, True],
+    ClinicalAttribute.tz_diuretic: [False, True],
+    ClinicalAttribute.central_acting: [False, True],
+    ClinicalAttribute.beta_blocker: [False, True],
+    ClinicalAttribute.spironolactone: [False, True],
+    ClinicalAttribute.alpha_blocker: [False, True],
+    ClinicalAttribute.ccb: [False, True],
+    ClinicalAttribute.ht_severity: ["wht", "controlled", "uncontrolled"],
+    ClinicalAttribute.ht_grade: ["0", "1", "2", "3"],
+    ClinicalAttribute.nt_probnp_group: ["neutral", "end_organ_damage", "mortality_rate"],
+    ClinicalAttribute.reduced_e_prime: [False, True],
+    ClinicalAttribute.dilated_la: [False, True],
+    ClinicalAttribute.d_dysfunction_e_e_prime_ratio: [False, True],
+    ClinicalAttribute.ph_vmax_tr: [False, True],
+    ClinicalAttribute.lvh: [False, True],
+    ClinicalAttribute.diastolic_dysfunction_param_sum: ["0", "1", "2", "3", "4"],
+    ClinicalAttribute.diastolic_dysfunction: ["none", "uncertain", "certain"],
+    ClinicalAttribute.ht_cm: ["none", "uncertain", "certain"],
+}
+CLINICAL_ATTR_UNITS = {
+    **dict.fromkeys([ClinicalAttribute.ef], ("(in %)", int)),
+    **dict.fromkeys([ClinicalAttribute.edv, ClinicalAttribute.esv], ("(in ml)", int)),
+    ClinicalAttribute.age: ("(in years)", int),
+    ClinicalAttribute.height: ("(in cm)", int),
+    ClinicalAttribute.weight: ("(in kg)", float),
+    ClinicalAttribute.bmi: ("(in kg/m²)", float),
+    ClinicalAttribute.ddd: ("", float),
+    **dict.fromkeys(
+        [
+            ClinicalAttribute.sbp_24,
+            ClinicalAttribute.dbp_24,
+            ClinicalAttribute.pp_24,
+            ClinicalAttribute.sbp_day,
+            ClinicalAttribute.dbp_day,
+            ClinicalAttribute.pp_day,
+            ClinicalAttribute.sbp_night,
+            ClinicalAttribute.dbp_night,
+            ClinicalAttribute.pp_night,
+            ClinicalAttribute.sbp_tte,
+            ClinicalAttribute.dbp_tte,
+            ClinicalAttribute.pp_tte,
+        ],
+        ("(in mmHg)", int),
+    ),
+    ClinicalAttribute.hr_tte: ("(in bpm)", int),
+    ClinicalAttribute.creat: ("(in µmol/L)", int),
+    ClinicalAttribute.gfr: ("(in ml/min/1,73m²)", float),
+    ClinicalAttribute.nt_probnp: ("(in pg/ml)", int),
+    **dict.fromkeys([ClinicalAttribute.e_velocity, ClinicalAttribute.a_velocity], ("(in m/s)", float)),
+    ClinicalAttribute.mv_dt: ("(in ms)", int),
+    **dict.fromkeys([ClinicalAttribute.lateral_e_prime, ClinicalAttribute.septal_e_prime], ("(in cm/s)", int)),
+    ClinicalAttribute.mean_e_prime: ("(in cm/s)", float),
+    ClinicalAttribute.e_e_prime_ratio: ("", float),
+    ClinicalAttribute.lvm_ind: ("(in g/m²)", int),
+    ClinicalAttribute.la_volume: ("(in ml/m²)", float),
+    ClinicalAttribute.la_area: ("(in cm²)", float),
+    ClinicalAttribute.vmax_tr: ("(in m/s)", float),
+    **dict.fromkeys([ClinicalAttribute.ivs_d, ClinicalAttribute.lvid_d, ClinicalAttribute.pw_d], ("(in cm)", float)),
+    ClinicalAttribute.tapse: ("(in cm)", float),
+    ClinicalAttribute.s_prime: ("(in cm/s)", float),
+    **{
+        cat_attr: (f"({'/'.join(str(category) for category in categories)})", Any)
+        for cat_attr, categories in CLINICAL_CAT_ATTR_LABELS.items()
+    },
 }
 
 
