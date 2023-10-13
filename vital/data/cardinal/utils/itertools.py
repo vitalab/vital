@@ -4,8 +4,12 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import Iterator, List, Literal, Mapping, Optional, Sequence, Union
 
+import pandas as pd
+from pandas.api.types import CategoricalDtype
+
 from vital.data.cardinal.config import IMG_FILENAME_PATTERN, IMG_FORMAT, PATIENT_ID_REGEX, ClinicalAttribute
 from vital.data.cardinal.config import View as ViewEnum
+from vital.data.cardinal.utils.attributes import CLINICAL_ATTR_UNITS, CLINICAL_CAT_ATTR_LABELS
 from vital.data.cardinal.utils.data_struct import Patient, View, load_attributes
 from vital.utils.itertools import Collection
 
@@ -166,6 +170,56 @@ class Patients(Collection, Mapping[Patient.Id, Patient]):
 
     def __len__(self) -> int:  # noqa: D105
         return len(self._patients)
+
+    def to_dataframe(
+        self, clinical_attrs: Sequence[ClinicalAttribute] = None, cast_to_pandas_dtypes: bool = True
+    ) -> pd.DataFrame:
+        """Converts the patients' clinical attributes to a dataframe, handling missing values using pandas' dtypes.
+
+        Notes:
+            - In general, casting to pandas' dtype is recommended (hence it is done by default) since it can help handle
+              missing values in a more standardized way (because pandas dtypes support missing values, while numpy's nan
+              is only available for the float dtype). However, in some special cases pandas' `NAType` can cause problems
+              (e.g. not being serializable when using the dataframe in holoviews/bokeh plots). These special cases are
+              why the option to skip the pandas dtype casting exists.
+
+        Args:
+            clinical_attrs: Clinical attributes to include in the dataframe that is returned.
+            cast_to_pandas_dtypes: Whether to cast the attributes to the most appropriate pandas dtype (e.g. Int64,
+                boolean, category, etc.).
+
+        Returns:
+            A dataframe of the patients' clinical attributes.
+        """
+        if clinical_attrs is None:
+            clinical_attrs = list(ClinicalAttribute)
+
+        patients_df = pd.DataFrame.from_dict(
+            {patient.id: {attr: patient.attrs.get(attr) for attr in clinical_attrs} for patient in self.values()},
+            orient="index",
+        ).rename_axis("patient")
+
+        if cast_to_pandas_dtypes:
+            cat_attrs = [attr for attr in clinical_attrs if attr in ClinicalAttribute.categorical_attrs()]
+            avail_num_attrs = [attr for attr in clinical_attrs if attr in ClinicalAttribute.numerical_attrs()]
+
+            # Cast boolean/categorical columns
+            cat_dtypes = {
+                cat_attr: "boolean"
+                if cat_attr in ClinicalAttribute.boolean_attrs()
+                else CategoricalDtype(categories=CLINICAL_CAT_ATTR_LABELS[cat_attr], ordered=True)
+                for cat_attr in cat_attrs
+            }
+            patients_df = patients_df.astype(cat_dtypes)
+
+            # Manually convert integer columns to use pandas' `Int64` type, which supports missing values unlike the
+            # native int. We cannot rely on `read_csv`'s `dtype` param to the casting because it results in an unsafe
+            # cast exception, # which pandas seems unwilling to fix
+            # (see this issue: https://github.com/pandas-dev/pandas/issues/37429)
+            for int_attr in (num_attr for num_attr in avail_num_attrs if CLINICAL_ATTR_UNITS[num_attr][1] == int):
+                patients_df[int_attr] = patients_df[int_attr].astype("Int64")
+
+        return patients_df
 
     @classmethod
     def add_args(cls, parser: ArgumentParser) -> ArgumentParser:  # noqa: D102
