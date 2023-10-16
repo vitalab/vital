@@ -224,6 +224,84 @@ class EchoMeasure(Measure):
         )
 
     @staticmethod
+    def _split_along_endo_axis(
+        segmentation: np.ndarray,
+        lv_labels: SemanticStructureId,
+        myo_labels: SemanticStructureId,
+        voxelspacing: Tuple[float, float] = (1, 1),
+    ) -> np.ndarray:
+        """Computes a mask that splits the image along a line between the endocardium's apex and middle of the base.
+
+        Args:
+            segmentation: (H, W), Segmentation map.
+            lv_labels: Labels of the classes that are part of the left ventricle.
+            myo_labels: Labels of the classes that are part of the left ventricle.
+            voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
+
+        Returns:
+            Mask that splits the image along a line between the endocardium's apex and middle of the base.
+        """
+        # Identify major landmarks of the left ventricle (i.e. base's corners + midpoint and apex)
+        left_corner, apex, right_corner = EchoMeasure.endo_epi_control_points(
+            segmentation, lv_labels, myo_labels, "endo", 3, voxelspacing
+        )
+        base_mid = (left_corner + right_corner) / 2
+
+        # Compute x = ay + b form of the equation of the LV center line
+        a = (apex[1] - base_mid[1]) / (apex[0] - base_mid[0])
+        b = -(a * base_mid[0] - base_mid[1])
+
+        def _is_left_of_lv_center_line(y: int, x: int) -> bool:
+            """Whether the y,x coordinates provided fall left of the LV center line."""
+            return x < a * y + b
+
+        # Create a binary mask for the whole image that is positive above the LV base's line
+        left_of_lv_center_line_mask = np.fromfunction(_is_left_of_lv_center_line, segmentation.shape)
+        return left_of_lv_center_line_mask
+
+    @staticmethod
+    @auto_cast_data
+    @batch_function(item_ndim=2)
+    def structure_area_split_by_endo_center_line(
+        segmentation: T,
+        lv_labels: SemanticStructureId,
+        myo_labels: SemanticStructureId,
+        half: Literal["left", "right"],
+        labels: SemanticStructureId = None,
+        voxelspacing: Tuple[float, float] = (1, 1),
+    ) -> T:
+        """Computes the area of a structure that falls on the left/right side of the endo center line.
+
+        Args:
+            segmentation: ([N], H, W), Segmentation map.
+            lv_labels: Labels of the classes that are part of the left ventricle.
+            myo_labels: Labels of the classes that are part of the left ventricle.
+            half: The side of the image to consider when computing the area of the structure. Either "left" or "right".
+            labels: Labels of the classes that are part of the structure for which to count the number of pixels. If
+                `None`, all truthy values will be considered part of the structure.
+            voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
+
+        Returns:
+            ([N]), Number of pixels associated with the structure that falls on the left/right side of the endo center
+            line, in each segmentation of the batch.
+        """
+        # Find the binary mask of the structure
+        if labels:
+            mask = np.isin(segmentation, labels)
+        else:
+            mask = segmentation.astype(bool)
+
+        # Find the mask of the left/right split along the endo center line
+        half_mask = EchoMeasure._split_along_endo_axis(segmentation, lv_labels, myo_labels, voxelspacing)
+        if half == "right":
+            half_mask = ~half_mask
+
+        # Only keep the part of the structure that falls on the requested side of the endo center line
+        mask = mask * half_mask
+
+        return mask.sum((-2, -1)) * (voxelspacing[0] * voxelspacing[1])
+
+    @staticmethod
     @auto_cast_data
     @batch_function(item_ndim=2)
     def endo_epi_control_points(
