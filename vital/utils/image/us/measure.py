@@ -401,6 +401,7 @@ class EchoMeasure(Measure):
         segmentation: T,
         lv_labels: SemanticStructureId,
         myo_labels: SemanticStructureId,
+        half: Literal["left", "right"] = None,
         voxelspacing: Tuple[float, float] = (1, 1),
     ) -> T:
         """Global Longitudinal Strain (GLS) for each frame in the sequence, compared to the first frame.
@@ -423,6 +424,24 @@ class EchoMeasure(Measure):
             contour = EchoMeasure._endo_epi_contour(
                 frame, lv_labels, functools.partial(EchoMeasure._endo_base, lv_labels=lv_labels, myo_labels=myo_labels)
             )
+
+            # Identify the apex of the endocardium, so that it can serve as the demarcation between the left/right sides
+            apex = EchoMeasure._extract_landmarks_from_polar_contour(
+                frame, lv_labels, polar_smoothing_factor=5e-2, base=False
+            )[0]
+
+            if half:
+                # Identify the point in the contour that is closest to the apex
+                apex_idx_in_contour = np.linalg.norm((contour - apex) * voxelspacing, axis=1).argmin()
+
+                # Slice the contour to only keep the points that fall on the requested side of the endo center line
+                match half:
+                    case "left":
+                        contour = contour[: apex_idx_in_contour + 1]
+                    case "right":
+                        contour = contour[apex_idx_in_contour:]
+                    case _:
+                        raise ValueError(f"Unexpected value for 'half': {half}. Use either 'left' or 'right'.")
 
             # Compute the perimeter as the sum of distances between each point along the contour and the previous one
             return sum(np.linalg.norm((p1 - p0) * voxelspacing) for p0, p1 in itertools.pairwise(contour))
