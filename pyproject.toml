@@ -37,6 +37,7 @@ scipy = "*"
 seaborn = "*"
 matplotlib = "*"
 umap-learn = { version = "*", extras = ["plot"] }
+pacmap = "*"
 pandas = "*"
 h5py = "*"
 PyYAML = "*"
