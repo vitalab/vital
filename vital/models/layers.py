@@ -1,3 +1,4 @@
+import functools
 from collections import OrderedDict
 from functools import wraps
 from typing import Any, Callable, Dict, List, Sequence, Tuple
@@ -170,3 +171,35 @@ def reparameterize(mu: Tensor, logvar: Tensor) -> Tensor:
     std = torch.exp(0.5 * logvar)
     eps = torch.randn_like(std)
     return mu + eps * std
+
+
+class Lambda(nn.Module):
+    """Layer to call an arbitrary function on an input tensor."""
+
+    def __init__(self, fn: Callable[[Tensor, Any, ...], Tensor], **kwargs):
+        """Stores function object and parameters.
+
+        Args:
+            fn: Function to call on the input tensor in the forward pass.
+            **kwargs: Parameters to pass along to the arbitrary function.
+        """
+        super().__init__()
+        self.fn = fn
+        self.kwargs = kwargs
+
+    def __repr__(self):
+        """Overrides the default repr to display the name and arguments of the function."""
+        fn_obj = self.fn if not isinstance(self.fn, functools.partial) else self.fn.func
+        kwargs_str = ["?"] + [f"{k}={v}" for k, v in self.kwargs.items()]
+        return f"{self.__class__.__name__}({fn_obj.__name__}({', '.join(kwargs_str)}))"
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Call the function on a tensor.
+
+        Args:
+            x: Input tensor.
+
+        Returns:
+            Output tensor after applying the function to the input tensor.
+        """
+        return self.fn(x, **self.kwargs)
