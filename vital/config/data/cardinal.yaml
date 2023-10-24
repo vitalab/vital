@@ -1,0 +1,25 @@
+defaults:
+  - default
+  - iterator@patients_kwargs: cardinal/patients
+  - transform@transform_patient_kwargs.train: cardinal/train
+  - transform@transform_patient_kwargs.val: cardinal/val
+  - transform@transform_patient_kwargs.test: cardinal/test
+
+
+_target_: vital.data.cardinal.data_module.CardinalDataModule
+
+num_workers: 0
+
+process_patient_kwargs:
+  clinical_attributes: null
+  image_attributes: null
+  mask_tag: mask
+  bmode_tag: null
+
+datapipes_kwargs:
+  cache: True
+
+subsets:
+  train: ${oc.env:CARDINAL_DATA_PATH}/train.txt
+  val: ${oc.env:CARDINAL_DATA_PATH}/val.txt
+  test: ${oc.env:CARDINAL_DATA_PATH}/test.txt

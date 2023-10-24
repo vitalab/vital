@@ -1,0 +1,5 @@
+image_attributes_transforms:
+  any:
+    interp1d:
+      _target_: vital.data.transforms.Interp1d
+      num: 64
