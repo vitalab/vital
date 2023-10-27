@@ -212,15 +212,29 @@ class ClinicalAttribute(SnakeCaseStrEnum):
         return [attr for attr in cls if attr in CLINICAL_CAT_ATTR_LABELS]
 
     @classmethod
+    def ordinal_attrs(cls) -> List["ClinicalAttribute"]:
+        """Lists the subset of categorical attributes that are ordinal (i.e. the ordering of classes is meaningful)."""
+        return [
+            ClinicalAttribute.tobacco,
+            ClinicalAttribute.etiology,
+            ClinicalAttribute.ht_severity,
+            ClinicalAttribute.ht_grade,
+            ClinicalAttribute.nt_probnp_group,
+            ClinicalAttribute.diastolic_dysfunction_param_sum,
+            ClinicalAttribute.diastolic_dysfunction,
+            ClinicalAttribute.ht_cm,
+        ]
+
+    @classmethod
     def binary_attrs(cls) -> List["ClinicalAttribute"]:
-        """Lists the clinical attributes the subset of categorical attributes that only have 2 classes (e.g. bool)."""
+        """Lists the subset of categorical attributes that only have 2 classes (e.g. bool)."""
         from vital.data.cardinal.utils.attributes import CLINICAL_CAT_ATTR_LABELS
 
         return [attr for attr in cls.categorical_attrs() if len(CLINICAL_CAT_ATTR_LABELS[attr]) == 2]
 
     @classmethod
     def boolean_attrs(cls) -> List["ClinicalAttribute"]:
-        """Lists the clinical attributes that are boolean (a subset of binary attributes)."""
+        """Lists the subset of binary attributes that are boolean."""
         from vital.data.cardinal.utils.attributes import CLINICAL_CAT_ATTR_LABELS
 
         return [attr for attr in cls.binary_attrs() if CLINICAL_CAT_ATTR_LABELS[attr] == [False, True]]
