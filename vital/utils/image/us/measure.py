@@ -242,7 +242,7 @@ class EchoMeasure(Measure):
             Mask that splits the image along a line between the endocardium's apex and middle of the base.
         """
         # Identify major landmarks of the left ventricle (i.e. base's corners + midpoint and apex)
-        left_corner, apex, right_corner = EchoMeasure.endo_epi_control_points(
+        left_corner, apex, right_corner = EchoMeasure._endo_epi_control_points(
             segmentation, lv_labels, myo_labels, "endo", 3, voxelspacing
         )
         base_mid = (left_corner + right_corner) / 2
@@ -260,55 +260,11 @@ class EchoMeasure(Measure):
         return left_of_lv_center_line_mask
 
     @staticmethod
-    @auto_cast_data
-    @batch_function(item_ndim=2)
-    def structure_area_split_by_endo_center_line(
+    def _endo_epi_control_points(
         segmentation: T,
         lv_labels: SemanticStructureId,
         myo_labels: SemanticStructureId,
-        half: Literal["left", "right"],
-        labels: SemanticStructureId = None,
-        voxelspacing: Tuple[float, float] = (1, 1),
-    ) -> T:
-        """Computes the area of a structure that falls on the left/right side of the endo center line.
-
-        Args:
-            segmentation: ([N], H, W), Segmentation map.
-            lv_labels: Labels of the classes that are part of the left ventricle.
-            myo_labels: Labels of the classes that are part of the left ventricle.
-            half: The side of the image to consider when computing the area of the structure. Either "left" or "right".
-            labels: Labels of the classes that are part of the structure for which to count the number of pixels. If
-                `None`, all truthy values will be considered part of the structure.
-            voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
-
-        Returns:
-            ([N]), Number of pixels associated with the structure that falls on the left/right side of the endo center
-            line, in each segmentation of the batch.
-        """
-        # Find the binary mask of the structure
-        if labels:
-            mask = np.isin(segmentation, labels)
-        else:
-            mask = segmentation.astype(bool)
-
-        # Find the mask of the left/right split along the endo center line
-        half_mask = EchoMeasure._split_along_endo_axis(segmentation, lv_labels, myo_labels, voxelspacing)
-        if half == "right":
-            half_mask = ~half_mask
-
-        # Only keep the part of the structure that falls on the requested side of the endo center line
-        mask = mask * half_mask
-
-        return mask.sum((-2, -1)) * (voxelspacing[0] * voxelspacing[1])
-
-    @staticmethod
-    @auto_cast_data
-    @batch_function(item_ndim=2)
-    def endo_epi_control_points(
-        segmentation: T,
-        lv_labels: SemanticStructureId,
-        myo_labels: SemanticStructureId,
-        structure: Literal["endo", "epi"],
+        structure: Literal["endo", "epi", "myo"],
         num_control_points: int,
         voxelspacing: Tuple[float, float] = (1, 1),
     ) -> T:
@@ -325,7 +281,7 @@ class EchoMeasure(Measure):
             voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
 
         Returns:
-            Coordinates of the control points along the contour of the endocardium/epicardium.
+            (`num_control_points`, 2) Coordinates of the control points along the contour of the endo/epicardium.
         """
         voxelspacing = np.array(voxelspacing)
 
@@ -394,6 +350,90 @@ class EchoMeasure(Measure):
             control_points_indices += segment_control_points[1:]
 
         return contour[control_points_indices]
+
+    @staticmethod
+    @auto_cast_data
+    @batch_function(item_ndim=2)
+    def structure_area_split_by_endo_center_line(
+        segmentation: T,
+        lv_labels: SemanticStructureId,
+        myo_labels: SemanticStructureId,
+        half: Literal["left", "right"],
+        labels: SemanticStructureId = None,
+        voxelspacing: Tuple[float, float] = (1, 1),
+    ) -> T:
+        """Computes the area of a structure that falls on the left/right side of the endo center line.
+
+        Args:
+            segmentation: ([N], H, W), Segmentation map.
+            lv_labels: Labels of the classes that are part of the left ventricle.
+            myo_labels: Labels of the classes that are part of the left ventricle.
+            half: The side of the image to consider when computing the area of the structure. Either "left" or "right".
+            labels: Labels of the classes that are part of the structure for which to count the number of pixels. If
+                `None`, all truthy values will be considered part of the structure.
+            voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
+
+        Returns:
+            ([N]), Number of pixels associated with the structure that falls on the left/right side of the endo center
+            line, in each segmentation of the batch.
+        """
+        # Find the binary mask of the structure
+        if labels:
+            mask = np.isin(segmentation, labels)
+        else:
+            mask = segmentation.astype(bool)
+
+        # Find the mask of the left/right split along the endo center line
+        half_mask = EchoMeasure._split_along_endo_axis(segmentation, lv_labels, myo_labels, voxelspacing)
+        if half == "right":
+            half_mask = ~half_mask
+
+        # Only keep the part of the structure that falls on the requested side of the endo center line
+        mask = mask * half_mask
+
+        return mask.sum((-2, -1)) * (voxelspacing[0] * voxelspacing[1])
+
+    @staticmethod
+    @auto_cast_data
+    @batch_function(item_ndim=2)
+    def control_points(
+        segmentation: T,
+        lv_labels: SemanticStructureId,
+        myo_labels: SemanticStructureId,
+        structure: Literal["endo", "epi", "myo"],
+        num_control_points: int,
+        voxelspacing: Tuple[float, float] = (1, 1),
+    ) -> T:
+        """Lists uniformly distributed control points along the contour of the endo/epi or in the center of the myo.
+
+        Args:
+            segmentation: ([N], H, W), Segmentation map.
+            lv_labels: Labels of the classes that are part of the left ventricle.
+            myo_labels: Labels of the classes that are part of the myocardium.
+            structure: Structure for which to identify the control points.
+            num_control_points: Number of control points to sample. The number of control points should be odd to be
+                divisible evenly between the base -> apex and apex -> base segments.
+            voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
+
+        Returns:
+            ([N], `num_control_points`, 2) Coordinates of the control points.
+        """
+        match structure:
+            case "endo" | "epi":
+                control_points = EchoMeasure._endo_epi_control_points(
+                    segmentation, lv_labels, myo_labels, structure, num_control_points, voxelspacing
+                )
+            case "myo":
+                # Define myocardium control points as the average of corresponding points along the endo/epi contours
+                endo_control_points, epicontrol_points = [
+                    EchoMeasure._endo_epi_control_points(
+                        segmentation, lv_labels, myo_labels, struct, num_control_points, voxelspacing=voxelspacing
+                    )
+                    for struct in ("endo", "epi")
+                ]
+                control_points = (endo_control_points + epicontrol_points) // 2
+
+        return control_points
 
     @staticmethod
     @auto_cast_data
