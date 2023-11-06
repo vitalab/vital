@@ -397,7 +397,7 @@ class EchoMeasure(Measure):
 
     @staticmethod
     @auto_cast_data
-    def gls(
+    def longitudinal_strain(
         segmentation: T,
         lv_labels: SemanticStructureId,
         myo_labels: SemanticStructureId,
@@ -411,6 +411,8 @@ class EchoMeasure(Measure):
                 ED instant.
             lv_labels: Labels of the classes that are part of the left ventricle.
             myo_labels: Labels of the classes that are part of the myocardium.
+            half: The half of the endocardium to consider when computing the strain. `None` to compute a global strain,
+                and either "left" or "right" to compute local strain.
             voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
 
         Returns:
