@@ -121,8 +121,8 @@ def monotonic_regularization_loss(input: Tensor, target: Tensor, delta: float) -
           (link to the paper: https://arxiv.org/pdf/2004.05485.pdf)
 
     Args:
-        input: Input values to regularize so that they have a monotonic relationship with the `target` values.
-        target: Values used to determine the target monotonic ordering of the values.
+        input: (N, [1]), Input values to regularize so that they have a monotonic relationship with the `target` values.
+        target: (N, [1]), Values used to determine the target monotonic ordering of the values.
         delta: Hyperparameter that decides the spread of the posterior distribution.
 
     Returns:
