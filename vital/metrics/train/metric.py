@@ -80,8 +80,9 @@ class MonotonicRegularizationLoss(nn.Module):
         """Actual metric calculation.
 
         Args:
-            input: Input values to regularize so that they have a monotonic relationship with the `target` values.
-            target: Values used to determine the target monotonic ordering of the values.
+            input: (N, [1]), Input values to regularize so that they have a monotonic relationship with the `target`
+                values.
+            target: (N, [1]), Values used to determine the target monotonic ordering of the values.
 
         Returns:
             (1,), Calculated monotonic regularization loss.
