@@ -28,7 +28,8 @@ class Measure:
             voxelarea: Size of the mask's voxels along each (height, width) dimension (in mm).
 
         Returns:
-            ([N]), Number of pixels associated to the structure, in each segmentation of the batch.
+            ([N]), Surface associated to the structure (in mm² if `voxelspacing` and pixels otherwise), in each
+            segmentation of the batch.
         """
         if labels:
             mask = np.isin(segmentation, labels)

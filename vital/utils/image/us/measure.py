@@ -375,8 +375,8 @@ class EchoMeasure(Measure):
             voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
 
         Returns:
-            ([N]), Number of pixels associated with the structure that falls on the left/right side of the endo center
-            line, in each segmentation of the batch.
+            ([N]), Surface associated with the structure (in mm² if `voxelspacing` and pixels otherwise) that falls on
+            the left/right side of the endo center line, in each segmentation of the batch.
         """
         # Find the binary mask of the structure
         if labels:
@@ -516,8 +516,7 @@ class EchoMeasure(Measure):
             voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
 
         Returns:
-            ([N]), Distance between the left and right markers at the base of the left ventricle, or NaNs for the
-            images where those 2 points cannot be reliably estimated.
+            ([N]), Distance between the left and right markers at the base of the left ventricle (in cm).
         """
         voxelspacing = np.array(voxelspacing)
 
@@ -525,7 +524,9 @@ class EchoMeasure(Measure):
         left_corner, right_corner = EchoMeasure._endo_base(segmentation, lv_labels, myo_labels)
 
         # Compute the distance between the points at the base
-        return np.linalg.norm((left_corner - right_corner) * voxelspacing)
+        width = np.linalg.norm((left_corner - right_corner) * voxelspacing)
+        width *= 1e-1  # Convert from mm to cm
+        return width
 
     @staticmethod
     @auto_cast_data
@@ -545,7 +546,7 @@ class EchoMeasure(Measure):
             voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
 
         Returns:
-            ([N]), Length of the left ventricle.
+            ([N]), Length of the left ventricle (in cm).
         """
         voxelspacing = np.array(voxelspacing)
 
@@ -557,7 +558,9 @@ class EchoMeasure(Measure):
         )[0]
 
         # Compute the distance between the apex and the base's midpoint
-        return np.linalg.norm((apex - base_mid) * voxelspacing)
+        length = np.linalg.norm((apex - base_mid) * voxelspacing)
+        length *= 1e-1  # Convert from mm to cm
+        return length
 
     @staticmethod
     @auto_cast_data
