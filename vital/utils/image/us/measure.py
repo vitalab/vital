@@ -616,8 +616,14 @@ class EchoMeasure(Measure):
         # Sample points every mm (up to 1.2cm) along the orthogonal vectors towards both the endo and epi contours
         centerline = centerline_pix * voxelspacing  # (num_control_points, 2)
         sample_offsets = unit_orth_vecs[:, None, :] * np.arange(1, 13)[None, :, None]  # (num_control_points, 12, 2)
-        centerline_inner_samples = centerline[:, None] + sample_offsets  # (num_control_points, 12, 2)
-        centerline_outer_samples = centerline[:, None] - sample_offsets  # (num_control_points, 12, 2)
+        centerline_orth_segments = np.concatenate(
+            [
+                centerline[:, None] - sample_offsets,  # (num_control_points, 12, 2)
+                centerline[:, None],  # (num_control_points, 1, 2)
+                centerline[:, None] + sample_offsets,  # (num_control_points, 12, 2)
+            ],
+            axis=1,
+        )  # (num_control_points, 25, 2)
 
         # Extract the endo and epi contours, in both pixel and physical coordinates
         endo_contour_pix, epi_contour_pix = [
@@ -627,14 +633,14 @@ class EchoMeasure(Measure):
         endo_contour, epi_contour = endo_contour_pix * voxelspacing, epi_contour_pix * voxelspacing
 
         # For each centerline point, find the nearest point on the endo and epi contours to the points sampled along the
-        # orthogonal vector
+        # orthogonal segment
         endo_closest_orth, epi_closest_orth = [], []
-        for inner_samples, outer_samples in zip(centerline_inner_samples, centerline_outer_samples):
-            endo_dist = distance.cdist(inner_samples, endo_contour)  # (12, `len(endo_contour)`)
+        for orth_segment in centerline_orth_segments:
+            endo_dist = distance.cdist(orth_segment, endo_contour)  # (25, `len(endo_contour)`)
             closest_endo_idx = np.unravel_index(np.argmin(endo_dist), endo_dist.shape)[1]
             endo_closest_orth.append(endo_contour_pix[closest_endo_idx])
 
-            epi_dist = distance.cdist(outer_samples, epi_contour)  # (12, `len(epi_contour)`)
+            epi_dist = distance.cdist(orth_segment, epi_contour)  # (25, `len(epi_contour)`)
             closest_epi_idx = np.unravel_index(np.argmin(epi_dist), epi_dist.shape)[1]
             epi_closest_orth.append(epi_contour_pix[closest_epi_idx])
 
