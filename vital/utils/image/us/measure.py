@@ -7,6 +7,7 @@ import pandas as pd
 from scipy import ndimage
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
+from scipy.spatial import distance
 from skimage.measure import find_contours
 
 from vital.data.config import SemanticStructureId
@@ -557,3 +558,204 @@ class EchoMeasure(Measure):
 
         # Compute the distance between the apex and the base's midpoint
         return np.linalg.norm((apex - base_mid) * voxelspacing)
+
+    @staticmethod
+    @auto_cast_data
+    @batch_function(item_ndim=2)
+    def myo_thickness(
+        segmentation: T,
+        lv_labels: SemanticStructureId,
+        myo_labels: SemanticStructureId,
+        num_control_points: int = 31,
+        control_points_slice: slice = None,
+        voxelspacing: Tuple[float, float] = (1, 1),
+        debug_plots: bool = False,
+    ) -> T:
+        """Measures the average endo-epi distance orthogonal to the centerline over a given number of control points.
+
+        Args:
+            segmentation: ([N], H, W), Segmentation map.
+            lv_labels: Labels of the classes that are part of the left ventricle.
+            myo_labels: Labels of the classes that are part of the myocardium.
+            num_control_points: Number of control points to sample along the contour of the endocardium/epicardium. The
+                number of control points should be odd to be divisible evenly between the base -> apex and apex -> base
+                segments.
+            control_points_slice: Slice of control points to consider when computing the curvature. This is useful to
+                compute the curvature over a subset of the control points, e.g. to compute the thickness over the basal
+                septum in A4C.
+            voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
+            debug_plots: Whether to plot the thickness at each centerline point. This is done by plotting the
+                value of the thic at each control point as a color-coded scatter plot on top of the segmentation.
+                This should only be used for debugging the expected value of the curvature.
+
+        Returns:
+            ([N,] `control_points_slice`), Thickness of the myocardium over the requested segmentm (in cm).
+        """
+        # Extract control points along the myocardium's centerline
+        centerline_pix = EchoMeasure.control_points(
+            segmentation, lv_labels, myo_labels, "myo", num_control_points, voxelspacing=voxelspacing
+        )
+        voxelspacing = np.array(voxelspacing)
+
+        # Compute the direction of the centerline at each control point as the vector between the previous and next
+        # points. However, for the first and last points, we simply use the vector between the point itself and its next
+        # or previous point, respectively (in practice, this is implemented by edge-padding the centerline points)
+        centerline_pad = np.pad(centerline_pix, ((1, 1), (0, 0)), mode="edge")
+        centerline_vecs = centerline_pad[2:] - centerline_pad[:-2]  # (num_control_points, 2)
+
+        # Compute the vectors orthogonal to the centerline at each control point, defined as the cross product between
+        # the centerline's direction and an arbitrary vector out of the plane of the image (i.e. the z-axis)
+        r90_matrix = np.array([[0, -1], [1, 0]])
+        orth_vecs = centerline_vecs @ r90_matrix  # (num_control_points, 2)
+        # Normalize the orthogonal vectors to be 1mm in length
+        unit_orth_vecs = (orth_vecs * voxelspacing) / np.linalg.norm((orth_vecs * voxelspacing), axis=1, keepdims=True)
+
+        # Sample points every mm (up to 1.2cm) along the orthogonal vectors towards both the endo and epi contours
+        centerline = centerline_pix * voxelspacing  # (num_control_points, 2)
+        sample_offsets = unit_orth_vecs[:, None, :] * np.arange(1, 13)[None, :, None]  # (num_control_points, 12, 2)
+        centerline_inner_samples = centerline[:, None] + sample_offsets  # (num_control_points, 12, 2)
+        centerline_outer_samples = centerline[:, None] - sample_offsets  # (num_control_points, 12, 2)
+
+        # Extract the endo and epi contours, in both pixel and physical coordinates
+        endo_contour_pix, epi_contour_pix = [
+            find_contours(np.isin(segmentation, struct_labels), level=0.9)[0]
+            for struct_labels in [lv_labels, [lv_labels, myo_labels]]
+        ]
+        endo_contour, epi_contour = endo_contour_pix * voxelspacing, epi_contour_pix * voxelspacing
+
+        # For each centerline point, find the nearest point on the endo and epi contours to the points sampled along the
+        # orthogonal vector
+        endo_closest_orth, epi_closest_orth = [], []
+        for inner_samples, outer_samples in zip(centerline_inner_samples, centerline_outer_samples):
+            endo_dist = distance.cdist(inner_samples, endo_contour)  # (12, `len(endo_contour)`)
+            closest_endo_idx = np.unravel_index(np.argmin(endo_dist), endo_dist.shape)[1]
+            endo_closest_orth.append(endo_contour_pix[closest_endo_idx])
+
+            epi_dist = distance.cdist(outer_samples, epi_contour)  # (12, `len(epi_contour)`)
+            closest_epi_idx = np.unravel_index(np.argmin(epi_dist), epi_dist.shape)[1]
+            epi_closest_orth.append(epi_contour_pix[closest_epi_idx])
+
+        endo_closest_orth, epi_closest_orth = np.array(endo_closest_orth), np.array(epi_closest_orth)
+
+        # Compute the thickness as the distance between the points on the endo and epi contours that are closest to the
+        # points sampled along the orthogonal vector
+        thickness = np.linalg.norm((endo_closest_orth - epi_closest_orth) * voxelspacing, axis=1)
+        thickness *= 1e-1  # Convert from mm to cm
+
+        # Only keep the control points that are part of the requested segment, if any
+        if control_points_slice:
+            thickness = thickness[control_points_slice]
+
+        if debug_plots:
+            from matplotlib import pyplot as plt
+
+            if control_points_slice:
+                centerline_pix = centerline_pix[control_points_slice]
+                endo_closest_orth = endo_closest_orth[control_points_slice]
+                epi_closest_orth = epi_closest_orth[control_points_slice]
+
+            plt.imshow(segmentation)
+            for points in [centerline_pix, endo_closest_orth, epi_closest_orth]:
+                plt.scatter(points[:, 1], points[:, 0], c=thickness, cmap="magma", marker="o", s=3)
+
+            # Annotate the centerline points with their respective thickness value
+            for c_coord, c_thickness in zip(centerline_pix, thickness):
+                plt.annotate(
+                    f"{c_thickness:.1f}",
+                    (c_coord[1], c_coord[0]),
+                    xytext=(2, 0),
+                    textcoords="offset points",
+                    fontsize="small",
+                )
+
+            plt.show()
+
+        # Average the metric over the control points
+        return thickness
+
+    @staticmethod
+    @auto_cast_data
+    @batch_function(item_ndim=2)
+    def curvature(
+        segmentation: T,
+        lv_labels: SemanticStructureId,
+        myo_labels: SemanticStructureId,
+        structure: Literal["endo", "epi"],
+        num_control_points: int = 31,
+        control_points_slice: slice = None,
+        voxelspacing: Tuple[float, float] = (1, 1),
+        debug_plots: bool = False,
+    ) -> T:
+        """Measures the average curvature of the endocardium/epicardium over a given number of control points.
+
+        References:
+            - Uses the specific definition of curvature proposed by Marciniak et al. (2021) in
+              https://doi.org/10.1097/HJH.0000000000002813
+
+        Args:
+            segmentation: ([N], H, W), Segmentation map.
+            lv_labels: Labels of the classes that are part of the left ventricle.
+            myo_labels: Labels of the classes that are part of the myocardium.
+            num_control_points: Number of control points to sample along the contour of the structure. The number of
+                control points should be odd to be divisible evenly between the base -> apex and apex -> base segments.
+            control_points_slice: Slice of control points to consider when computing the curvature. This is useful to
+                compute the curvature over a subset of the control points, e.g. to compute the curvature over the basal
+                septum in A4C.
+            voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
+            debug_plots: Whether to plot the value of the curvature at each control point. This is done by plotting the
+                value of the curvature at each control point as a color-coded scatter plot on top of the segmentation.
+                This should only be used for debugging the expected value of the curvature.
+
+        Returns:
+            ([N,] `control_points_slice`), Curvature of the endocardium over the requested segment (in dm^-1).
+        """
+        # Extract control points along the structure's contour
+        control_points_pix = EchoMeasure.control_points(
+            segmentation, lv_labels, myo_labels, structure, num_control_points, voxelspacing=voxelspacing
+        )  # (num_control_points, 2)
+        # Convert pixel coordinates to physical coordinates
+        control_points = control_points_pix * np.array(voxelspacing)
+
+        # Re-organize the control points into arrays of x and y coordinates
+        y_coords, x_coords = control_points.T
+
+        # Compute the curvature at each control point
+        # 1. Compute the first and second derivatives of the x and y coordinates
+        dx, dy = np.gradient(x_coords, edge_order=2), np.gradient(y_coords, edge_order=2)
+        dx2, dy2 = np.gradient(dx), np.gradient(dy)
+
+        # 2. Compute the curvature using Eq. 1 from the paper by Marciniak et al.
+        k = (dx2 * dy - dx * dy2) / ((dx**2 + dy**2) ** (3 / 2))
+        k *= 1e2  # Convert from mm^-1 to dm^-1
+
+        # Only keep the control points that are part of the requested segment, if any
+        if control_points_slice:
+            k = k[control_points_slice]
+
+        if debug_plots:
+            import matplotlib.colors as colors
+            from matplotlib import pyplot as plt
+
+            selected_c_points = control_points_pix
+            if control_points_slice:
+                selected_c_points = selected_c_points[control_points_slice]
+
+            plt.imshow(segmentation)
+            plt.scatter(
+                selected_c_points[:, 1],
+                selected_c_points[:, 0],
+                c=k,
+                cmap="seismic",
+                norm=colors.TwoSlopeNorm(vmin=-10, vcenter=0, vmax=10),
+                marker="o",
+                s=3,
+            )
+            # Annotate the control points with their respective curvature value
+            for c_coord, c_k in zip(selected_c_points, k):
+                plt.annotate(
+                    f"{c_k:.1f}", (c_coord[1], c_coord[0]), xytext=(2, 0), textcoords="offset points", fontsize="small"
+                )
+
+            plt.show()
+
+        return k
