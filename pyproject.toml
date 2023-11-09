@@ -72,6 +72,8 @@ cardinal-ge2nifti = "vital.data.cardinal.ge2nifti:main"
 cardinal-process-masks = "vital.data.cardinal.process_masks:main"
 cardinal-clip-cycle = "vital.data.cardinal.clip_cycle:main"
 cardinal-seq2pairs = "vital.data.cardinal.seq2pairs:main"
+cardinal-split-data = "vital.data.cardinal.split_data:main"
+cardinal-plot-data-dis = "vital.data.cardinal.plot_data_dis:main"
 
 [tool.black]
 line-length = 120
