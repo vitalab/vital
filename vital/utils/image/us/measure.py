@@ -573,8 +573,7 @@ class EchoMeasure(Measure):
                 number of control points should be odd to be divisible evenly between the base -> apex and apex -> base
                 segments.
             control_points_slice: Slice of control points to consider when computing the curvature. This is useful to
-                compute the curvature over a subset of the control points, e.g. to compute the thickness over the basal
-                septum in A4C.
+                compute the thickness over a subset of the control points, e.g. over the basal septum in A4C.
             voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
             debug_plots: Whether to plot the thickness at each centerline point. This is done by plotting the
                 value of the thic at each control point as a color-coded scatter plot on top of the segmentation.
@@ -697,8 +696,7 @@ class EchoMeasure(Measure):
             num_control_points: Number of control points to sample along the contour of the structure. The number of
                 control points should be odd to be divisible evenly between the base -> apex and apex -> base segments.
             control_points_slice: Slice of control points to consider when computing the curvature. This is useful to
-                compute the curvature over a subset of the control points, e.g. to compute the curvature over the basal
-                septum in A4C.
+                compute the curvature over a subset of the control points, e.g. over the basal septum in A4C.
             voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
             debug_plots: Whether to plot the value of the curvature at each control point. This is done by plotting the
                 value of the curvature at each control point as a color-coded scatter plot on top of the segmentation.
