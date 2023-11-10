@@ -2,7 +2,6 @@ import logging
 from pathlib import Path
 from typing import Literal, Sequence
 
-import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 
@@ -95,7 +94,7 @@ def read_records(records_csv: Path, col_names: Sequence[str] = None, drop_missin
     for int_attr in (
         num_attr for num_attr in TabularAttribute.numerical_attrs() if TABULAR_ATTR_UNITS[num_attr][1] == int
     ):
-        records[int_attr] = np.floor(records[int_attr]).astype("Int64")
+        records[int_attr] = records[int_attr].astype("Int64")
 
     if col_names:
         # Discard the columns not part of the requested subset
