@@ -21,7 +21,6 @@ class ImageTabularAttributes(Metrics):
     desc = "image_tabular_attributes"
     ResultsCollection = Patients
     input_choices = []
-    target_choices = []  # Enable target w/o explicitly specifying target tags
 
     def __init__(self, save_by_patient: bool = True, subdir_levels: Sequence[Literal["patient"]] = None, **kwargs):
         """Initializes class instance.
