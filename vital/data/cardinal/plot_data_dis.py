@@ -2,7 +2,7 @@ from pathlib import Path
 
 from matplotlib import pyplot as plt
 
-from vital.data.cardinal.config import ClinicalAttribute
+from vital.data.cardinal.config import TabularAttribute
 from vital.data.cardinal.utils.data_dis import plot_patients_distribution
 from vital.data.cardinal.utils.itertools import Patients
 
@@ -15,11 +15,11 @@ def main():
     parser = Patients.add_args(parser)
     parser.add_argument(
         "--plot_attributes",
-        type=ClinicalAttribute,
+        type=TabularAttribute,
         nargs="+",
-        choices=list(ClinicalAttribute),
-        default=list(ClinicalAttribute),
-        help="Patients' clinical attributes whose distributions to compare pairwise",
+        choices=list(TabularAttribute),
+        default=list(TabularAttribute),
+        help="Patients' tabular attributes whose distributions to compare pairwise",
     )
     parser.add_argument(
         "--subsets",

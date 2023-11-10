@@ -7,9 +7,9 @@ from typing import Dict, Iterator, List, Literal, Mapping, Optional, Sequence, U
 import pandas as pd
 from pandas.api.types import CategoricalDtype
 
-from vital.data.cardinal.config import IMG_FILENAME_PATTERN, IMG_FORMAT, PATIENT_ID_REGEX, ClinicalAttribute
+from vital.data.cardinal.config import IMG_FILENAME_PATTERN, IMG_FORMAT, PATIENT_ID_REGEX, TabularAttribute
 from vital.data.cardinal.config import View as ViewEnum
-from vital.data.cardinal.utils.attributes import CLINICAL_ATTR_UNITS, CLINICAL_CAT_ATTR_LABELS
+from vital.data.cardinal.utils.attributes import TABULAR_ATTR_UNITS, TABULAR_CAT_ATTR_LABELS
 from vital.data.cardinal.utils.data_struct import Patient, View, load_attributes
 from vital.utils.itertools import Collection
 
@@ -54,7 +54,7 @@ class Patients(Collection, Mapping[Patient.Id, Patient]):
         data_roots: Sequence[Union[str, Path]],
         include_patients: Sequence[str] = None,
         exclude_patients: Sequence[str] = None,
-        patient_attrs_filter: Sequence[Union[str, ClinicalAttribute]] = None,
+        patient_attrs_filter: Sequence[Union[str, TabularAttribute]] = None,
         views: Sequence[Union[str, ViewEnum]] = None,
         handle_attrs_errors: Optional[Literal["warning", "error"]] = None,
         eager_loading: bool = False,
@@ -82,8 +82,8 @@ class Patients(Collection, Mapping[Patient.Id, Patient]):
                 compute attributes upon the first time they are accessed. Enabling eager loading will by-pass this
                 behavior and force the children `View`s to load all the images and compute their attributes directly
                 upon instantiation.
-            overwrite_attrs_cache: Whether to discard the current cache of image attributes and compute them again. Has
-                no effect when no attributes cache exists.
+            overwrite_attrs_cache: Whether to discard the current cache of attributes and compute them again. Has no
+                effect when no attributes cache exists.
             fast_dev_patients: In development mode, specify a limited number of patients on which to iterate. Only the
                 first `n` will then be returned.
         """
@@ -126,7 +126,7 @@ class Patients(Collection, Mapping[Patient.Id, Patient]):
 
         if patient_attrs_filter:
             # Make sure the requested patient attributes are recognized attributes
-            patient_attrs_filter = [ClinicalAttribute[str(patient_attr)] for patient_attr in patient_attrs_filter]
+            patient_attrs_filter = [TabularAttribute[str(patient_attr)] for patient_attr in patient_attrs_filter]
             # Filter patients to only keep those who provide the requested attributes
             patient_ids = [
                 patient_id
@@ -187,9 +187,9 @@ class Patients(Collection, Mapping[Patient.Id, Patient]):
         return len(self._patients)
 
     def to_dataframe(
-        self, clinical_attrs: Sequence[ClinicalAttribute] = None, cast_to_pandas_dtypes: bool = True
+        self, tabular_attrs: Sequence[TabularAttribute] = None, cast_to_pandas_dtypes: bool = True
     ) -> pd.DataFrame:
-        """Converts the patients' clinical attributes to a dataframe, handling missing values using pandas' dtypes.
+        """Converts the patients' tabular attrs to a dataframe, optionally handling missing values using pandas' dtypes.
 
         Notes:
             - In general, casting to pandas' dtype is recommended (hence it is done by default) since it can help handle
@@ -199,37 +199,37 @@ class Patients(Collection, Mapping[Patient.Id, Patient]):
               why the option to skip the pandas dtype casting exists.
 
         Args:
-            clinical_attrs: Clinical attributes to include in the dataframe that is returned.
+            tabular_attrs: Tabular attributes to include in the dataframe that is returned.
             cast_to_pandas_dtypes: Whether to cast the attributes to the most appropriate pandas dtype (e.g. Int64,
                 boolean, category, etc.).
 
         Returns:
-            A dataframe of the patients' clinical attributes.
+            A dataframe of the patients' tabular attributes.
         """
-        if clinical_attrs is None:
-            clinical_attrs = list(ClinicalAttribute)
+        if tabular_attrs is None:
+            tabular_attrs = list(TabularAttribute)
 
         patients_df = pd.DataFrame.from_dict(
-            {patient.id: {attr: patient.attrs.get(attr) for attr in clinical_attrs} for patient in self.values()},
+            {patient.id: {attr: patient.attrs.get(attr) for attr in tabular_attrs} for patient in self.values()},
             orient="index",
         ).rename_axis("patient")
 
         if cast_to_pandas_dtypes:
-            cat_attrs = [attr for attr in clinical_attrs if attr in ClinicalAttribute.categorical_attrs()]
-            avail_num_attrs = [attr for attr in clinical_attrs if attr in ClinicalAttribute.numerical_attrs()]
+            cat_attrs = [attr for attr in tabular_attrs if attr in TabularAttribute.categorical_attrs()]
+            num_attrs = [attr for attr in tabular_attrs if attr in TabularAttribute.numerical_attrs()]
 
             # Cast boolean/categorical columns
             cat_dtypes = {
                 cat_attr: "boolean"
-                if cat_attr in ClinicalAttribute.boolean_attrs()
-                else CategoricalDtype(categories=CLINICAL_CAT_ATTR_LABELS[cat_attr], ordered=True)
+                if cat_attr in TabularAttribute.boolean_attrs()
+                else CategoricalDtype(categories=TABULAR_CAT_ATTR_LABELS[cat_attr], ordered=True)
                 for cat_attr in cat_attrs
             }
             patients_df = patients_df.astype(cat_dtypes)
 
             # Manually convert integer columns to use pandas' `Int64` type, which supports missing values unlike the
             # native int
-            for int_attr in (num_attr for num_attr in avail_num_attrs if CLINICAL_ATTR_UNITS[num_attr][1] == int):
+            for int_attr in (num_attr for num_attr in num_attrs if TABULAR_ATTR_UNITS[num_attr][1] == int):
                 patients_df[int_attr] = patients_df[int_attr].astype("Int64")
 
         return patients_df
@@ -263,8 +263,8 @@ class Patients(Collection, Mapping[Patient.Id, Patient]):
         )
         parser.add_argument(
             "--patient_attrs_filter",
-            type=ClinicalAttribute,
-            choices=list(ClinicalAttribute),
+            type=TabularAttribute,
+            choices=list(TabularAttribute),
             nargs="+",
             help="Attributes for which the patients have to have a value to be collected. This filter is applied after "
             "the filters on the specific patients to include/exclude.",
@@ -294,8 +294,8 @@ class Patients(Collection, Mapping[Patient.Id, Patient]):
         parser.add_argument(
             "--overwrite_attrs_cache",
             action="store_true",
-            help="Whether to discard the current cache of image attributes and compute them again. Has no effect when "
-            "no attributes cache exists.",
+            help="Whether to discard the current cache of attributes and compute them again. Has no effect when no "
+            "attributes cache exists.",
         )
         parser.add_argument(
             "--fast_dev_patients",

@@ -14,18 +14,18 @@ from skimage import color
 from skimage.morphology import disk
 
 from vital.data.cardinal.config import (
+    ATTRS_CACHE_FORMAT,
     ATTRS_FILENAME_PATTERN,
-    ATTRS_FORMAT,
-    IMG_ATTRS_FORMAT,
     IMG_FILENAME_PATTERN,
     IMG_FORMAT,
+    TABULAR_ATTRS_FORMAT,
     CardinalTag,
-    ClinicalAttribute,
-    ImageAttribute,
     Label,
+    TabularAttribute,
+    TimeSeriesAttribute,
 )
 from vital.data.cardinal.config import View as ViewEnum
-from vital.data.cardinal.utils.attributes import compute_mask_attributes
+from vital.data.cardinal.utils.attributes import compute_mask_time_series_attributes
 from vital.utils.data_struct import LazyDict
 from vital.utils.image.io import sitk_load, sitk_save
 from vital.utils.image.transform import resize_image, resize_image_to_voxelspacing
@@ -42,7 +42,7 @@ def load_attributes(
     data_roots: Sequence[Path],
     view: ViewEnum = None,
     handle_errors: Optional[Literal["warning", "error"]] = None,
-) -> Dict[ClinicalAttribute, Any]:
+) -> Dict[TabularAttribute, Any]:
     """Loads attributes related to a patient or to a specific view from a YAML metadata file.
 
     Args:
@@ -73,7 +73,9 @@ def load_attributes(
                 f"Unexpected value for 'handle_errors': {handle_errors}. Use one of: [None, 'warning', 'error']."
             )
 
-    attrs_file_pattern = ATTRS_FILENAME_PATTERN.format(patient_id=patient_id, ext=as_file_extension(ATTRS_FORMAT))
+    attrs_file_pattern = ATTRS_FILENAME_PATTERN.format(
+        patient_id=patient_id, ext=as_file_extension(TABULAR_ATTRS_FORMAT)
+    )
     attrs_files = []
     for data_root in data_roots:
         # Search recursively inside the provided directory
@@ -109,7 +111,7 @@ def load_attributes(
     # convert the string keys to their corresponding enum values
     # NOTE: The string keys are escaped to convert them to legal Python variable name +
     # to follow our enum naming convention
-    attrs = {ClinicalAttribute[k.lower().replace("/", "_")]: v for k, v in attrs.items()}
+    attrs = {TabularAttribute[k.lower().replace("/", "_")]: v for k, v in attrs.items()}
 
     return attrs
 
@@ -122,7 +124,7 @@ class Patient:
 
     id: Id
     views: Dict[ViewEnum, "View"]
-    attrs: Dict[ClinicalAttribute, Any]
+    attrs: Dict[TabularAttribute, Any]
 
     def get_mask_attributes(self, mask_tag: str) -> Dict[ViewEnum, Dict[str, np.ndarray]]:
         """Returns the attributes values w.r.t. time for a given mask, for each view.
@@ -135,11 +137,11 @@ class Patient:
         """
         return {view_enum: view.get_mask_attributes(mask_tag) for view_enum, view in self.views.items()}
 
-    def get_clinical_attributes(self) -> Dict[str, Union[int, float]]:
-        """Returns the patient's clinical attributes.
+    def get_patient_attributes(self) -> Dict[str, Union[int, float]]:
+        """Returns the patient's global attributes.
 
         Returns:
-            Dictionary of clinical attributes and their values.
+            Dictionary of attributes and their values.
         """
         return self.attrs
 
@@ -192,7 +194,7 @@ class Patient:
         self,
         save_dir: Path,
         subdir_levels: Sequence[Literal["patient", "view"]] = None,
-        save_clinical_attributes: bool = False,
+        save_tabular_attrs: bool = False,
         **kwargs,
     ) -> None:
         """Saves the patient's data and metadata as multiple files on disk.
@@ -200,18 +202,16 @@ class Patient:
         Args:
             save_dir: Directory where to save the data.
             subdir_levels: Levels of subdirectories to create under `save_dir`.
-            save_clinical_attributes: Whether to also save the patient's clinical attributes in YAML config files.
+            save_tabular_attrs: Whether to also save the patient's tabular attributes in YAML config files.
             kwargs: Parameters to pass along to each of the views' ``save`` method.
         """
         for view in self.views.values():
             view.save(save_dir=save_dir, subdir_levels=subdir_levels, **kwargs)
 
-        if save_clinical_attributes:
-            # Collect the clinical attributes, converting enum keys to strings to have a cleaner serialized output
+        if save_tabular_attrs:
+            # Collect the tabular attributes, converting enum keys to strings to have a cleaner serialized output
             # + sort the attributes in the order they appear in the config enum
-            clinical_attrs = {
-                str(attr_key): self.attrs[attr_key] for attr_key in ClinicalAttribute if attr_key in self.attrs
-            }
+            tab_attrs = {str(attr_key): self.attrs[attr_key] for attr_key in TabularAttribute if attr_key in self.attrs}
 
             # Determine the path where to save the attributes
             if subdir_levels:
@@ -221,13 +221,13 @@ class Patient:
                     raise ValueError(
                         f"You specified the following subfolder levels to save patients' data: {subdir_levels}, "
                         f"meaning the data for one patient would be split across different folders under different "
-                        f"roots. This is incompatible with saving a patient's clinical attributes, which expects all "
+                        f"roots. This is incompatible with saving a patient's tabular attributes, which expects all "
                         f"the related to one patient to be saved under a single root folder."
                     )
-            filename = ATTRS_FILENAME_PATTERN.format(patient_id=self.id, ext=as_file_extension(ATTRS_FORMAT))
+            filename = ATTRS_FILENAME_PATTERN.format(patient_id=self.id, ext=as_file_extension(TABULAR_ATTRS_FORMAT))
 
-            # Save the clinical attributes to disk
-            (save_dir / filename).write_text(yaml.dump(clinical_attrs, sort_keys=False))
+            # Save the tabular attributes to disk
+            (save_dir / filename).write_text(yaml.dump(tab_attrs, sort_keys=False))
 
 
 @dataclass
@@ -257,8 +257,8 @@ class View:
         Args:
             data_tag: Tag under which to load the image's data, at a later time.
             data_file: Path to the image.
-            overwrite_attrs_cache: Whether to discard the current cache of image attributes and compute them again. Has
-                no effect when no attributes cache exists.
+            overwrite_attrs_cache: Whether to discard the current cache of attributes and compute them again. Has no
+                effect when no attributes cache exists.
         """
         # Store the path of the data, for when we will need to load it
         self._data_paths[data_tag] = data_file
@@ -278,8 +278,8 @@ class View:
 
         Args:
             data_tag: Tag of the image to load.
-            overwrite_attrs_cache: Whether to discard the current cache of image attributes and compute them again. Has
-                no effect when no attributes cache exists.
+            overwrite_attrs_cache: Whether to discard the current cache of attributes and compute them again. Has no
+                effect when no attributes cache exists.
 
         Returns:
             A tuple of i) the image and ii) the attributes related to the image.
@@ -287,20 +287,20 @@ class View:
         im_array, im_metadata = sitk_load(self._data_paths[data_tag])
         voxelspacing = im_metadata["spacing"][:2][::-1]
 
-        # If a cache of image attributes already exists (and it should not be overwritten), load the attributes from
-        # there to avoid having to compute them over again from the image
-        im_attrs_cache_path = remove_suffixes(self._data_paths[data_tag]).with_suffix(
-            as_file_extension(IMG_ATTRS_FORMAT)
+        # If a cache of attributes already exists (and it should not be overwritten), load the attributes from there to
+        # avoid having to compute them over again from the image
+        attrs_cache_path = remove_suffixes(self._data_paths[data_tag]).with_suffix(
+            as_file_extension(ATTRS_CACHE_FORMAT)
         )
-        cached_im_attrs = None
-        if im_attrs_cache_path.exists() and not overwrite_attrs_cache:
-            cached_im_attrs = np.load(im_attrs_cache_path)
+        cached_attrs = None
+        if attrs_cache_path.exists() and not overwrite_attrs_cache:
+            cached_attrs = np.load(attrs_cache_path)
 
-        self.add_image(data_tag, im_array, voxelspacing=voxelspacing, precomputed_attrs=cached_im_attrs)
+        self.add_image(data_tag, im_array, voxelspacing=voxelspacing, precomputed_attrs=cached_attrs)
 
-        # If no cache of the image attributes exists (or it should be overwritten), create it
-        if (not im_attrs_cache_path.exists()) or overwrite_attrs_cache:
-            np.savez(im_attrs_cache_path, **self.attrs[data_tag])
+        # If no cache of the attributes exists or it should be overwritten, create it
+        if (not attrs_cache_path.exists()) or overwrite_attrs_cache:
+            np.savez(attrs_cache_path, **self.attrs[data_tag])
 
         return self.data[data_tag], self.attrs[data_tag]
 
@@ -309,22 +309,22 @@ class View:
 
         Args:
             data_tag: Tag of the image for which to load attributes.
-            overwrite_attrs_cache: Whether to discard the current cache of image attributes and compute them again. Has
-                no effect when no attributes cache exists.
+            overwrite_attrs_cache: Whether to discard the current cache of attributes and compute them again. Has no
+                effect when no attributes cache exists.
 
         Returns:
             Attributes related to the `data_tag` image.
         """
-        im_attrs_cache_path = remove_suffixes(self._data_paths[data_tag]).with_suffix(
-            as_file_extension(IMG_ATTRS_FORMAT)
+        attrs_cache_path = remove_suffixes(self._data_paths[data_tag]).with_suffix(
+            as_file_extension(ATTRS_CACHE_FORMAT)
         )
-        if im_attrs_cache_path.exists() and not overwrite_attrs_cache:
-            self.attrs[data_tag] = np.load(im_attrs_cache_path)
+        if attrs_cache_path.exists() and not overwrite_attrs_cache:
+            self.attrs[data_tag] = np.load(attrs_cache_path)
         else:
-            # If no cache of image attributes is available (or it should be overwritten), manually load the data again
-            # to compute and cache the attributes. This can cause the image to be read again even if it was already
-            # loaded, but since most of the cost of `_load_data_and_attrs` comes from computing the attributes, the cost
-            # of reading the image itself is negligible
+            # If no cache of attributes is available (or it should be overwritten), manually load the data again to
+            # compute and cache the attributes. This can cause the image to be read again even if it was already loaded,
+            # but since most of the cost of `_load_data_and_attrs` comes from computing the attributes, the cost of
+            # reading the image itself is negligible
             _ = self._load_data_and_attrs(data_tag, overwrite_attrs_cache=True)
 
         return self.attrs[data_tag]
@@ -373,7 +373,7 @@ class View:
             # Otherwise, measure/compute the attributes directly from the image/metadata
             self.attrs[tag] = {CardinalTag.voxelspacing: voxelspacing}
             if self._is_mask_tag(tag):
-                self.attrs[tag].update(compute_mask_attributes(img, voxelspacing))
+                self.attrs[tag].update(compute_mask_time_series_attributes(img, voxelspacing))
 
     def resize_image(
         self,
@@ -397,7 +397,7 @@ class View:
                 data.
 
         Returns:
-            Resized image, its attribute, and (optionally) a suggested tag under which to store it in the view.
+            Resized image, its attributes, and (optionally) a suggested tag under which to store it in the view.
         """
         if (bool(target_img_tag) + bool(target_img_size) + bool(target_voxelspacing)) != 1:
             raise ValueError(
@@ -439,7 +439,7 @@ class View:
         attrs = {CardinalTag.voxelspacing: target_voxelspacing}
         if self._is_mask_tag(tag):
             # If the data is a segmentation mask, automatically compute attributes on the mask's structures
-            attrs.update(compute_mask_attributes(resized_img, target_voxelspacing))
+            attrs.update(compute_mask_time_series_attributes(resized_img, target_voxelspacing))
 
         output = (resized_img, attrs)
         if return_tag:
@@ -455,7 +455,7 @@ class View:
         Returns:
             Dictionary of attributes and their values for the given mask.
         """
-        return {attr: self.attrs[mask_tag][attr] for attr in ImageAttribute}
+        return {attr: self.attrs[mask_tag][attr] for attr in TimeSeriesAttribute}
 
     @classmethod
     def from_dir(
@@ -479,8 +479,8 @@ class View:
             eager_loading: By default, `View` objects use lazy loading and only load images/compute attributes upon the
                 first time they are accessed. Enabling eager loading will by-pass this behavior and force the `View` to
                 load all the images and compute their attributes directly upon instantiation.
-            overwrite_attrs_cache: Whether to discard the current cache of image attributes and compute them again. Has
-                no effect when no attributes cache exists.
+            overwrite_attrs_cache: Whether to discard the current cache of attributes and compute them again. Has no
+                effect when no attributes cache exists.
 
         Returns:
             `View` instance, built using data related to the patient's view from the provided folders.
@@ -536,7 +536,7 @@ class View:
         resize_kwargs: Dict[str, Any] = None,
         img_format: str = IMG_FORMAT,
         io_backend_kwargs: Dict[str, Any] = None,
-        cache_img_attrs: bool = True,
+        cache_attrs: bool = True,
     ) -> None:
         """Saves the view's data and metadata as multiple files on disk.
 
@@ -557,8 +557,8 @@ class View:
             img_format: File extension of the image format to save the data as.
             io_backend_kwargs: Arguments to pass along to the imaging backend (e.g. SimpleITK, Pillow, etc.) used to
                 save the data. The backend selected will depend on the requested tags and image format.
-            cache_img_attrs: Whether to also save (a cache of) image attributes, to avoid having to compute them again
-                when loading the view from disk in the future.
+            cache_attrs: Whether to also save (a cache of) attributes, to avoid having to compute them again when
+                loading the view from disk in the future.
         """
         if subdir_levels:
             for subdir_level in subdir_levels:
@@ -695,13 +695,13 @@ class View:
                     dtype=np.uint8,  # Use uint8 to save space, since both mask and grayscale values are within [0,255]
                 )
 
-        if cache_img_attrs:
-            # Save a cache of image attributes as Numpy zipped archive
+        if cache_attrs:
+            # Save a cache of attributes as Numpy zipped archive
             partial_filename = functools.partial(
                 IMG_FILENAME_PATTERN.format,
                 patient_id=patient_id,
                 view=view,
-                ext=as_file_extension(IMG_ATTRS_FORMAT),
+                ext=as_file_extension(ATTRS_CACHE_FORMAT),
             )
             for tag in tags_to_save:
                 np.savez(save_dir / partial_filename(tag=tag), **self.attrs[tag])

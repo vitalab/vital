@@ -11,8 +11,8 @@ _target_: vital.data.cardinal.data_module.CardinalDataModule
 num_workers: 0
 
 process_patient_kwargs:
-  clinical_attributes: null
-  image_attributes: null
+  tabular_attrs: null
+  time_series_attrs: null
   mask_tag: mask
   bmode_tag: null
 

@@ -9,9 +9,9 @@ PATIENT_ID_REGEX = r"\d{4}"
 HDF5_FILENAME_PATTERN = "{patient_id}_{view}.h5"
 IMG_FILENAME_PATTERN = "{patient_id}_{view}_{tag}{ext}"
 IMG_FORMAT = ".nii.gz"
-IMG_ATTRS_FORMAT = "npz"
+ATTRS_CACHE_FORMAT = "npz"
 ATTRS_FILENAME_PATTERN = "{patient_id}{ext}"
-ATTRS_FORMAT = "yaml"
+TABULAR_ATTRS_FORMAT = "yaml"
 
 IN_CHANNELS: int = 1
 """Number of input channels of the images in the dataset."""
@@ -45,8 +45,8 @@ class View(UppercaseStrEnum):
 
 
 @unique
-class ImageAttribute(SnakeCaseStrEnum):
-    """Names of the cardiac shape attributes extracted from the image data."""
+class TimeSeriesAttribute(SnakeCaseStrEnum):
+    """Names of the attributes that are temporal sequences of values measured at each frame in the sequences."""
 
     gls = auto()
     ls_left = auto()
@@ -58,12 +58,12 @@ class ImageAttribute(SnakeCaseStrEnum):
     """Distance between the LV's base and apex."""
     myo_thickness_left = auto()
     myo_thickness_right = auto()
-    """Average thickness of the myocardium (MYO)."""
+    """Average thickness of the myocardium (MYO) over left/right segments."""
 
 
 @unique
-class ClinicalAttribute(SnakeCaseStrEnum):
-    """Name of the patient's scalar clinical attributes extracted from either their record or the images."""
+class TabularAttribute(SnakeCaseStrEnum):
+    """Name of the attributes that are scalar values extracted from the patient's record or the images."""
 
     ef = auto()
     """Ejection Fraction (EF)."""
@@ -79,7 +79,7 @@ class ClinicalAttribute(SnakeCaseStrEnum):
     a2c_ed_ic_max = "a2c_ed_ic_max"  # ""
     a2c_ed_ac_min = "a2c_ed_ac_min"  # ""
     a2c_ed_ac_max = "a2c_ed_ac_max"  # ""
-    """Peak convex(-) or concave(+) Curvatures of the Septal/Lateral Inferior/Anterior walls in A4C/A2C view, at ED."""
+    """Peak concave(-) or convex(+) Curvatures of the Septal/Lateral Inferior/Anterior walls in A4C/A2C view, at ED."""
     age = auto()
     sex = auto()
     height = auto()
@@ -207,76 +207,76 @@ class ClinicalAttribute(SnakeCaseStrEnum):
     """Categories of HyperTensive CardioMyopathy (HT-CM)."""
 
     @classmethod
-    def image_attrs(cls) -> List["ClinicalAttribute"]:
-        """Lists the clinical attributes that are computed from the images."""
+    def image_attrs(cls) -> List["TabularAttribute"]:
+        """Lists the tabular attributes that are computed from the images."""
         return [
-            ClinicalAttribute.ef,
-            ClinicalAttribute.edv,
-            ClinicalAttribute.esv,
-            ClinicalAttribute.a4c_ed_sc_min,
-            ClinicalAttribute.a4c_ed_sc_max,
-            ClinicalAttribute.a4c_ed_lc_min,
-            ClinicalAttribute.a4c_ed_lc_max,
-            ClinicalAttribute.a2c_ed_ic_min,
-            ClinicalAttribute.a2c_ed_ic_max,
-            ClinicalAttribute.a2c_ed_ac_min,
-            ClinicalAttribute.a2c_ed_ac_max,
+            TabularAttribute.ef,
+            TabularAttribute.edv,
+            TabularAttribute.esv,
+            TabularAttribute.a4c_ed_sc_min,
+            TabularAttribute.a4c_ed_sc_max,
+            TabularAttribute.a4c_ed_lc_min,
+            TabularAttribute.a4c_ed_lc_max,
+            TabularAttribute.a2c_ed_ic_min,
+            TabularAttribute.a2c_ed_ic_max,
+            TabularAttribute.a2c_ed_ac_min,
+            TabularAttribute.a2c_ed_ac_max,
         ]
 
     @classmethod
-    def records_attrs(cls) -> List["ClinicalAttribute"]:
-        """Lists the clinical attributes that come from the patient records."""
-        return [attr for attr in cls if attr not in ClinicalAttribute.image_attrs()]
+    def records_attrs(cls) -> List["TabularAttribute"]:
+        """Lists the tabular attributes that come from the patient records."""
+        return [attr for attr in cls if attr not in TabularAttribute.image_attrs()]
 
     @classmethod
-    def categorical_attrs(cls) -> List["ClinicalAttribute"]:
-        """Lists the clinical attributes that are categorical."""
-        from vital.data.cardinal.utils.attributes import CLINICAL_CAT_ATTR_LABELS
+    def categorical_attrs(cls) -> List["TabularAttribute"]:
+        """Lists the tabular attributes that are categorical."""
+        from vital.data.cardinal.utils.attributes import TABULAR_CAT_ATTR_LABELS
 
-        return [attr for attr in cls if attr in CLINICAL_CAT_ATTR_LABELS]
+        return [attr for attr in cls if attr in TABULAR_CAT_ATTR_LABELS]
 
     @classmethod
-    def ordinal_attrs(cls) -> List["ClinicalAttribute"]:
+    def ordinal_attrs(cls) -> List["TabularAttribute"]:
         """Lists the subset of categorical attributes that are ordinal (i.e. the ordering of classes is meaningful)."""
         return [
-            ClinicalAttribute.tobacco,
-            ClinicalAttribute.etiology,
-            ClinicalAttribute.ht_severity,
-            ClinicalAttribute.ht_grade,
-            ClinicalAttribute.nt_probnp_group,
-            ClinicalAttribute.diastolic_dysfunction_param_sum,
-            ClinicalAttribute.diastolic_dysfunction,
-            ClinicalAttribute.ht_cm,
+            TabularAttribute.tobacco,
+            TabularAttribute.etiology,
+            TabularAttribute.ht_severity,
+            TabularAttribute.ht_grade,
+            TabularAttribute.nt_probnp_group,
+            TabularAttribute.diastolic_dysfunction_param_sum,
+            TabularAttribute.diastolic_dysfunction,
+            TabularAttribute.ht_cm,
         ]
 
     @classmethod
-    def binary_attrs(cls) -> List["ClinicalAttribute"]:
+    def binary_attrs(cls) -> List["TabularAttribute"]:
         """Lists the subset of categorical attributes that only have 2 classes (e.g. bool)."""
-        from vital.data.cardinal.utils.attributes import CLINICAL_CAT_ATTR_LABELS
+        from vital.data.cardinal.utils.attributes import TABULAR_CAT_ATTR_LABELS
 
-        return [attr for attr in cls.categorical_attrs() if len(CLINICAL_CAT_ATTR_LABELS[attr]) == 2]
+        return [attr for attr in cls.categorical_attrs() if len(TABULAR_CAT_ATTR_LABELS[attr]) == 2]
 
     @classmethod
-    def boolean_attrs(cls) -> List["ClinicalAttribute"]:
+    def boolean_attrs(cls) -> List["TabularAttribute"]:
         """Lists the subset of binary attributes that are boolean."""
-        from vital.data.cardinal.utils.attributes import CLINICAL_CAT_ATTR_LABELS
+        from vital.data.cardinal.utils.attributes import TABULAR_CAT_ATTR_LABELS
 
-        return [attr for attr in cls.binary_attrs() if CLINICAL_CAT_ATTR_LABELS[attr] == [False, True]]
+        return [attr for attr in cls.binary_attrs() if TABULAR_CAT_ATTR_LABELS[attr] == [False, True]]
 
     @classmethod
-    def numerical_attrs(cls) -> List["ClinicalAttribute"]:
-        """Lists the clinical attributes that are numerical/continuous."""
-        from vital.data.cardinal.utils.attributes import CLINICAL_CAT_ATTR_LABELS
+    def numerical_attrs(cls) -> List["TabularAttribute"]:
+        """Lists the tabular attributes that are numerical/continuous."""
+        from vital.data.cardinal.utils.attributes import TABULAR_CAT_ATTR_LABELS
 
-        return [attr for attr in cls if attr not in CLINICAL_CAT_ATTR_LABELS]
+        return [attr for attr in cls if attr not in TABULAR_CAT_ATTR_LABELS]
 
 
 class CardinalTag(SnakeCaseStrEnum):
     """Tags referring to the different type of data stored."""
 
     # Tags describing data modalities
-    image_attrs = auto()
-    clinical_attrs = auto()
+    time_series_attrs = auto()
+    tabular_attrs = auto()
 
     # Tags referring to image data
     bmode = auto()

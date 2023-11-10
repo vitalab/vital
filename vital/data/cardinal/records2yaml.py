@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 
-from vital.data.cardinal.config import ClinicalAttribute
-from vital.data.cardinal.utils.attributes import CLINICAL_ATTR_UNITS
+from vital.data.cardinal.config import TabularAttribute
+from vital.data.cardinal.utils.attributes import TABULAR_ATTR_UNITS
 from vital.data.cardinal.utils.itertools import Patients
 
 logger = logging.getLogger(__name__)
@@ -20,16 +20,16 @@ def merge_records(
     subdir_levels: Sequence[Literal["patient"]] = None,
     progress_bar: bool = False,
 ) -> None:
-    """Merges clinical attributes from patient records with existing clinical attributes provided by the dataset.
+    """Merges tabular attributes from patient records with existing tabular attributes provided by the dataset.
 
     Args:
         patients: Collection of patients with which to merge records.
-        records: Records of new clinical data to merge with existing clinical attributes, indexed by patient.
-        output_dir: Root of where to save the merging of records with existing clinical attributes, in the format of a
+        records: Records of new tabular data to merge with existing tabular attributes, indexed by patient.
+        output_dir: Root of where to save the merging of records with existing tabular attributes, in the format of a
             YAML file for each patient.
         subdir_levels: Levels of subdirectories to create under the root output folder.
         progress_bar: If ``True``, enables progress bars detailing the progress of the merging of records with existing
-            clinical attributes for each patient.
+            tabular attributes for each patient.
     """
     # Warn user if the list of patients in the collection and in the records does not match exactly
     records_patient_ids = records.index.tolist()
@@ -42,29 +42,29 @@ def merge_records(
     if patients_not_in_records := sorted(set(patient_ids) - set(records_patient_ids)):
         logger.warning(
             f"Patients with the following IDs: {patients_not_in_records} are present in the dataset but not in the "
-            f"provided records. The clinical data available in the dataset for these patients will remain unchanged."
+            f"provided records. The tabular data available in the dataset for these patients will remain unchanged."
         )
 
     patients = patients.values()
-    msg = "Merging patient records with existing clinical data"
+    msg = "Merging patient records with existing tabular data"
     if progress_bar:
         patients = tqdm(patients, desc=msg, unit="patient")
     else:
         logger.info(msg)
 
     for patient in patients:
-        # Extract patient's clinical attributes from records, if they are available
+        # Extract patient's tabular attributes from records, if they are available
         patient_record = {}
         if patient.id in records.index:
             patient_record = records.loc[patient.id]
             patient_record = patient_record[patient_record.notna()]  # Discard missing attributes
             patient_record = patient_record.to_dict()
 
-        # Update the clinical attributes available for the patient based on the content of their record
+        # Update the tabular attributes available for the patient based on the content of their record
         patient.attrs.update(patient_record)
 
-        # Save the merged clinical attributes to a new yaml file on disk
-        patient.save(output_dir, subdir_levels=subdir_levels, save_clinical_attributes=True, include_tags=[])
+        # Save the merged tabular attributes to a new yaml file on disk
+        patient.save(output_dir, subdir_levels=subdir_levels, save_tabular_attrs=True, include_tags=[])
 
 
 def read_records(records_csv: Path, col_names: Sequence[str] = None, drop_missing_data: bool = False) -> pd.DataFrame:
@@ -76,12 +76,12 @@ def read_records(records_csv: Path, col_names: Sequence[str] = None, drop_missin
         drop_missing_data: Drop patient that are missing data for any of the requested `col_names`.
 
     Returns:
-        Records of clinical data to process, indexed by patient.
+        Records of tabular data to process, indexed by patient.
     """
     # Eagerly determine what types to cast the data to, to avoid unsafe casts once the CSV has already been loaded
     cat_dtypes = {
-        cat_attr: "boolean" if cat_attr in ClinicalAttribute.boolean_attrs() else "category"
-        for cat_attr in ClinicalAttribute.categorical_attrs()
+        cat_attr: "boolean" if cat_attr in TabularAttribute.boolean_attrs() else "category"
+        for cat_attr in TabularAttribute.categorical_attrs()
     }
 
     # When reading the file, cast boolean/categorical columns, but wait to manually cast numerical types later
@@ -93,7 +93,7 @@ def read_records(records_csv: Path, col_names: Sequence[str] = None, drop_missin
     # We cannot rely on `read_csv`'s `dtype` param to do the casting because it results in an unsafe cast exception,
     # which pandas seems unwilling to fix (see this issue: https://github.com/pandas-dev/pandas/issues/37429)
     for int_attr in (
-        num_attr for num_attr in ClinicalAttribute.numerical_attrs() if CLINICAL_ATTR_UNITS[num_attr][1] == int
+        num_attr for num_attr in TabularAttribute.numerical_attrs() if TABULAR_ATTR_UNITS[num_attr][1] == int
     ):
         records[int_attr] = np.floor(records[int_attr]).astype("Int64")
 
@@ -119,7 +119,7 @@ def main():
     parser.add_argument(
         "records_csv",
         type=Path,
-        help="Path of the CSV file containing the patient records to merge with the existing clinical attributes",
+        help="Path of the CSV file containing the patient records to merge with the existing tabular attributes",
     )
     parser.add_argument(
         "output_dir", type=Path, help="Root directory where to save the YAML files containing the results of the merge"
@@ -153,7 +153,7 @@ def main():
     logger.info(f"Reading patient records from '{records_csv}'")
     records = read_records(records_csv, col_names=col_names, drop_missing_data=drop_missing_data)
 
-    # Merge patient records' data with clinical attributes already provided for the patients
+    # Merge patient records' data with tabular attributes already provided for the patients
     merge_records(Patients(**kwargs), records, output_dir, subdir_levels=subdir_levels, progress_bar=True)
 
 

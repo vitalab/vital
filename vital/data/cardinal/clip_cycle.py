@@ -9,7 +9,7 @@ import yaml
 from scipy.signal import find_peaks
 from tqdm.auto import tqdm
 
-from vital.data.cardinal.config import CardinalTag, ImageAttribute
+from vital.data.cardinal.config import CardinalTag, TimeSeriesAttribute
 from vital.data.cardinal.config import View as ViewEnum
 from vital.data.cardinal.utils.data_struct import View
 from vital.data.cardinal.utils.itertools import Views
@@ -242,7 +242,7 @@ def clip_view(
             f"Cannot identify start and end of cardiac cycle in view '{view_tag}' from patient '{patient_id}' because "
             f"no segmentation mask was provided for the view."
         )
-    lv_area_curve = np.squeeze(view.attrs[mask_tag][ImageAttribute.lv_area])
+    lv_area_curve = np.squeeze(view.attrs[mask_tag][TimeSeriesAttribute.lv_area])
 
     if clip_frames:
         # Use the pre-identified frames to clip the sequence, if provided
@@ -254,7 +254,9 @@ def clip_view(
     # Iterate over each item available for the view, and clip its length if it has a time dimension
     clipped_data = {tag: data[ed_1_idx : ed_2_idx + 1] for tag, data in view.data.items()}
     clipped_attrs = {
-        tag: {attr: data[ed_1_idx : ed_2_idx + 1] if attr in ImageAttribute else data for attr, data in attrs.items()}
+        tag: {
+            attr: data[ed_1_idx : ed_2_idx + 1] if attr in TimeSeriesAttribute else data for attr, data in attrs.items()
+        }
         for tag, attrs in view.attrs.items()
     }
 

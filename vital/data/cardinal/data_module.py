@@ -8,7 +8,7 @@ from pytorch_lightning.trainer.states import TrainerFn
 from torch.utils.data import DataLoader, MapDataPipe
 from torchvision.transforms import transforms
 
-from vital.data.cardinal.config import CardinalTag, ClinicalAttribute, ImageAttribute
+from vital.data.cardinal.config import CardinalTag, TabularAttribute, TimeSeriesAttribute
 from vital.data.cardinal.config import View as ViewEnum
 from vital.data.cardinal.datapipes import PatientData, build_datapipes
 from vital.data.cardinal.utils.itertools import Patients
@@ -39,7 +39,7 @@ class CardinalDataModule(VitalDataModule):
             patients_kwargs: Parameters to forward to the `Patients` sequence.
             process_patient_kwargs: Parameters to forward to the `PatientProcessor` datapipe.
             transform_patient_kwargs: Mapping between subsets and sequences of transforms to apply to the attributes.
-                In the cases of the `clinical_attributes_transforms` and `image_attributes_transforms` keys, the value
+                In the cases of the `tabular_attrs_transforms` and `time_series_attrs_transforms` keys, the value
                 can be an OmegaConf DictConfig that needs to be instantiated recursively to give a callable transform.
             datapipes_kwargs: Parameters to forward to the datapipes factory.
             subsets: Paths to files listing the patients to include in each subset of the data. Patients whose data is
@@ -66,7 +66,7 @@ class CardinalDataModule(VitalDataModule):
             transform_patient_kwargs = OmegaConf.to_container(transform_patient_kwargs, resolve=True)
 
             # Hard-coded keys of groups that need custom instantiation logic
-            transform_groups = ["clinical_attributes_transforms", "image_attributes_transforms"]
+            transform_groups = ["tabular_attrs_transforms", "time_series_attrs_transforms"]
 
             for subset, subset_xform_kwargs in transform_patient_kwargs.items():
                 for kwarg_name, kwarg_val in subset_xform_kwargs.items():
@@ -111,23 +111,26 @@ class CardinalDataModule(VitalDataModule):
             # and the masks' attributes, any entry that is not an attribute is an image
             modalities_shapes.update(
                 {
-                    img_data_tag: img_data.shape
-                    for img_data_tag, img_data in first_item[ViewEnum.A4C].items()
-                    if img_data_tag not in ImageAttribute
+                    item_data_tag: item_data.shape
+                    for item_data_tag, item_data in first_item[ViewEnum.A4C].items()
+                    if item_data_tag not in TimeSeriesAttribute
                 }
             )
-            # Add the normalized size of the image attributes: (num_attrs, attr_len)
-            first_img_attr = list(first_item[ViewEnum.A4C])[0]
-            modalities_shapes[CardinalTag.image_attrs] = (
+            # Add the normalized size of the time-series attributes: (num_attrs, attr_len)
+            first_time_series_attr = list(first_item[ViewEnum.A4C])[0]
+            modalities_shapes[CardinalTag.time_series_attrs] = (
                 sum(
-                    1 for view in ViewEnum for view_entry in first_item.get(view, []) if view_entry in ImageAttribute
+                    1
+                    for view in ViewEnum
+                    for view_entry in first_item.get(view, [])
+                    if view_entry in TimeSeriesAttribute
                 ),  # Number of attributes across all views
-                len(first_item[ViewEnum.A4C][first_img_attr]),  # Attribute shape
+                len(first_item[ViewEnum.A4C][first_time_series_attr]),  # Attribute shape
             )
-        # Add the number of clinical attributes
-        num_clinical_attrs = sum(1 for clinical_attr in ClinicalAttribute if clinical_attr in first_item)
-        if num_clinical_attrs:
-            modalities_shapes[CardinalTag.clinical_attrs] = (num_clinical_attrs, 1)
+        # Add the number of tabular attributes
+        num_tab_attrs = sum(1 for tab_attrs in TabularAttribute if tab_attrs in first_item)
+        if num_tab_attrs:
+            modalities_shapes[CardinalTag.tabular_attrs] = (num_tab_attrs, 1)
 
         super().__init__(data_params=DataParameters(in_shape=modalities_shapes), **kwargs)
 

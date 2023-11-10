@@ -1,4 +1,4 @@
-image_attributes_transforms:
+time_series_attrs_transforms:
   any:
     interp1d:
       _target_: vital.data.transforms.Interp1d

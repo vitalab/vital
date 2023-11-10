@@ -27,7 +27,7 @@ class ImageSequences(ResultsProcessor):
         target_voxelspacing: Tuple[float, float] = None,
         img_format: str = IMG_FORMAT,
         io_backend_kwargs: Dict[str, Any] = None,
-        cache_img_attrs: bool = True,
+        cache_attrs: bool = True,
         **kwargs,
     ):
         """Initializes class instance.
@@ -49,8 +49,8 @@ class ImageSequences(ResultsProcessor):
             img_format: File extension of the image format to save the data as.
             io_backend_kwargs: Arguments to pass along to the imaging backend (e.g. SimpleITK, Pillow, etc.) used to
                 save the data. The backend selected will depend on the requested tags and image format.
-            cache_img_attrs: Whether to also save (a cache of) image attributes, to avoid having to compute them again
-                when loading the view from disk in the future.
+            cache_attrs: Whether to also save (a cache of) attributes, to avoid having to compute them again when
+                loading the view from disk in the future.
             **kwargs: Additional parameters to pass along to ``super().__init__()``.
         """
         formatted_img_format = as_file_extension(img_format)[1:].replace(".", "_").lower()
@@ -73,7 +73,7 @@ class ImageSequences(ResultsProcessor):
             "resize_kwargs": resize_kwargs,
             "img_format": img_format,
             "io_backend_kwargs": io_backend_kwargs,
-            "cache_img_attrs": cache_img_attrs,
+            "cache_attrs": cache_attrs,
         }
 
     def process_result(self, result: View) -> None:
@@ -146,8 +146,8 @@ class ImageSequences(ResultsProcessor):
             "sequences. The backend selected will depend on the requested tags and image format.",
         )
         parser.add_argument(
-            "--no_cache_img_attrs",
-            dest="cache_img_attrs",
+            "--no_cache_attrs",
+            dest="cache_attrs",
             action="store_false",
             help="Whether to also save (a cache of) image attributes, to avoid having to compute them again when "
             "loading the view from disk in the future",

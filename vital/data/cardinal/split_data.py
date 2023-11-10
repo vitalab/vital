@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from vital.data.cardinal.config import ClinicalAttribute
+from vital.data.cardinal.config import TabularAttribute
 from vital.data.cardinal.utils.data_dis import generate_patients_splits
 from vital.data.cardinal.utils.itertools import Patients
 from vital.utils.parsing import int_or_float
@@ -25,9 +25,9 @@ def main():
     parser.add_argument(
         "--stratify_attr",
         required=True,
-        type=ClinicalAttribute,
-        choices=list(ClinicalAttribute),
-        help="Name of the clinical attribute whose distribution in each of the subset should be similar",
+        type=TabularAttribute,
+        choices=list(TabularAttribute),
+        help="Name of the tabular attribute whose distribution in each of the subset should be similar",
     )
     parser.add_argument(
         "--bins",

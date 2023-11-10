@@ -9,8 +9,8 @@ from seaborn import PairGrid
 from sklearn.model_selection import train_test_split
 from tqdm.auto import tqdm
 
-from vital.data.cardinal.config import ClinicalAttribute
-from vital.data.cardinal.utils.attributes import CLINICAL_ATTR_UNITS
+from vital.data.cardinal.config import TabularAttribute
+from vital.data.cardinal.utils.attributes import TABULAR_ATTR_UNITS
 from vital.data.cardinal.utils.data_struct import Patient
 from vital.data.cardinal.utils.itertools import Patients
 
@@ -41,21 +41,21 @@ def check_subsets(patients: Sequence[Patient.Id], subsets: Dict[str, Sequence[Pa
 
 def plot_patients_distribution(
     patients: Patients,
-    plot_attributes: Sequence[ClinicalAttribute],
+    plot_attributes: Sequence[TabularAttribute],
     subsets: Dict[str, Sequence[Patient.Id]] = None,
     progress_bar: bool = False,
 ) -> PairGrid:
-    """Plots the pairwise relationships between clinical attributes for a collection (or multiple subsets) of patients.
+    """Plots the pairwise relationships between tabular attributes for a collection (or multiple subsets) of patients.
 
     Args:
         patients: Collection of patients.
-        plot_attributes: Patients' clinical attributes whose distributions to compare pairwise.
+        plot_attributes: Patients' tabular attributes whose distributions to compare pairwise.
         subsets: Lists of patients making up each subset, to plot with different hues. The subsets should be disjoint
             from one another.
         progress_bar: If ``True``, enables progress bars detailing the progress of the collecting data from patients.
 
     Returns:
-        PairGrid representing the pairwise relationships between clinical attributes for the patients.
+        PairGrid representing the pairwise relationships between tabular attributes for the patients.
     """
     if subsets is not None:
         check_subsets(list(patients), subsets)
@@ -74,7 +74,7 @@ def plot_patients_distribution(
     patients_data = pd.DataFrame.from_dict(patients_data, orient="index")
     # Add units to attributes names (to be used as labels in the plot)
     patients_data = patients_data.rename(
-        columns={attr: " ".join([attr, attr_unit]) for attr, (attr_unit, _) in CLINICAL_ATTR_UNITS.items()}
+        columns={attr: " ".join([attr, attr_unit]) for attr, (attr_unit, _) in TABULAR_ATTR_UNITS.items()}
     )
 
     # Add additional subset information to the dataframe, if provided
@@ -93,7 +93,7 @@ def plot_patients_distribution(
 
 def generate_patients_splits(
     patients: Patients,
-    stratify: ClinicalAttribute,
+    stratify: TabularAttribute,
     bins: int = 5,
     test_size: Union[int, float] = None,
     train_size: Union[int, float] = None,
@@ -108,7 +108,7 @@ def generate_patients_splits(
 
     Args:
         patients: Collection of patients to split.
-        stratify: Name of the clinical attribute whose distribution in each of the subset should be similar. Contrary to
+        stratify: Name of the tabular attribute whose distribution in each of the subset should be similar. Contrary to
             `sklearn.model_selection.train_test_split`, this attribute can be continuous.
         bins: If `stratify` is a continuous attribute, number of bins into which to categorize the values, to ensure
             each bin is distributed representatively in the split.
@@ -134,7 +134,7 @@ def generate_patients_splits(
     # Collect the data of the attribute by which to stratify the split from the patient
     patients_stratify = {patient.id: patient.attrs[stratify] for patient in patients}
 
-    if stratify in ClinicalAttribute.numerical_attrs():
+    if stratify in TabularAttribute.numerical_attrs():
         # Compute categorical stratify variable from scalar attribute
         stratify_vals = list(patients_stratify.values())
         stratify_bins = np.linspace(min(stratify_vals), max(stratify_vals), num=bins + 1)
