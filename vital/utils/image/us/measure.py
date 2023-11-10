@@ -442,7 +442,8 @@ class EchoMeasure(Measure):
         segmentation: T,
         lv_labels: SemanticStructureId,
         myo_labels: SemanticStructureId,
-        half: Literal["left", "right"] = None,
+        num_control_points: int = 31,
+        control_points_slice: slice = None,
         voxelspacing: Tuple[float, float] = (1, 1),
     ) -> T:
         """Global Longitudinal Strain (GLS) for each frame in the sequence, compared to the first frame.
@@ -452,8 +453,10 @@ class EchoMeasure(Measure):
                 ED instant.
             lv_labels: Labels of the classes that are part of the left ventricle.
             myo_labels: Labels of the classes that are part of the myocardium.
-            half: The half of the endocardium to consider when computing the strain. `None` to compute a global strain,
-                and either "left" or "right" to compute local strain.
+            num_control_points: Number of control points to sample along the contour of the endocardium. The number of
+                control points should be odd to be divisible evenly between the base -> apex and apex -> base segments.
+            control_points_slice: Slice of control points to consider when computing the strain. This is useful to
+                compute the strain over a subset of the control points, e.g. over the basal septum in A4C.
             voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
 
         Returns:
@@ -463,31 +466,17 @@ class EchoMeasure(Measure):
         voxelspacing = np.array(voxelspacing)
 
         def _lv_longitudinal_length(frame: np.ndarray) -> float:
-            # Find the points along the contour of the LV excluding the base
-            contour = EchoMeasure._endo_epi_contour(
-                frame, lv_labels, functools.partial(EchoMeasure._endo_base, lv_labels=lv_labels, myo_labels=myo_labels)
+            # Find sample points along the contour of the LV
+            control_points = EchoMeasure.control_points(
+                frame, lv_labels, myo_labels, "endo", num_control_points, voxelspacing=voxelspacing
             )
 
-            # Identify the apex of the endocardium, so that it can serve as the demarcation between the left/right sides
-            apex = EchoMeasure._extract_landmarks_from_polar_contour(
-                frame, lv_labels, polar_smoothing_factor=5e-2, base=False
-            )[0]
-
-            if half:
-                # Identify the point in the contour that is closest to the apex
-                apex_idx_in_contour = np.linalg.norm((contour - apex) * voxelspacing, axis=1).argmin()
-
-                # Slice the contour to only keep the points that fall on the requested side of the endo center line
-                match half:
-                    case "left":
-                        contour = contour[: apex_idx_in_contour + 1]
-                    case "right":
-                        contour = contour[apex_idx_in_contour:]
-                    case _:
-                        raise ValueError(f"Unexpected value for 'half': {half}. Use either 'left' or 'right'.")
+            # Only keep the control points that are part of the requested segment, if any
+            if control_points_slice:
+                control_points = control_points[control_points_slice]
 
             # Compute the perimeter as the sum of distances between each point along the contour and the previous one
-            return sum(np.linalg.norm((p1 - p0) * voxelspacing) for p0, p1 in itertools.pairwise(contour))
+            return sum(np.linalg.norm((p1 - p0) * voxelspacing) for p0, p1 in itertools.pairwise(control_points))
 
         # Compute the longitudinal length of the LV for each frame in the sequence
         lv_longitudinal_lengths = np.array([_lv_longitudinal_length(frame) for frame in segmentation])
