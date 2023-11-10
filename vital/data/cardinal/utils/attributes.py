@@ -1,5 +1,5 @@
 import itertools
-from typing import Any, Dict, Hashable, Iterator, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Hashable, Iterator, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -13,11 +13,13 @@ from vital.utils.image.measure import T
 from vital.utils.image.us.measure import EchoMeasure
 
 IMAGE_ATTR_LABELS = {
-    **dict.fromkeys([ImageAttribute.gls], "strain (in %)"),
-    **dict.fromkeys([ImageAttribute.lv_area, ImageAttribute.myo_area], "area (in mm²)"),
-    **dict.fromkeys([ImageAttribute.lv_length, ImageAttribute.lv_base_width], "length (in mm)"),
-    **dict.fromkeys([ImageAttribute.lv_orientation], "angle (in degrees)"),
-    **dict.fromkeys([ImageAttribute.epi_center_x, ImageAttribute.epi_center_y], "position (in pixels)"),
+    **dict.fromkeys([ImageAttribute.gls, ImageAttribute.ls_left, ImageAttribute.ls_right], "strain (in %)"),
+    **dict.fromkeys([ImageAttribute.lv_area], "area (in cm²)"),
+    **dict.fromkeys([ImageAttribute.lv_length], "length (in cm)"),
+    **dict.fromkeys(
+        [ImageAttribute.myo_thickness_left, ImageAttribute.myo_thickness_right],
+        "thickness (in cm)",
+    ),
 }
 CLINICAL_CAT_ATTR_LABELS = {
     ClinicalAttribute.sex: ["M", "W"],
@@ -53,6 +55,19 @@ CLINICAL_CAT_ATTR_LABELS = {
 CLINICAL_ATTR_UNITS = {
     **dict.fromkeys([ClinicalAttribute.ef], ("(in %)", int)),
     **dict.fromkeys([ClinicalAttribute.edv, ClinicalAttribute.esv], ("(in ml)", int)),
+    **dict.fromkeys(
+        [
+            ClinicalAttribute.a4c_ed_sc_min,
+            ClinicalAttribute.a4c_ed_sc_max,
+            ClinicalAttribute.a4c_ed_lc_min,
+            ClinicalAttribute.a4c_ed_lc_max,
+            ClinicalAttribute.a2c_ed_ic_min,
+            ClinicalAttribute.a2c_ed_ic_max,
+            ClinicalAttribute.a2c_ed_ac_min,
+            ClinicalAttribute.a2c_ed_ac_max,
+        ],
+        ("(in dm^-1)", float),
+    ),
     ClinicalAttribute.age: ("(in years)", int),
     ClinicalAttribute.height: ("(in cm)", int),
     ClinicalAttribute.weight: ("(in kg)", float),
@@ -158,6 +173,14 @@ CLINICAL_ATTR_GROUPS = {
         ClinicalAttribute.ef,
         ClinicalAttribute.edv,
         ClinicalAttribute.esv,
+        ClinicalAttribute.a4c_ed_sc_min,
+        ClinicalAttribute.a4c_ed_sc_max,
+        ClinicalAttribute.a4c_ed_lc_min,
+        ClinicalAttribute.a4c_ed_lc_max,
+        ClinicalAttribute.a2c_ed_ic_min,
+        ClinicalAttribute.a2c_ed_ic_max,
+        ClinicalAttribute.a2c_ed_ac_min,
+        ClinicalAttribute.a2c_ed_ac_max,
         ClinicalAttribute.e_velocity,
         ClinicalAttribute.a_velocity,
         ClinicalAttribute.mv_dt,
@@ -214,10 +237,38 @@ def compute_mask_attributes(mask: T, voxelspacing: Tuple[float, float]) -> Dict[
     """
     voxelarea = voxelspacing[0] * voxelspacing[1]
     return {
-        ImageAttribute.gls: EchoMeasure.gls(mask, Label.LV, Label.MYO, voxelspacing=voxelspacing),
-        ImageAttribute.lv_area: EchoMeasure.structure_area(mask, labels=Label.LV, voxelarea=voxelarea),
+        ImageAttribute.gls: EchoMeasure.longitudinal_strain(mask, Label.LV, Label.MYO, voxelspacing=voxelspacing),
+        ImageAttribute.ls_left: EchoMeasure.longitudinal_strain(
+            mask, Label.LV, Label.MYO, num_control_points=31, control_points_slice=slice(11), voxelspacing=voxelspacing
+        ),
+        ImageAttribute.ls_right: EchoMeasure.longitudinal_strain(
+            mask,
+            Label.LV,
+            Label.MYO,
+            num_control_points=31,
+            control_points_slice=slice(-11, None),
+            voxelspacing=voxelspacing,
+        ),
+        # For the area, we have to convert from mm² to cm² (since this API is generic and does not return values in
+        # units commonly used in echocardiography)
+        ImageAttribute.lv_area: EchoMeasure.structure_area(mask, labels=Label.LV, voxelarea=voxelarea) * 1e-2,
         ImageAttribute.lv_length: EchoMeasure.lv_length(mask, Label.LV, Label.MYO, voxelspacing=voxelspacing),
-        ImageAttribute.myo_area: EchoMeasure.structure_area(mask, labels=Label.MYO, voxelarea=voxelarea),
+        ImageAttribute.myo_thickness_left: EchoMeasure.myo_thickness(
+            mask,
+            Label.LV,
+            Label.MYO,
+            num_control_points=31,
+            control_points_slice=slice(1, 11),
+            voxelspacing=voxelspacing,
+        ).mean(axis=-1),
+        ImageAttribute.myo_thickness_right: EchoMeasure.myo_thickness(
+            mask,
+            Label.LV,
+            Label.MYO,
+            num_control_points=31,
+            control_points_slice=slice(-11, -1),
+            voxelspacing=voxelspacing,
+        ).mean(axis=-1),
     }
 
 
@@ -272,11 +323,69 @@ def compute_clinical_attributes(
             }
         )
 
-    # Compute the clinical attributes
+    # Compute the volumes and ejection fraction, rounding to the nearest integer
     edv, esv = compute_left_ventricle_volumes(**lv_volumes_fn_kwargs)
-    ef = int(round(100 * (edv - esv) / edv))
+    edv, esv = int(round(edv, 0)), int(round(esv, 0))
+    ef = int(round(100 * (edv - esv) / edv, 0))
+    attrs = {ClinicalAttribute.ef: ef, ClinicalAttribute.edv: edv, ClinicalAttribute.esv: esv}
 
-    return {ClinicalAttribute.ef: ef, ClinicalAttribute.edv: edv, ClinicalAttribute.esv: esv}
+    # Compute the curvatures of the left/right walls in the A4C and A2C views
+    def _curvature(
+        segmentation: np.ndarray,
+        voxelspacing: Tuple[float, float],
+        reduce: Callable[[np.ndarray], float],
+        control_points_slice: slice = None,
+    ) -> float:
+        k = EchoMeasure.curvature(
+            segmentation,
+            Label.LV,
+            Label.MYO,
+            structure="endo",
+            num_control_points=31,
+            control_points_slice=control_points_slice,
+            voxelspacing=voxelspacing,
+        )
+        # Reduce the curvature along the control points to a single value + round to the nearest mm^-1
+        reduced_k = round(reduce(k), 2)
+        if isinstance(reduced_k, np.float_):
+            # Convert from np.float to native float to avoid issues with YAML serialization when saving attributes
+            reduced_k = reduced_k.item()
+        return reduced_k
+
+    a4c_ed_mask = a4c_mask[a4c_ed_frame if a4c_ed_frame else 0]
+    a2c_ed_mask = a2c_mask[a2c_ed_frame if a2c_ed_frame else 0]
+    # Skip the first 2 points near the edges of the endo (i.e. near the base), since we're using second derivatives
+    # and therefore their estimations might be less accurate
+    attrs.update(
+        {
+            ClinicalAttribute.a4c_ed_sc_min: _curvature(
+                a4c_ed_mask, a4c_voxelspacing, min, control_points_slice=slice(2, 11)
+            ),
+            ClinicalAttribute.a4c_ed_sc_max: _curvature(
+                a4c_ed_mask, a4c_voxelspacing, max, control_points_slice=slice(2, 11)
+            ),
+            ClinicalAttribute.a4c_ed_lc_min: _curvature(
+                a4c_ed_mask, a4c_voxelspacing, min, control_points_slice=slice(-11, -2)
+            ),
+            ClinicalAttribute.a4c_ed_lc_max: _curvature(
+                a4c_ed_mask, a4c_voxelspacing, max, control_points_slice=slice(-11, -2)
+            ),
+            ClinicalAttribute.a2c_ed_ic_min: _curvature(
+                a2c_ed_mask, a2c_voxelspacing, min, control_points_slice=slice(2, 11)
+            ),
+            ClinicalAttribute.a2c_ed_ic_max: _curvature(
+                a2c_ed_mask, a2c_voxelspacing, max, control_points_slice=slice(2, 11)
+            ),
+            ClinicalAttribute.a2c_ed_ac_min: _curvature(
+                a2c_ed_mask, a2c_voxelspacing, min, control_points_slice=slice(-11, -2)
+            ),
+            ClinicalAttribute.a2c_ed_ac_max: _curvature(
+                a2c_ed_mask, a2c_voxelspacing, max, control_points_slice=slice(-11, -2)
+            ),
+        }
+    )
+
+    return attrs
 
 
 def build_attributes_dataframe(

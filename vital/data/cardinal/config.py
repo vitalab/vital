@@ -49,13 +49,16 @@ class ImageAttribute(SnakeCaseStrEnum):
     """Names of the cardiac shape attributes extracted from the image data."""
 
     gls = auto()
-    """Global Longitudinal Strain (GLS) of the endocardium."""
+    ls_left = auto()
+    ls_right = auto()
+    """Longitudinal Strain (LS) of the endocardium: Global (GLS), left (LSL) and right (LSR)."""
     lv_area = auto()
     """Number of pixels covered by the left ventricle (LV)."""
     lv_length = auto()
     """Distance between the LV's base and apex."""
-    myo_area = auto()
-    """Number of pixels covered by the myocardium (MYO)."""
+    myo_thickness_left = auto()
+    myo_thickness_right = auto()
+    """Average thickness of the myocardium (MYO)."""
 
 
 @unique
@@ -68,6 +71,15 @@ class ClinicalAttribute(SnakeCaseStrEnum):
     """End-Diastolic Volume (EDV)."""
     esv = auto()
     """End-Systolic Volume (ESV)."""
+    a4c_ed_sc_min = "a4c_ed_sc_min"  # Assign the string manually because numbers are discarded by `auto`
+    a4c_ed_sc_max = "a4c_ed_sc_max"  # ""
+    a4c_ed_lc_min = "a4c_ed_lc_min"  # ""
+    a4c_ed_lc_max = "a4c_ed_lc_max"  # ""
+    a2c_ed_ic_min = "a2c_ed_ic_min"  # ""
+    a2c_ed_ic_max = "a2c_ed_ic_max"  # ""
+    a2c_ed_ac_min = "a2c_ed_ac_min"  # ""
+    a2c_ed_ac_max = "a2c_ed_ac_max"  # ""
+    """Peak convex(-) or concave(+) Curvatures of the Septal/Lateral Inferior/Anterior walls in A4C/A2C view, at ED."""
     age = auto()
     sex = auto()
     height = auto()
@@ -197,7 +209,19 @@ class ClinicalAttribute(SnakeCaseStrEnum):
     @classmethod
     def image_attrs(cls) -> List["ClinicalAttribute"]:
         """Lists the clinical attributes that are computed from the images."""
-        return [ClinicalAttribute.ef, ClinicalAttribute.edv, ClinicalAttribute.esv]
+        return [
+            ClinicalAttribute.ef,
+            ClinicalAttribute.edv,
+            ClinicalAttribute.esv,
+            ClinicalAttribute.a4c_ed_sc_min,
+            ClinicalAttribute.a4c_ed_sc_max,
+            ClinicalAttribute.a4c_ed_lc_min,
+            ClinicalAttribute.a4c_ed_lc_max,
+            ClinicalAttribute.a2c_ed_ic_min,
+            ClinicalAttribute.a2c_ed_ic_max,
+            ClinicalAttribute.a2c_ed_ac_min,
+            ClinicalAttribute.a2c_ed_ac_max,
+        ]
 
     @classmethod
     def records_attrs(cls) -> List["ClinicalAttribute"]:
