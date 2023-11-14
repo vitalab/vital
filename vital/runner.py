@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 from abc import ABC
 from argparse import Namespace
 from pathlib import Path
@@ -8,8 +9,10 @@ from typing import Union
 
 import comet_ml  # noqa
 import hydra
+import numpy as np
 import torch
 from dotenv import load_dotenv
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, open_dict
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import CometLogger, Logger
@@ -66,6 +69,20 @@ class VitalRunner(ABC):
 
         if cfg.ckpt:
             ckpt_path = resolve_model_checkpoint_path(cfg.ckpt)
+
+        if job_num := HydraConfig.get().job.get("num") and cfg.seed is None:
+            # If Hydra is in multirun mode and no seed is specified by the user (meaning we don't want to reproduce a
+            # previous experiment and only care about "true" randomness), use the job number as part of the seed to make
+            # sure to get a different seed for each job. This is a patch since (for some reason I could not figure out)
+            # some jobs get seeded with the same seed
+
+            # The seed is generated under the conditions that:
+            # i) it is different for each trial (make sure that even if the same initial seed is returned by `randint`,
+            #    the seed will be different for each job)
+            # ii) it is within the range of values accepted by numpy [np.iinfo(np.uint32).min, np.iinfo(np.uint32).max]
+            s_min, s_max = np.iinfo(np.uint32).min, np.iinfo(np.uint32).max
+            seed = random.randint(s_min, s_max)
+            cfg.seed = ((seed + job_num) % (s_max - s_min)) + s_min
 
         cfg.seed = seed_everything(cfg.seed, workers=True)
         experiment_logger = VitalRunner.configure_logger(cfg)
