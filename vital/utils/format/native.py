@@ -2,6 +2,28 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Sequence, TypeVar, Union
 
 
+def apply(obj, func):
+    """Applies a function recursively to all elements inside a Python collection composed of the supported types.
+
+    References:
+        - This function was inspired by a similar function from the 'poutyne' framework:
+        https://github.com/GRAAL-Research/poutyne/blob/aeb78c2b26edaa30663a88522d39a187baeec9cd/poutyne/utils.py#L104-L113
+
+    Args:
+        obj: The Python object to convert.
+        func: The function to apply.
+
+    Returns:
+        A new Python collection with the same structure as `obj` but where the elements have been applied the function
+        `func`. Not supported types are left as reference in the new object.
+    """
+    if isinstance(obj, (list, tuple)):
+        return type(obj)(apply(el, func) for el in obj)
+    if isinstance(obj, dict):
+        return {k: apply(el, func) for k, el in obj.items()}
+    return func(obj)
+
+
 def prefix(map: Mapping[str, Any], prefix: str, exclude: Union[str, Sequence[str]] = None) -> Dict[str, Any]:
     """Prepends a prefix to the keys of a mapping with string keys.
 
