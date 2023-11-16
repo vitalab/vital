@@ -2,19 +2,8 @@ from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
 import torch
-from torch.nn.utils.rnn import PackedSequence
 
-
-def _apply(obj, func):
-    if isinstance(obj, (list, tuple)):
-        if isinstance(obj, PackedSequence):
-            return type(obj)(
-                *(_apply(getattr(obj, el), func) if el != "batch_sizes" else getattr(obj, el) for el in obj._fields)
-            )
-        return type(obj)(_apply(el, func) for el in obj)
-    if isinstance(obj, dict):
-        return {k: _apply(el, func) for k, el in obj.items()}
-    return func(obj)
+from vital.utils.format.native import apply
 
 
 def torch_apply(obj: Union[Tuple, List, Dict], func: Callable) -> Union[Tuple, List, Dict]:
@@ -36,7 +25,7 @@ def torch_apply(obj: Union[Tuple, List, Dict], func: Callable) -> Union[Tuple, L
     def fn(t):
         return func(t) if torch.is_tensor(t) else t
 
-    return _apply(obj, fn)
+    return apply(obj, fn)
 
 
 def torch_to_numpy(obj: Union[Tuple, List, Dict], copy: bool = False) -> Union[Tuple, List, Dict]:
@@ -114,4 +103,4 @@ def numpy_to_torch(obj: Union[Tuple, List, Dict]) -> Union[Tuple, List, Dict]:
     def fn(a):
         return torch.from_numpy(a) if isinstance(a, np.ndarray) else a
 
-    return _apply(obj, fn)
+    return apply(obj, fn)
