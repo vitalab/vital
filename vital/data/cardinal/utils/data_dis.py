@@ -1,18 +1,26 @@
 import itertools
 import logging
-from typing import Dict, List, Sequence, Tuple, Union
+from typing import Dict, Iterator, List, Mapping, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib.axes import Axes
 from seaborn import PairGrid
 from sklearn.model_selection import train_test_split
 from tqdm.auto import tqdm
 
-from vital.data.cardinal.config import TabularAttribute
-from vital.data.cardinal.utils.attributes import TABULAR_ATTR_UNITS
+from vital.data.cardinal.config import CardinalTag, TabularAttribute, TimeSeriesAttribute
+from vital.data.cardinal.config import View as ViewEnum
+from vital.data.cardinal.utils.attributes import (
+    TABULAR_ATTR_UNITS,
+    TABULAR_CAT_ATTR_LABELS,
+    TIME_SERIES_ATTR_LABELS,
+    build_attributes_dataframe,
+)
 from vital.data.cardinal.utils.data_struct import Patient
 from vital.data.cardinal.utils.itertools import Patients
+from vital.data.transforms import Interp1d
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +97,180 @@ def plot_patients_distribution(
     g = sns.pairplot(patients_data, **plot_kwargs)
     g.map_lower(sns.kdeplot)
     return g
+
+
+def plot_tabular_attrs_wrt_group(
+    patients: Patients,
+    groups: Mapping[Patient.Id, int | str],
+    tabular_attrs: Sequence[TabularAttribute] = None,
+    groups_desc: str = "group",
+    cat_plot_kwargs: dict = None,
+    num_plot_kwargs: dict = None,
+) -> Iterator[Tuple[str, Axes]]:
+    """Plots the variability of tabular attributes across groups of patients.
+
+    Args:
+        patients: Collection of patients data from which to extract the attributes.
+        groups: Groups of patients, represented as a mapping between patient IDs and group labels.
+        tabular_attrs: Subset of tabular attributes for which to plot the distribution by group. If not provided, will
+            default to all available attributes.
+        groups_desc: Description of the groups of patients over which the tabular attributes are aggregated.
+        cat_plot_kwargs: Parameters to forward to the call to `seaborn.barplot` for categorical attributes.
+        num_plot_kwargs: Parameters to forward to the call to `seaborn.boxplot` for numerical attributes.
+
+    Returns:
+        Iterator over figures (and their corresponding titles) plotting the variability of tabular attributes over
+        groups of patients.
+    """
+    if cat_plot_kwargs is None:
+        cat_plot_kwargs = {}
+    if num_plot_kwargs is None:
+        num_plot_kwargs = {}
+
+    if groups_desc in TabularAttribute.categorical_attrs():
+        # If the group corresponds to a categorical attribute, use the labels of the attribute as the group labels
+        # so that the order of the labels respects the hard-coded order in the config
+        group_labels = TABULAR_CAT_ATTR_LABELS[groups_desc]
+    else:
+        group_labels = sorted(set(groups.values()))
+
+    # Gather the tabular data of the patients, and add the group labels
+    groups_data = patients.to_dataframe(tabular_attrs=tabular_attrs)
+    groups_data[groups_desc] = pd.Series(groups)
+    groups_data = groups_data.set_index(groups_desc, append=True)
+
+    # Ignore `matplotlib.category` logger 'INFO' level logs to avoid repeated logs about categorical units parsable
+    # as floats
+    logging.getLogger("matplotlib.category").setLevel(logging.WARNING)
+
+    # For each attribute, plot the variability of the attribute w.r.t. groups
+    for attr in groups_data.columns:
+        title = f"{attr}_wrt_{groups_desc}"
+        attr_data = groups_data[attr]
+
+        # Based on whether the attribute is categorical or numerical, define different types of plots
+        if attr in TabularAttribute.categorical_attrs():
+            # Compute the occurrence of each category for each group (including NA)
+            attr_stats = attr_data.groupby([groups_desc]).value_counts(normalize=True, dropna=False) * 100
+            # After the NA values have been taken into account for the count, drop them
+            attr_stats = attr_stats.dropna()
+
+            # For unknown reasons, this plot is unable to pickup variables in the multi-index. As a workaround, we
+            # reset the index and to make the index levels into columns available to the plot
+            attr_stats = attr_stats.reset_index()
+
+            # For boolean attributes, convert the values to string so that seaborn can properly pick up label names
+            # Avoids the following error: 'bool' object has no attribute 'startswith'
+            # At the same time, assign relevant labels/hues/etc. for either boolean or categorical attributes
+            if attr in TabularAttribute.boolean_attrs():
+                attr_stats = attr_stats.astype({attr: str})
+                ylabel = "(% true)"
+                hue_order = [str(val) for val in TABULAR_CAT_ATTR_LABELS[attr]]
+            else:
+                ylabel = "(% by label)"
+                hue_order = TABULAR_CAT_ATTR_LABELS[attr]
+
+            # Use dodged barplots for categorical attributes
+            with sns.axes_style("darkgrid"):
+                plot = sns.barplot(
+                    data=attr_stats,
+                    x=groups_desc,
+                    y="proportion",
+                    hue=attr,
+                    order=group_labels,
+                    hue_order=hue_order,
+                    estimator="median",
+                    errorbar=lambda data: (np.quantile(data, 0.25), np.quantile(data, 0.75)),
+                    **cat_plot_kwargs,
+                )
+
+            plot.set(title=title, ylabel=ylabel)
+
+        else:  # attr in TabularAttribute.numerical_attrs()
+            # Use boxplots for numerical attributes
+            with sns.axes_style("darkgrid"):
+                # Reset index on the data to make the index levels available as values to plot
+                plot = sns.boxplot(
+                    data=attr_data.reset_index(), x=groups_desc, y=attr, order=group_labels, **num_plot_kwargs
+                )
+
+            plot.set(title=title, ylabel=TABULAR_ATTR_UNITS[attr][0])
+
+        yield title, plot
+
+
+def plot_time_series_attrs_wrt_group(
+    patients: Patients,
+    groups: Mapping[Patient.Id, int | str],
+    time_series_attrs: Sequence[Tuple[ViewEnum, TimeSeriesAttribute]],
+    mask_tag: str = CardinalTag.mask,
+    groups_desc: str = "group",
+    plot_kwargs: dict = None,
+) -> Iterator[Tuple[str, Axes]]:
+    """Plots the variability of time-series attributes by aggregating them over groups of patients.
+
+    Args:
+        patients: Collection of patients data from which to extract the attributes.
+        groups: Groups of patients, represented as a mapping between patient IDs and group labels.
+        time_series_attrs: Subset of time-series attributes derived from segmentations (identified by view/attribute
+            pairs) for which to plot the average curves across groups of patients.
+        mask_tag: Tag of the segmentation mask for which to extract the time-series attributes.
+        groups_desc: Description of the groups of patients over which the time-series attributes are aggregated.
+        plot_kwargs: Parameters to forward to the call to `seaborn.lineplot` for time-series attributes.
+
+    Returns:
+        Iterator over figures (and their corresponding titles) plotting the variability of time-series attributes over
+        groups of patients.
+    """
+    if groups_desc in TabularAttribute.categorical_attrs():
+        # If the group corresponds to a categorical attribute, use the labels of the attribute as the group labels
+        # so that the order of the labels respects the hard-coded order in the config
+        group_labels = TABULAR_CAT_ATTR_LABELS[groups_desc]
+    else:
+        group_labels = sorted(set(groups.values()))
+
+    # Convert groups from mapping between patient IDs and group labels to lists of patient IDs by group
+    groups = {
+        group_label: sorted(patient_id for patient_id, patient_group in groups.items() if patient_group == group_label)
+        for group_label in group_labels
+    }
+
+    # Fetch the data of the patients in each group
+    patients_by_group = {
+        group_label: [patients[patient_id] for patient_id in patient_ids] for group_label, patient_ids in groups.items()
+    }
+
+    # For each time-series attr
+    for time_series_attr in time_series_attrs:
+        # Extract the data of only the current time-series attribute for each patient
+        # In the process, resample the time-series attributes to a common number of points to allow for easy
+        # aggregation by seaborn
+        attr_view, attr = time_series_attr
+        resampling_fn = Interp1d(64)
+        time_series_attr_by_group = {
+            group_label: {
+                patient.id: resampling_fn(patient.get_mask_attributes(mask_tag)[attr_view][attr])
+                for patient in patients
+            }
+            for group_label, patients in patients_by_group.items()
+        }
+
+        # Build the dataframe of the time-series for each patient of each group
+        time_series_attr_data = build_attributes_dataframe(
+            time_series_attr_by_group, outer_name=groups_desc, inner_name="patient"
+        )
+
+        # Plot the curves for each group
+        with sns.axes_style("darkgrid"):
+            plot = sns.lineplot(
+                data=time_series_attr_data, x="time", y="val", hue=groups_desc, hue_order=group_labels, **plot_kwargs
+            )
+        title = f"{'/'.join(time_series_attr)}_wrt_{groups_desc}"
+        plot.set(
+            title=title, xlabel="(normalized) cardiac cycle phase", ylabel=TIME_SERIES_ATTR_LABELS[time_series_attr[1]]
+        )
+
+        yield title, plot
 
 
 def generate_patients_splits(
