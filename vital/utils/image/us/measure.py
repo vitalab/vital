@@ -444,6 +444,7 @@ class EchoMeasure(Measure):
         myo_labels: SemanticStructureId,
         num_control_points: int = 31,
         control_points_slice: slice = None,
+        correct_drift: bool = True,
         voxelspacing: Tuple[float, float] = (1, 1),
     ) -> T:
         """Global Longitudinal Strain (GLS) for each frame in the sequence, compared to the first frame.
@@ -457,6 +458,8 @@ class EchoMeasure(Measure):
                 control points should be odd to be divisible evenly between the base -> apex and apex -> base segments.
             control_points_slice: Slice of control points to consider when computing the strain. This is useful to
                 compute the strain over a subset of the control points, e.g. over the basal septum in A4C.
+            correct_drift: Whether to correct the strain line to ensure that it returns to the baseline, i.e. the
+                value of the first frame, at the end of the cycle, i.e. the last frame.
             voxelspacing: Size of the segmentation's voxels along each (height, width) dimension (in mm).
 
         Returns:
@@ -480,6 +483,16 @@ class EchoMeasure(Measure):
 
         # Compute the longitudinal length of the LV for each frame in the sequence
         lv_longitudinal_lengths = np.array([_lv_longitudinal_length(frame) for frame in segmentation])
+
+        if correct_drift:
+            # Measure the drift between the last and first frame
+            drift = lv_longitudinal_lengths[-1] - lv_longitudinal_lengths[0]
+
+            # Linearly interpolate between 0 and drift to determine the amount by which to correct in each frame
+            drift_correction = np.linspace(0, drift, num=len(segmentation))
+
+            # Correct the drift in the measure longitudinal lengths
+            lv_longitudinal_lengths -= drift_correction
 
         # Compute the GLS for each frame in the sequence
         ed_lv_longitudinal_length = lv_longitudinal_lengths[0]
