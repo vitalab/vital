@@ -162,13 +162,13 @@ class TabularAttribute(SnakeCaseStrEnum):
     mv_dt = auto()
     """Mitral Valve (MV) Deceleration Time (DT)."""
     lateral_e_prime = auto()
-    """Lateral mitral annulus velocity."""
+    """Lateral mitral annular velocity."""
     septal_e_prime = auto()
-    """Septal mitral annulus velocity."""
+    """Septal mitral annular velocity."""
     mean_e_prime = auto()
-    """Average of the lateral and septal mitral annulus velocity."""
+    """Average of the lateral and septal mitral annular velocity."""
     reduced_e_prime = auto()
-    """Whether the mitral annulus velocity is reduced, i.e. lateral E' < 10 or septal E' < 7."""
+    """Whether the mitral annular velocity is reduced, i.e. lateral E' < 10 or septal E' < 7."""
     e_e_prime_ratio = auto()
     """Ratio of E over e'."""
     d_dysfunction_e_e_prime_ratio = auto()
@@ -190,7 +190,7 @@ class TabularAttribute(SnakeCaseStrEnum):
     ivs_d = auto()
     """InterVentricular Septum (IVS) thickness at end-diastole (D)."""
     lvid_d = auto()
-    """Left Ventricular Internal Dimension (LVID) at end-diastole (D)."""
+    """Left Ventricular Internal Diameter (LVID) at end-diastole (D)."""
     pw_d = auto()
     """Left ventricular Posterior Wall (PW) thickness at end-diastole (D)."""
     tapse = auto()
