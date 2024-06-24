@@ -1,24 +1,29 @@
 import functools
 from collections import OrderedDict
 from functools import wraps
-from typing import Any, Callable, Dict, List, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
 
 import torch
 from torch import Tensor, nn
 
+ModuleType = Union[str, Callable[..., nn.Module]]
 
-def get_nn_module(module: str, *module_args, **module_kwargs) -> nn.Module:
+
+def get_nn_module(module: ModuleType, *module_args, **module_kwargs) -> nn.Module:
     """Instantiates an ``nn.Module`` with the requested parameters.
 
     Args:
-        module: Name of the ``nn.Module`` to instantiate.
-        *module_args: Positional arguments to pass to the ``nn.Module``'s constructor.
-        **module_kwargs: Keyword arguments to pass to the ``nn.Module``'s constructor.
+        module: Name of the ``nn.Module`` to instantiate, or function that initializes the module.
+        *module_args: Positional arguments to pass to the ``nn.Module``'s constructor or generator function.
+        **module_kwargs: Keyword arguments to pass to the ``nn.Module``'s constructor or generator function.
 
     Returns:
         Instance of the ``nn.Module``.
     """
-    return getattr(nn, module)(*module_args, **module_kwargs)
+    if callable(module):
+        return module(*module_args, **module_kwargs)
+    else:
+        return getattr(nn, module)(*module_args, **module_kwargs)
 
 
 def _sequential(fn: Callable[..., Sequence[Tuple[str, nn.Module]]]) -> Callable[..., nn.Sequential]:
