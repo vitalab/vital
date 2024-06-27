@@ -4,7 +4,7 @@ from typing import Optional, Tuple, cast
 import torch
 from torch import Tensor, nn
 
-from vital.models.attention.layers import MultiheadAttention
+from vital.models.attention.layers import BidirectionalMultimodalAttention, MultiheadAttention
 from vital.models.layers import ModuleType, get_nn_module
 
 
@@ -167,24 +167,20 @@ class Transformer(nn.Module):
         return layer
 
     def _init_bidirectional_attention_block(self, layer_idx: int) -> nn.ModuleDict:
-        layer = nn.ModuleDict()
+        layer = nn.ModuleDict(
+            {
+                "bidirectional_attention": BidirectionalMultimodalAttention(
+                    self.d_token,
+                    self.attention_n_heads,
+                    self.attention_dropout,
+                    bias=True,
+                    initialization=self.attention_initialization,
+                )
+            }
+        )
         for modality_idx in (0, 1):
             layer.update(
                 {
-                    f"mod_{modality_idx}_self_attention": MultiheadAttention(
-                        d_token=self.d_token,
-                        n_heads=self.attention_n_heads,
-                        dropout=self.attention_dropout,
-                        bias=True,
-                        initialization=self.attention_initialization,
-                    ),
-                    f"mod_{modality_idx}_cross_attention": MultiheadAttention(
-                        d_token=self.d_token,
-                        n_heads=self.attention_n_heads,
-                        dropout=self.attention_dropout,
-                        bias=True,
-                        initialization=self.attention_initialization,
-                    ),
                     f"mod_{modality_idx}_attention_residual_dropout": nn.Dropout(self.residual_dropout),
                     f"mod_{modality_idx}_ffn": self.FFN(
                         d_token=self.d_token,
@@ -271,21 +267,12 @@ class Transformer(nn.Module):
             x_residual = self._start_residual(block, "mod_0_attention", x, stage="bidirectional")
             x1_residual = self._start_residual(block, "mod_1_attention", x1, stage="bidirectional")
 
-            # Forward pass through the attention block for the first modality
-            # 1. Forward pass through the self-attention layer within the first modality
-            x_self, _ = block["mod_0_self_attention"](x_residual, x_residual)
-            # 2. Forward pass through the cross-attention layer with the second modality
-            x_cross, _ = block["mod_0_cross_attention"](x_residual, x1_residual)
-
-            # Forward pass through the attention block for the second modality
-            # 1. Forward pass through the self-attention layer within the second modality
-            x1_self, _ = block["mod_1_self_attention"](x1_residual, x1_residual)
-            # 2. Forward pass through the cross-attention layer with the first modality
-            x1_cross, _ = block["mod_1_cross_attention"](x1_residual, x_residual)
+            # Forward pass through the bidirectional attention block
+            x_residual, x1_residual = block["bidirectional_attention"](x_residual, x1_residual)
 
             # Residual connections after the attention layer for both modalities
-            x = self._end_residual(block, "mod_0_attention", x, x_self + x_cross, stage="bidirectional")
-            x1 = self._end_residual(block, "mod_1_attention", x1, x1_self + x1_cross, stage="bidirectional")
+            x = self._end_residual(block, "mod_0_attention", x, x_residual, stage="bidirectional")
+            x1 = self._end_residual(block, "mod_1_attention", x1, x1_residual, stage="bidirectional")
 
             # Forward pass through the normalization, FFN layer, and residual connection for both modalities
             x_residual = self._start_residual(block, "mod_0_ffn", x, stage="bidirectional")
