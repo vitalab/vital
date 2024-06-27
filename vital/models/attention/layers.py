@@ -46,18 +46,54 @@ class GEGLU(nn.Module):
         return geglu(x)
 
 
-class MultiheadAttention(nn.Module):
-    """Multihead Attention (self-/cross-) with optional 'linear' attention."""
-
+class _QKVLinearProjection(nn.Module):
     def __init__(
-        self,
-        *,
-        d_token: int,
-        n_heads: int,
-        dropout: float,
-        bias: bool = True,
-        initialization: Literal["kaiming", "xavier"] = "kaiming"
-    ) -> None:
+        self, d_token: int, n_heads: int, bias: bool = True, initialization: Literal["kaiming", "xavier"] = "kaiming"
+    ):
+        """Initializes class instance.
+
+        Args:
+            d_token: Token size.
+            n_heads: Number of attention heads. If equal to 1, then value projection matrix will always be initialized
+                with Kaiming (regardless of `initialization` parameter), to follow torch.nn.MultiheadAttention.
+            bias: If `True`, then input (and output, if presented) layers also have bias.
+            initialization: Initialization for input projection layers. Must be one of ['kaiming', 'xavier'].
+        """
+        super().__init__()
+
+        if initialization not in ["kaiming", "xavier"]:
+            raise ValueError("`initialization` must be one of ['kaiming', 'xavier']")
+
+        self.W_q = nn.Linear(d_token, d_token, bias)
+        self.W_k = nn.Linear(d_token, d_token, bias)
+        self.W_v = nn.Linear(d_token, d_token, bias)
+
+        for m in [self.W_q, self.W_k, self.W_v]:
+            # the "xavier" branch tries to follow torch.nn.MultiheadAttention;
+            # the second condition checks if V is directly used to compute output (i.e. not multi-head);
+            # the latter one is initialized with Kaiming in torch
+            if initialization == "xavier" and (m is not self.W_v or n_heads > 1):
+                # gain is needed since W_qkv is represented with 3 separate layers (it
+                # implies different fan_out)
+                nn.init.xavier_uniform_(m.weight, gain=1 / math.sqrt(2))
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+
+    def forward(self, x_q: Tensor, x_kv: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
+        """Computes the query/key/value linear projections of tokens.
+
+        Args:
+            x_q: (N, S_q, E), Tokens from which to compute the query matrix.
+            x_kv: (N, S_kv, E), Tokens from which to compute the key/value matrices.
+
+        Returns:
+            (N, S_q, E) + 2 x (N, S_kv, E), query/key/value linear projections of input tokens.
+        """
+        return self.W_q(x_q), self.W_k(x_kv), self.W_v(x_kv)
+
+
+class _QKVMatrixMultiplication(nn.Module):
+    def __init__(self, d_token: int, n_heads: int, dropout: float, bias: bool = True):
         """Initializes class instance.
 
         Args:
@@ -67,33 +103,17 @@ class MultiheadAttention(nn.Module):
             dropout: Dropout rate for the attention map. The dropout is applied to *probabilities* and does not affect
                 logits.
             bias: If `True`, then input (and output, if presented) layers also have bias.
-            initialization: Initialization for input projection layers. Must be one of ['kaiming', 'xavier'].
         """
         super().__init__()
+
         if n_heads > 1:
             if d_token % n_heads != 0:
                 raise ValueError("d_token must be a multiple of n_heads")
 
-        if initialization not in ["kaiming", "xavier"]:
-            raise ValueError("`initialization` must be one of ['kaiming', 'xavier']")
-
-        self.W_q = nn.Linear(d_token, d_token, bias)
-        self.W_k = nn.Linear(d_token, d_token, bias)
-        self.W_v = nn.Linear(d_token, d_token, bias)
         self.W_out = nn.Linear(d_token, d_token, bias) if n_heads > 1 else None
         self.n_heads = n_heads
         self.dropout = nn.Dropout(dropout) if dropout else None
 
-        for m in [self.W_q, self.W_k, self.W_v]:
-            # the "xavier" branch tries to follow torch.nn.MultiheadAttention;
-            # the second condition checks if W_v plays the role of W_out; the latter one
-            # is initialized with Kaiming in torch
-            if initialization == "xavier" and (m is not self.W_v or self.W_out is not None):
-                # gain is needed since W_qkv is represented with 3 separate layers (it
-                # implies different fan_out)
-                nn.init.xavier_uniform_(m.weight, gain=1 / math.sqrt(2))
-            if m.bias is not None:
-                nn.init.zeros_(m.bias)
         if self.W_out is not None:
             nn.init.zeros_(self.W_out.bias)
 
@@ -106,18 +126,17 @@ class MultiheadAttention(nn.Module):
             .reshape(batch_size * self.n_heads, n_tokens, d_head)
         )
 
-    def forward(self, x_q: Tensor, x_kv: Tensor) -> Tuple[Tensor, Dict[str, Tensor]]:
-        """Performs a forward pass through the attention operations.
+    def forward(self, q: Tensor, k: Tensor, v: Tensor) -> Tuple[Tensor, Dict[str, Tensor]]:
+        """Performs the multiplications between query/key/value matrices.
 
         Args:
-            x_q: (N, S_q, E), query tokens.
-            x_kv: (N, S_kv, E), key-value tokens.
+            q: (N, S_q, E), query matrix.
+            k: (N, S_kv, E), key matrix.
+            v: (N, S_kv, E), value matrix.
 
         Returns:
             (N, S_q, E), attention output tokens, and attention statistics.
         """
-        q, k, v = self.W_q(x_q), self.W_k(x_kv), self.W_v(x_kv)
-
         batch_size = len(q)
         d_head_key = k.shape[-1] // self.n_heads
         d_head_value = v.shape[-1] // self.n_heads
@@ -141,6 +160,46 @@ class MultiheadAttention(nn.Module):
             "attention_logits": attention_logits,
             "attention_probs": attention_probs,
         }
+
+
+class MultiheadAttention(nn.Module):
+    """Multihead Attention (self-/cross-)."""
+
+    def __init__(
+        self,
+        d_token: int,
+        n_heads: int,
+        dropout: float,
+        bias: bool = True,
+        initialization: Literal["kaiming", "xavier"] = "kaiming",
+    ) -> None:
+        """Initializes class instance.
+
+        Args:
+            d_token: Token size. Must be a multiple of `n_heads`.
+            n_heads: Number of attention heads. If greater than 1, then the module will have an additional output layer
+                (so called "mixing" layer).
+            dropout: Dropout rate for the attention map. The dropout is applied to *probabilities* and does not affect
+                logits.
+            bias: If `True`, then input (and output, if presented) layers also have bias.
+            initialization: Initialization for input projection layers. Must be one of ['kaiming', 'xavier'].
+        """
+        super().__init__()
+        self.linear_proj = _QKVLinearProjection(d_token, n_heads, bias=bias, initialization=initialization)
+        self.mat_mul = _QKVMatrixMultiplication(d_token, n_heads, dropout, bias=bias)
+
+    def forward(self, x_q: Tensor, x_kv: Tensor) -> Tuple[Tensor, Dict[str, Tensor]]:
+        """Performs a forward pass through the attention operations.
+
+        Args:
+            x_q: (N, S_q, E), query tokens.
+            x_kv: (N, S_kv, E), key-value tokens.
+
+        Returns:
+            (N, S_q, E), attention output tokens, and attention statistics.
+        """
+        q, k, v = self.linear_proj(x_q, x_kv)
+        return self.mat_mul(q, k, v)
 
 
 class PositionalEncoding(nn.Module):
