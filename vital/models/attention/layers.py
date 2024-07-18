@@ -126,6 +126,10 @@ class _QKVMatrixMultiplication(nn.Module):
             .reshape(batch_size * self.n_heads, n_tokens, d_head)
         )
 
+    def save_attn_grad(self, grad: Tensor) -> None:
+        """Stores the gradient of the attention map."""
+        self.attn_grad = grad
+
     def forward(self, q: Tensor, k: Tensor, v: Tensor) -> Tuple[Tensor, Dict[str, Tensor]]:
         """Performs the multiplications between query/key/value matrices.
 
@@ -146,6 +150,11 @@ class _QKVMatrixMultiplication(nn.Module):
         k = self._reshape(k)
         attention_logits = q @ k.transpose(1, 2) / math.sqrt(d_head_key)
         attention_probs = F.softmax(attention_logits, dim=-1)
+
+        self.attn = attention_probs
+        if attention_probs.requires_grad:
+            attention_probs.register_hook(self.save_attn_grad)
+
         if self.dropout is not None:
             attention_probs = self.dropout(attention_probs)
         x = attention_probs @ self._reshape(v)
@@ -187,6 +196,16 @@ class MultiheadAttention(nn.Module):
         super().__init__()
         self.linear_proj = _QKVLinearProjection(d_token, n_heads, bias=bias, initialization=initialization)
         self.mat_mul = _QKVMatrixMultiplication(d_token, n_heads, dropout, bias=bias)
+
+    @property
+    def attn(self) -> Tensor:
+        """Returns the stored attention map."""
+        return self.mat_mul.attn
+
+    @property
+    def attn_grad(self) -> Tensor:
+        """Returns the stored gradient of the attention map."""
+        return self.mat_mul.attn_grad
 
     def forward(self, x_q: Tensor, x_kv: Tensor) -> Tuple[Tensor, Dict[str, Tensor]]:
         """Performs a forward pass through the attention operations.
