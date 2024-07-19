@@ -62,6 +62,7 @@ def process_patient(
     time_series_attrs: Sequence[TimeSeriesAttribute] = None,
     mask_tag: str = CardinalTag.mask,
     bmode_tag: str = None,
+    mask_attrs: Sequence[TabularAttribute] = None,
 ) -> PatientData:
     """Processes a patient to extract and format a subset of relevant fields from all the patient's data.
 
@@ -72,6 +73,7 @@ def process_patient(
         mask_tag: Tag of the segmentation mask to use for computing the time-series attrs, and to include in the item.
         bmode_tag: Tag of the B-mode image to which the segmentation mask applies. Providing it causes the returned item
             to include image data.
+        mask_attrs: Tabular attributes to mark as missing, regardless of whether they are available or not.
 
     Returns:
         Each item returned contains two types of attributes: time-series attributes and tabular attributes.
@@ -84,19 +86,26 @@ def process_patient(
     if time_series_attrs is None:
         time_series_attrs = TimeSeriesAttribute
     img_data_tags = [bmode_tag, mask_tag] if bmode_tag else []
+    if mask_attrs is None:
+        mask_attrs = []
 
     if tabular_attrs:
         # Extract the requested tabular attributes from all the ones available for the patient,
         tab_attrs_data = {attr_tag: patient.attrs.get(attr_tag) for attr_tag in tabular_attrs}
 
         for attr_tag, attr in tab_attrs_data.items():
+            mask_attr = attr_tag in mask_attrs
             if attr_tag in TabularAttribute.numerical_attrs():
                 # Convert numerical attributes to numpy arrays of dtype `np.float32`
-                tab_attrs_data[attr_tag] = np.array(attr if attr is not None else MISSING_NUM_ATTR, dtype=np.float32)
+                tab_attrs_data[attr_tag] = np.array(
+                    attr if attr is not None and not mask_attr else MISSING_NUM_ATTR, dtype=np.float32
+                )
             else:
                 # Convert categorical attributes to numerical labels inside numpy arrays of dtype `np.int64`
                 tab_attrs_data[attr_tag] = np.array(
-                    TABULAR_CAT_ATTR_LABELS[attr_tag].index(attr) if attr is not None else MISSING_CAT_ATTR,
+                    TABULAR_CAT_ATTR_LABELS[attr_tag].index(attr)
+                    if attr is not None and not mask_attr
+                    else MISSING_CAT_ATTR,
                     dtype=np.int64,
                 )
     else:
