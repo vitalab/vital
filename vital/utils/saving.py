@@ -121,15 +121,18 @@ def load_from_checkpoint(
         Lightning module (specifically a subclass of VitalSystem) loaded from the checkpoint, cast to its original
         type.
     """
+    if not device:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
     # Resolve the local path of the checkpoint
     ckpt_path = resolve_model_checkpoint_path(checkpoint)
 
     # Extract which class to load from the hyperparameters saved in the checkpoint
-    ckpt_hparams = torch.load(ckpt_path)[pl.LightningModule.CHECKPOINT_HYPER_PARAMS_KEY]
+    ckpt_hparams = torch.load(ckpt_path, map_location=device)[pl.LightningModule.CHECKPOINT_HYPER_PARAMS_KEY]
     system_cls = import_from_module(ckpt_hparams["task"]["_target_"])
 
     # Restore the model from the checkpoint
-    system = system_cls.load_from_checkpoint(str(ckpt_path), ckpt=checkpoint)
+    system = system_cls.load_from_checkpoint(str(ckpt_path), ckpt=checkpoint, map_location=device)
 
     # Perform runtime check on the type of the loaded model
     if expected_checkpoint_type and not isinstance(system, expected_checkpoint_type):
@@ -141,6 +144,4 @@ def load_from_checkpoint(
 
     # Set the mode of the model according to the caller's requirements
     system.train(mode=train_mode)
-    if not device:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
     return system.to(device=torch.device(device))
