@@ -1,9 +1,81 @@
 from pathlib import Path
+from typing import Any, Sequence
+
+import numpy as np
+from lightning_utilities import apply_to_collection
+from numpy.random import RandomState
+from sklearn import model_selection
+from tqdm.auto import tqdm
 
 from vital.data.cardinal.config import TabularAttribute
-from vital.data.cardinal.utils.data_dis import generate_patients_splits
 from vital.data.cardinal.utils.itertools import Patients
 from vital.utils.parsing import int_or_float
+
+TRAIN_SET = "train"
+VAL_SET = "val"
+TEST_SET = "test"
+
+
+def k_fold(
+    data: Sequence[Any],
+    stratify: Sequence[Any] | None = None,
+    n_splits: int = 5,
+    val_size: float | int = 0.1,
+    shuffle: bool = True,
+    random_state: int | RandomState | None = 12345,
+) -> list[dict[str, list[int]]]:
+    """Splits a sequence of sample indices into k folds for cross-validation.
+
+    Args:
+        data: Data of length `n_samples` to split.
+        stratify: If provided, the data is split in a stratified fashion, using this as the class labels.
+        n_splits: The number of folds/splits to create.
+        val_size: The size of the validation set to split from each remaining training set after creating the K folds.
+            If float, should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the
+            validation set. If int, represents the absolute number of validation samples.
+        shuffle: Whether to shuffle the data before splitting.
+        random_state: The random state to use for reproducibility.
+
+    Returns:
+        A list of splits, where each split contains the indices of its train, val and (optional) test sets.
+    """
+    # Create an array of indices relative to the input data +
+    # ensure that labels are a numpy array to easily index them using arrays
+    indices = np.arange(len(data))
+    if stratify is not None:
+        stratify = np.array(stratify)
+
+    # If `val_size` represents a proportion of the dataset, compute the proportion relative to the training sets
+    # (to increase the proportion to account for the test fold)
+    if isinstance(val_size, float):
+        val_size *= (n_splits - 1) / n_splits
+
+    if stratify is None:
+        k_fold_cls = model_selection.KFold
+        train_val_split_cls = model_selection.ShuffleSplit
+    else:
+        k_fold_cls = model_selection.StratifiedKFold
+        train_val_split_cls = model_selection.StratifiedShuffleSplit
+
+    k_fold = k_fold_cls(n_splits=n_splits, shuffle=shuffle, random_state=random_state)
+    train_val_split = train_val_split_cls(n_splits=1, test_size=val_size, random_state=random_state)
+    splits = []
+    for train_val_idx, test_idx in k_fold.split(indices, y=stratify):
+        # Exclude the test set from the remaining data to split
+        train_val_indices = indices[train_val_idx]
+        train_val_stratify = stratify[train_val_idx] if stratify is not None else None
+
+        train_idx, val_idx = next(train_val_split.split(indices[train_val_idx], train_val_stratify))
+
+        splits.append(
+            {TRAIN_SET: train_val_indices[train_idx], VAL_SET: train_val_indices[val_idx], TEST_SET: indices[test_idx]}
+        )
+
+    # Convert arrays of int64 (e.g. returned by `KFold.split`) to a sorted native int list
+    # to avoid serialization issues if the caller tries to save the splits to disk
+    splits = apply_to_collection(splits, np.ndarray, lambda x: np.sort(x).tolist())
+
+    return splits
 
 
 def main():
@@ -16,12 +88,8 @@ def main():
         "--output_dir",
         type=Path,
         default=Path.cwd(),
-        help="Directory where to save the files listing the patients making up each subset",
+        help="Directory where to save the files listing the patients making up each splits",
     )
-    parser.add_argument(
-        "--train_name", type=str, default="train", help="Name to give to the file for the training subset"
-    )
-    parser.add_argument("--test_name", type=str, default="test", help="Name to give to the file for the test subset")
     parser.add_argument(
         "--stratify_attr",
         required=True,
@@ -29,44 +97,39 @@ def main():
         choices=list(TabularAttribute),
         help="Name of the tabular attribute whose distribution in each of the subset should be similar",
     )
+    parser.add_argument("--n_splits", type=int, default=5, help="Number of cross-validation folds to generate")
     parser.add_argument(
-        "--bins",
-        type=int,
-        default=5,
-        help="If `stratify_attr` is a continuous attribute, number of bins into which to categorize the values, to "
-        "ensure each bin is distributed representatively in the split.",
-    )
-    parser.add_argument(
-        "--test_size",
+        "--val_size",
         type=int_or_float,
-        default=0.2,
+        default=20,
         help="If float, should be between 0.0 and 1.0 and represent the proportion of the dataset to include in the "
-        "test split. If int, represents the absolute number of test samples.",
+        "validation set. If int, represents the absolute number of validation samples.",
     )
-    parser.add_argument(
-        "--seed", type=int, help="Seed to control the shuffling applied to the data before applying the split"
-    )
+    parser.add_argument("--seed", type=int, help="Seed to control the reproducibility of the split")
     args = parser.parse_args()
     kwargs = vars(args)
 
-    output_dir, train_name, test_name, stratify_attr, bins, test_size, seed = (
+    output_dir, stratify_attr, n_splits, val_size, seed = (
         kwargs.pop("output_dir"),
-        kwargs.pop("train_name"),
-        kwargs.pop("test_name"),
         kwargs.pop("stratify_attr"),
-        kwargs.pop("bins"),
-        kwargs.pop("test_size"),
+        kwargs.pop("n_splits"),
+        kwargs.pop("val_size"),
         kwargs.pop("seed"),
     )
 
-    patient_ids_train, patient_ids_test = generate_patients_splits(
-        Patients(**kwargs), stratify_attr, bins=bins, test_size=test_size, seed=seed, progress_bar=True
-    )
+    patients = Patients(**kwargs)
+    patients_pbar = tqdm(patients.values(), desc="Collecting patients' data", unit="patient")
+    # Collect the data of the attribute by which to stratify the split from the patient
+    patients_stratify = [patient.attrs[stratify_attr] for patient in patients_pbar]
 
-    # Save the generated split
-    output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / f"{train_name}.txt").write_text("\n".join(patient_ids_train))
-    (output_dir / f"{test_name}.txt").write_text("\n".join(patient_ids_test))
+    splits = k_fold(list(patients), stratify=patients_stratify, n_splits=n_splits, val_size=val_size, random_state=seed)
+
+    # Save the generated splits
+    patient_ids = np.array(list(patients))
+    for split_idx, split in enumerate(splits):
+        (output_dir / str(split_idx)).mkdir(parents=True, exist_ok=True)
+        for subset, subset_indices in split.items():
+            (output_dir / str(split_idx) / f"{subset}.txt").write_text("\n".join(patient_ids[subset_indices]))
 
 
 if __name__ == "__main__":
