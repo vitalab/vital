@@ -174,7 +174,8 @@ def main():
         if isinstance(plot, so.Plot):
             plot.save(filepath, bbox_inches="tight")
         elif isinstance(plot, Axes):
-            plt.savefig(filepath)
+            plot.set(title=None)
+            plt.savefig(filepath, bbox_inches="tight")
             plt.close()  # Close the figure to avoid contamination between plots
         else:
             raise ValueError(f"Unable to save the figure for plot type: {type(plot)}.")
