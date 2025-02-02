@@ -12,6 +12,7 @@ from tqdm.auto import tqdm
 from vital.data.cardinal.config import CardinalTag, TabularAttribute, TimeSeriesAttribute
 from vital.data.cardinal.config import View as ViewEnum
 from vital.data.cardinal.utils.attributes import (
+    TABULAR_ATTR_TITLES,
     TABULAR_ATTR_UNITS,
     TABULAR_CAT_ATTR_LABELS,
     TIME_SERIES_ATTR_LABELS,
@@ -260,13 +261,22 @@ def plot_time_series_attrs_wrt_group(
         )
 
         # Plot the curves for each group
+        plt_kwargs = {}
         with sns.axes_style("darkgrid"):
             plot = sns.lineplot(
                 data=time_series_attr_data, x="time", y="val", hue=groups_desc, hue_order=group_labels, **plot_kwargs
             )
-        title = f"{'/'.join(time_series_attr)}_wrt_{groups_desc}"
-        plot.set(
-            title=title, xlabel="(normalized) cardiac cycle phase", ylabel=TIME_SERIES_ATTR_LABELS[time_series_attr[1]]
-        )
+            plot.set(
+                title=(title := f"{'/'.join(time_series_attr)}_wrt_{groups_desc}"),
+                xlabel="(normalized) cardiac cycle phase",
+                ylabel=TIME_SERIES_ATTR_LABELS[time_series_attr[1]],
+                **plt_kwargs,
+            )
+            # Hack to include the cardinalities of each group in the legend
+            plot.legend(
+                plot.legend_.legend_handles,
+                [f"{group_label} (n={len(patient_ids)})" for group_label, patient_ids in groups.items()],
+                title=TABULAR_ATTR_TITLES.get(groups_desc, groups_desc),
+            )
 
         yield title, plot

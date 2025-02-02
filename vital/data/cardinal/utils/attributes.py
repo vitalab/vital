@@ -113,6 +113,11 @@ TABULAR_ATTR_UNITS = {
         for cat_attr, categories in TABULAR_CAT_ATTR_LABELS.items()
     },
 }
+TABULAR_ATTR_TITLES = {
+    TabularAttribute.ht_severity: "HT severity",
+    "ht_severity_continuum_param": "Predicted stratification",
+    "continuum_param_bins": "Predicted\nstratification bin",
+}
 TABULAR_ATTR_GROUPS = {
     "info": [
         TabularAttribute.age,
